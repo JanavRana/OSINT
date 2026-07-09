@@ -1,0 +1,62 @@
+"""
+Application configuration.
+
+Loads settings from environment variables (see .env.example). This module
+defines ONLY the configuration surface needed by the skeleton: app metadata,
+API prefix, and PostgreSQL connection settings. It intentionally does not
+define anything related to models, connectors, auth, or Neo4j — those are
+out of scope for this piece of the project (see MASTER_DESIGN.md).
+"""
+
+from functools import lru_cache
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+    # --- Application ---
+    app_name: str = "OSINT Intelligence Aggregator"
+    app_env: str = "development"
+    debug: bool = True
+
+    # --- API ---
+    api_v1_prefix: str = "/api/v1"
+
+    # --- PostgreSQL ---
+    postgres_user: str = "osint_user"
+    postgres_password: str = "change_me"
+    postgres_host: str = "localhost"
+    postgres_port: int = 5432
+    postgres_db: str = "osint_aggregator"
+
+    # If not explicitly provided via env, this is assembled from the
+    # POSTGRES_* fields above in the `database_url` property below.
+    database_url: str | None = None
+
+    @property
+    def sqlalchemy_database_url(self) -> str:
+        """Return the connection string SQLAlchemy should use.
+
+        Prefers an explicitly-set DATABASE_URL, falling back to a URL
+        assembled from the individual POSTGRES_* settings.
+        """
+        if self.database_url:
+            return self.database_url
+
+        return (
+            f"postgresql+psycopg2://{self.postgres_user}:{self.postgres_password}"
+            f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+        )
+
+
+@lru_cache
+def get_settings() -> Settings:
+    """Return a cached Settings instance (avoids re-parsing env on every call)."""
+    return Settings()
