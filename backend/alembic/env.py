@@ -5,6 +5,9 @@ from pathlib import Path
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
+from app.db.session import Base
+from app.models import Investigation
+
 from alembic import context
 
 # Make the `app` package importable when alembic is invoked from the
