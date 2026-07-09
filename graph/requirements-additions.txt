@@ -1,0 +1,5 @@
+# Additions to backend/requirements.txt for the Neo4j infrastructure layer
+# (graph/ module). Merge these lines into the project's existing
+# requirements.txt rather than maintaining a separate file long-term.
+
+neo4j>=5.20,<6.0
