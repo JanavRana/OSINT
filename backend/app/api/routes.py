@@ -1,11 +1,11 @@
 """
 Top-level API router.
 
-This skeleton defines ONLY the health check endpoint. Feature routers
-(investigations, identifiers, orchestration status, entities, timeline,
-reports, etc. — see MASTER_DESIGN.md Section 15) are out of scope here
-and should be added as separate routers and included in this module
-once their underlying logic exists.
+Registers:
+- Health endpoint
+- Versioned API routers
+
+Feature-specific endpoints live under app/api/v1/.
 """
 
 from fastapi import APIRouter, Depends
@@ -13,19 +13,17 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
+from app.api.v1.investigations import router as investigations_router
 
 router = APIRouter()
 
 
 @router.get("/health", tags=["health"])
 def health_check(db: Session = Depends(get_db)) -> dict:
-    """Basic liveness/readiness check.
+    """Basic liveness/readiness check."""
 
-    Confirms the API process is up and that a database connection can be
-    established. Does not check Neo4j or any connector/service logic,
-    since those are out of scope for this skeleton.
-    """
     db_status = "ok"
+
     try:
         db.execute(text("SELECT 1"))
     except Exception:
@@ -35,3 +33,18 @@ def health_check(db: Session = Depends(get_db)) -> dict:
         "status": "ok",
         "database": db_status,
     }
+
+
+# -------------------------
+# API Version 1
+# -------------------------
+
+v1_router = APIRouter(prefix="/api/v1")
+
+v1_router.include_router(
+    investigations_router,
+    prefix="/investigations",
+    tags=["Investigations"],
+)
+
+router.include_router(v1_router)
