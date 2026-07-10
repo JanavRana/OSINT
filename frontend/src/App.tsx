@@ -5,6 +5,7 @@ import Investigations from './pages/Investigations'
 import Graph from './pages/Graph'
 import Timeline from './pages/Timeline'
 import Reports from './pages/Reports'
+import NotFound from "./pages/NotFound";
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
           <Route path="graph" element={<Graph />} />
           <Route path="timeline" element={<Timeline />} />
           <Route path="reports" element={<Reports />} />
+          <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
     </BrowserRouter>
