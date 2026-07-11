@@ -48,3 +48,22 @@ class InvestigationRepository:
         items = list(self._db.scalars(stmt).all())
 
         return items, total
+
+    def update(self, investigation: Investigation) -> Investigation:
+        """
+        Persist changes to an existing investigation.
+        
+        Args:
+            investigation: The investigation instance with modified attributes.
+        
+        Returns:
+            The updated investigation (refreshed from the database).
+        
+        Note:
+            The investigation must already be tracked by the session
+            (e.g., retrieved via get_by_id). This method commits the
+            changes and refreshes the instance.
+        """
+        self._db.commit()
+        self._db.refresh(investigation)
+        return investigation
