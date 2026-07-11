@@ -1,6 +1,14 @@
+import { useNavigate } from 'react-router-dom'
 import PageHeader from '../layout/PageHeader'
 
 export default function Investigations() {
+  const navigate = useNavigate()
+
+  const handleViewDetails = () => {
+    // Navigate to mock investigation details
+    navigate('/investigations/inv-2026-001')
+  }
+
   return (
     <div>
       <PageHeader
@@ -16,6 +24,12 @@ export default function Investigations() {
         <p className="mt-2 text-sm text-muted">
           Investigation list, creation form, and status polling are not yet implemented.
         </p>
+        <button
+          onClick={handleViewDetails}
+          className="mt-4 rounded border border-signal bg-signalDim px-4 py-2 text-sm font-medium text-signal transition-colors hover:bg-signal/20"
+        >
+          View Sample Investigation Details
+        </button>
       </div>
     </div>
   )
