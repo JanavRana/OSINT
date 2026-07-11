@@ -1,16 +1,15 @@
 """
 Investigation API router.
 
-Implements the three Sprint 2 endpoints from MASTER_DESIGN.md Section 15:
+Implements the Sprint 2 endpoints from MASTER_DESIGN.md Section 15:
 
     POST /investigations        - create a new investigation
     GET  /investigations        - list investigations (paginated)
     GET  /investigations/{id}   - retrieve a single investigation
 
-The router is a thin HTTP layer: it validates/parses input via Pydantic
-schemas, delegates to InvestigationService, and translates service-layer
-outcomes into HTTP responses/status codes. No business logic or direct
-database access lives here.
+Sprint 3 extension: adds connector execution endpoint:
+
+    POST /investigations/{id}/execute - execute connectors for an identifier
 """
 
 import uuid
@@ -18,9 +17,13 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.connectors.types import Identifier
 from app.db.session import get_db
 from app.schemas.investigation import (
+    ConnectorExecutionResult,
     InvestigationCreate,
+    InvestigationExecuteRequest,
+    InvestigationExecuteResponse,
     InvestigationList,
     InvestigationRead,
 )
@@ -84,3 +87,70 @@ def get_investigation(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
         ) from exc
     return InvestigationRead.model_validate(investigation)
+
+
+@router.post(
+    "/{investigation_id}/execute",
+    response_model=InvestigationExecuteResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Execute connectors for an investigation",
+)
+async def execute_investigation(
+    investigation_id: uuid.UUID,
+    payload: InvestigationExecuteRequest,
+    service: InvestigationService = Depends(get_investigation_service),
+) -> InvestigationExecuteResponse:
+    """
+    Execute registered connectors for a given identifier within an investigation.
+    
+    Sprint 3 scope:
+    - Runs connectors synchronously (no background workers)
+    - Returns raw connector execution results
+    - Does NOT persist results (future sprint)
+    - Does NOT normalize or correlate (future sprints M3/M4)
+    
+    The investigation's status is updated to 'running' before execution.
+    Future sprints will add proper status transitions and result persistence.
+    """
+    try:
+        # Convert request payload to Identifier
+        identifier = Identifier(value=payload.identifier, type=payload.type)
+        
+        # Execute connectors via the service
+        raw_responses = await service.execute_investigation(investigation_id, identifier)
+        
+        # Transform raw responses into API response format
+        results = []
+        for envelope in raw_responses:
+            # Provide a brief preview of raw payload for debugging
+            # (full payload not returned in Sprint 3)
+            preview = None
+            if envelope.raw_payload is not None:
+                payload_str = str(envelope.raw_payload)
+                preview = (
+                    payload_str[:100] + "..."
+                    if len(payload_str) > 100
+                    else payload_str
+                )
+            
+            results.append(
+                ConnectorExecutionResult(
+                    connector_name=envelope.connector_name,
+                    status=envelope.status,
+                    started_at=envelope.started_at,
+                    finished_at=envelope.finished_at,
+                    error_message=envelope.error_message,
+                    raw_payload_preview=preview,
+                )
+            )
+        
+        return InvestigationExecuteResponse(
+            status="running",
+            connectors_executed=len(results),
+            results=results,
+        )
+    
+    except NotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
