@@ -48,6 +48,9 @@ from .types import (
     RawResponseEnvelope,
 )
 
+# Import connectors to trigger auto-registration via @registry.register decorator
+from .whois import WhoisConnector  # noqa: F401
+
 __all__ = [
     "BaseConnector",
     "ConnectorManager",
@@ -60,4 +63,5 @@ __all__ = [
     "Identifier",
     "IdentifierType",
     "RawResponseEnvelope",
+    "WhoisConnector",
 ]
