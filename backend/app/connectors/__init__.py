@@ -50,6 +50,7 @@ from .types import (
 
 # Import connectors to trigger auto-registration via @registry.register decorator
 from .whois import WhoisConnector  # noqa: F401
+from .rdap import RdapConnector  # noqa: F401
 
 __all__ = [
     "BaseConnector",
@@ -64,4 +65,5 @@ __all__ = [
     "IdentifierType",
     "RawResponseEnvelope",
     "WhoisConnector",
+    "RdapConnector",
 ]
