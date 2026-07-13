@@ -10,7 +10,7 @@ from .types import CorrelatedEntities, CorrelatedEntity, EntityRelationship, Evi
 
 class CorrelationEngine:
     def __init__(self):
-        self._entity_id_counter = 0
+        pass
 
     def correlate(self, facts: List[NormalizedFact]) -> CorrelatedEntities:
         if not facts:
@@ -109,11 +109,22 @@ class CorrelationEngine:
         return "generic"
 
     def _generate_entity_id(self, fact: NormalizedFact) -> str:
-        self._entity_id_counter += 1
         fact_type_str = fact.fact_type.value if hasattr(fact.fact_type, 'value') else str(fact.fact_type)
         value_str = str(fact.value) if fact.value is not None else ""
-        connector = fact.source_connector
-        content = f"{fact_type_str}:{value_str}:{connector}:{self._entity_id_counter}"
+        
+        entity_type = self._infer_type_from_metadata(fact)
+        if entity_type == "generic" and "field" in fact.metadata:
+            field_name = fact.metadata["field"]
+            if "registrar" in field_name:
+                entity_type = "registrar"
+            elif "organization" in field_name:
+                entity_type = "organization"
+            elif "nameserver" in field_name:
+                entity_type = "nameserver"
+            elif "country" in field_name:
+                entity_type = "country"
+        
+        content = f"{entity_type}:{value_str}"
         return hashlib.sha256(content.encode()).hexdigest()[:16]
 
     def _generate_relationships(
