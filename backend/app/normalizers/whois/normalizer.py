@@ -5,7 +5,7 @@ from typing import Any, ClassVar, List, Optional
 
 from ..base import BaseNormalizer
 from ..registry import normalizer_registry
-from ..types import NormalizedFact
+from ..types import FactType, NormalizedFact
 
 
 @normalizer_registry.register
@@ -19,8 +19,9 @@ class WhoisNormalizer(BaseNormalizer):
         if registrar:
             facts.append(
                 NormalizedFact(
-                    fact_type="registrar",
+                    fact_type=FactType.REGISTRAR,
                     value=registrar,
+                    source_connector=self.connector_name,
                 )
             )
 
@@ -28,10 +29,11 @@ class WhoisNormalizer(BaseNormalizer):
         if creation_date:
             facts.append(
                 NormalizedFact(
-                    fact_type="domain_registration",
+                    fact_type=FactType.DOMAIN_REGISTRATION,
                     value=None,
-                    attributes={"creation_date": creation_date.isoformat()},
+                    source_connector=self.connector_name,
                     occurred_at=creation_date,
+                    extra_data={"creation_date": creation_date.isoformat()},
                 )
             )
 
@@ -39,10 +41,11 @@ class WhoisNormalizer(BaseNormalizer):
         if expiration_date:
             facts.append(
                 NormalizedFact(
-                    fact_type="domain_expiration",
+                    fact_type=FactType.DOMAIN_EXPIRATION,
                     value=None,
-                    attributes={"expiration_date": expiration_date.isoformat()},
+                    source_connector=self.connector_name,
                     occurred_at=expiration_date,
+                    extra_data={"expiration_date": expiration_date.isoformat()},
                 )
             )
 
@@ -51,8 +54,9 @@ class WhoisNormalizer(BaseNormalizer):
             for ns in nameservers:
                 facts.append(
                     NormalizedFact(
-                        fact_type="nameserver",
+                        fact_type=FactType.NAMESERVER,
                         value=ns,
+                        source_connector=self.connector_name,
                     )
                 )
 
@@ -60,8 +64,9 @@ class WhoisNormalizer(BaseNormalizer):
         if registrant_org:
             facts.append(
                 NormalizedFact(
-                    fact_type="registrant_organization",
+                    fact_type=FactType.REGISTRANT_ORGANIZATION,
                     value=registrant_org,
+                    source_connector=self.connector_name,
                 )
             )
 
@@ -69,8 +74,9 @@ class WhoisNormalizer(BaseNormalizer):
         if registrant_country:
             facts.append(
                 NormalizedFact(
-                    fact_type="registrant_country",
+                    fact_type=FactType.REGISTRANT_COUNTRY,
                     value=registrant_country,
+                    source_connector=self.connector_name,
                 )
             )
 
