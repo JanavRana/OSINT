@@ -1,17 +1,10 @@
 """
 Investigation API router.
 
-Implements the Sprint 2 endpoints from MASTER_DESIGN.md Section 15:
-
-    POST /investigations        - create a new investigation
-    GET  /investigations        - list investigations (paginated)
-    GET  /investigations/{id}   - retrieve a single investigation
-
-Sprint 3 extension: adds connector execution endpoint:
-
-    POST /investigations/{id}/execute - execute connectors for an identifier
+Milestone 15: Complete end-to-end investigation execution pipeline.
 """
 
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -21,6 +14,7 @@ from app.connectors.types import Identifier
 from app.db.session import get_db
 from app.schemas.investigation import (
     ConnectorExecutionResult,
+    ExecutionStatistics,
     InvestigationCreate,
     InvestigationExecuteRequest,
     InvestigationExecuteResponse,
@@ -29,6 +23,8 @@ from app.schemas.investigation import (
 )
 from app.services.exceptions import NotFoundError
 from app.services.investigation_service import InvestigationService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/investigations", tags=["investigations"])
 
@@ -93,7 +89,7 @@ def get_investigation(
     "/{investigation_id}/execute",
     response_model=InvestigationExecuteResponse,
     status_code=status.HTTP_200_OK,
-    summary="Execute connectors for an investigation",
+    summary="Execute investigation",
 )
 async def execute_investigation(
     investigation_id: uuid.UUID,
@@ -101,56 +97,66 @@ async def execute_investigation(
     service: InvestigationService = Depends(get_investigation_service),
 ) -> InvestigationExecuteResponse:
     """
-    Execute registered connectors for a given identifier within an investigation.
+    Execute complete investigation pipeline.
     
-    Sprint 3 scope:
-    - Runs connectors synchronously (no background workers)
-    - Returns raw connector execution results
-    - Does NOT persist results (future sprint)
-    - Does NOT normalize or correlate (future sprints M3/M4)
-    
-    The investigation's status is updated to 'running' before execution.
-    Future sprints will add proper status transitions and result persistence.
+    Pipeline:
+    - Execute all registered connectors
+    - Persist connector results
+    - Run normalizers
+    - Persist normalized facts
+    - Return complete execution result
     """
     try:
-        # Convert request payload to Identifier
         identifier = Identifier(value=payload.identifier, type=payload.type)
         
-        # Execute connectors via the service
-        raw_responses = await service.execute_investigation(investigation_id, identifier)
+        logger.info(
+            f"API: Executing investigation {investigation_id} for "
+            f"{identifier.value} ({identifier.type})"
+        )
         
-        # Transform raw responses into API response format
-        results = []
-        for envelope in raw_responses:
-            # Provide a brief preview of raw payload for debugging
-            # (full payload not returned in Sprint 3)
-            preview = None
-            if envelope.raw_payload is not None:
-                payload_str = str(envelope.raw_payload)
-                preview = (
-                    payload_str[:100] + "..."
-                    if len(payload_str) > 100
-                    else payload_str
-                )
-            
-            results.append(
-                ConnectorExecutionResult(
-                    connector_name=envelope.connector_name,
-                    status=envelope.status,
-                    started_at=envelope.started_at,
-                    finished_at=envelope.finished_at,
-                    error_message=envelope.error_message,
-                    raw_payload_preview=preview,
-                )
+        # Execute full pipeline
+        execution_result = await service.execute_investigation(
+            investigation_id, identifier
+        )
+        
+        # Transform raw responses into connector results
+        connector_results = [
+            ConnectorExecutionResult(
+                connector_name=envelope.connector_name,
+                status=envelope.status,
+                started_at=envelope.started_at,
+                finished_at=envelope.finished_at,
+                error_message=envelope.error_message,
             )
+            for envelope in execution_result.raw_responses
+        ]
         
         return InvestigationExecuteResponse(
-            status="running",
-            connectors_executed=len(results),
-            results=results,
+            investigation_id=execution_result.investigation_id,
+            status=execution_result.status,
+            started_at=execution_result.started_at,
+            finished_at=execution_result.finished_at,
+            statistics=ExecutionStatistics(
+                executed_connectors=execution_result.executed_connectors,
+                successful_connectors=execution_result.successful_connectors,
+                failed_connectors=execution_result.failed_connectors,
+                connector_results_count=execution_result.connector_results_count,
+                normalized_facts_count=execution_result.normalized_facts_count,
+                execution_duration_seconds=execution_result.execution_duration_seconds,
+            ),
+            connector_results=connector_results,
         )
     
     except NotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
+    except Exception as exc:
+        logger.error(
+            f"API: Investigation execution failed: {exc}",
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Investigation execution failed"
         ) from exc

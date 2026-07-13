@@ -1,51 +1,59 @@
 """
 Investigation service.
 
-Holds the business logic for the Investigation resource, sitting between
-the API router and the repository (data-access) layer. For Sprint 2 this
-logic is intentionally thin (create / retrieve / list), but keeping the
-layer in place now means future rules — e.g. validating identifiers
-before allowing creation, or enforcing status transitions once
-orchestration (M1) exists — have an obvious home without reshaping the
-router or repository.
-
-Sprint 3 extension: adds connector execution orchestration via
-ConnectorExecutionService.
+Milestone 15: Complete end-to-end investigation execution pipeline.
+Orchestrates connector execution, result persistence, normalization,
+and fact persistence.
 """
 
+import logging
 import uuid
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import List
 
 from sqlalchemy.orm import Session
 
 from app.connectors.types import Identifier, RawResponseEnvelope
 from app.models.investigation import Investigation, InvestigationStatus
+from app.models.normalized_fact import NormalizedFact
+from app.normalizers.manager import normalization_manager
 from app.repositories.investigation_repository import InvestigationRepository
+from app.repositories.normalized_fact_repository import NormalizedFactRepository
 from app.services.connector_execution_service import ConnectorExecutionService
 from app.services.exceptions import NotFoundError
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class InvestigationExecutionResult:
+    """Complete execution result for an investigation."""
+    
+    investigation_id: uuid.UUID
+    status: InvestigationStatus
+    executed_connectors: int
+    successful_connectors: int
+    failed_connectors: int
+    connector_results_count: int
+    normalized_facts_count: int
+    execution_duration_seconds: float
+    started_at: datetime
+    finished_at: datetime
+    raw_responses: List[RawResponseEnvelope]
 
 
 class InvestigationService:
     """Business logic for creating and retrieving investigations."""
 
-    def __init__(
-        self,
-        db: Session,
-        connector_execution_service: ConnectorExecutionService | None = None,
-    ) -> None:
+    def __init__(self, db: Session) -> None:
+        self._db = db
         self._repo = InvestigationRepository(db)
-        self._connector_service = (
-            connector_execution_service or ConnectorExecutionService()
-        )
+        self._connector_service = ConnectorExecutionService(db=db)
+        self._fact_repo = NormalizedFactRepository(db)
 
     def create_investigation(self, *, name: str) -> Investigation:
-        """Create a new investigation.
-
-        Sprint 2 scope: just persists the record with default status.
-        Future sprints may extend this to accept initial identifiers
-        (FR1.3) and kick off orchestration (M1) — neither is implemented
-        here.
-        """
+        """Create a new investigation."""
         return self._repo.create(name=name)
 
     def get_investigation(self, investigation_id: uuid.UUID) -> Investigation:
@@ -63,48 +71,139 @@ class InvestigationService:
 
     async def execute_investigation(
         self, investigation_id: uuid.UUID, identifier: Identifier
-    ) -> List[RawResponseEnvelope]:
+    ) -> InvestigationExecutionResult:
         """
-        Execute registered connectors for a given investigation and identifier.
+        Execute complete investigation pipeline.
         
-        Sprint 3 scope: runs connectors synchronously and returns raw
-        responses. Does NOT normalize, correlate, or persist results —
-        those responsibilities belong to future sprints (M3, M4, M9
-        extensions).
+        Pipeline:
+        1. Verify investigation exists
+        2. Update status to RUNNING
+        3. Execute all registered connectors
+        4. Persist connector results
+        5. Run normalizers on successful results
+        6. Persist normalized facts
+        7. Update investigation status (COMPLETED/FAILED)
+        8. Return execution result
         
         Args:
-            investigation_id: The investigation to execute connectors for.
+            investigation_id: The investigation to execute.
             identifier: The identifier to investigate.
         
         Returns:
-            List of RawResponseEnvelope containing raw connector responses.
+            InvestigationExecutionResult with complete execution details.
         
         Raises:
             NotFoundError: If the investigation does not exist.
-        
-        Note:
-            The investigation's status is updated to RUNNING before
-            execution begins. In a future sprint, status should transition
-            to COMPLETED/FAILED after execution, and results should be
-            persisted. For Sprint 3, we keep it simple: just run the
-            connectors and return the raw results.
         """
+        started_at = datetime.now(timezone.utc)
+        
+        logger.info(
+            f"Starting investigation execution: investigation_id={investigation_id}, "
+            f"identifier={identifier.value} ({identifier.type})"
+        )
+        
         # Verify investigation exists
         investigation = self.get_investigation(investigation_id)
         
-        # Update status to RUNNING (Sprint 3: simple status update only)
-        # Future sprints will add proper state machine transitions
+        # Update status to RUNNING
         investigation.status = InvestigationStatus.RUNNING
         self._repo.update(investigation)
+        logger.info(f"Investigation {investigation_id} status updated to RUNNING")
         
-        # Execute connectors via the connector execution service
-        raw_responses = await self._connector_service.execute_connectors(identifier)
-        
-        # Sprint 3: return raw responses as-is
-        # Future sprints (M3/M4/M9) will:
-        # - Persist raw responses (M9)
-        # - Normalize responses (M3)
-        # - Correlate entities (M4)
-        # - Update investigation status to COMPLETED/FAILED
-        
-        return raw_responses
+        try:
+            # Execute connectors and persist results
+            raw_responses = await self._connector_service.execute_connectors(
+                investigation_id=investigation_id,
+                identifier=identifier,
+                db=self._db
+            )
+            
+            executed_count = len(raw_responses)
+            successful_count = sum(1 for r in raw_responses if r.succeeded)
+            failed_count = executed_count - successful_count
+            
+            logger.info(
+                f"Connector execution complete: {executed_count} executed, "
+                f"{successful_count} succeeded, {failed_count} failed"
+            )
+            
+            # Run normalizers on successful results
+            normalization_results = normalization_manager.normalize_batch(raw_responses)
+            
+            logger.info(f"Normalization complete: {len(normalization_results)} results")
+            
+            # Persist normalized facts
+            facts_persisted = 0
+            for norm_result in normalization_results:
+                for fact in norm_result.facts:
+                    try:
+                        self._fact_repo.create(
+                            investigation_id=investigation_id,
+                            connector_name=fact.source_connector,
+                            fact_type=fact.fact_type.value,
+                            value=str(fact.value),
+                            confidence=fact.confidence,
+                            fact_metadata=fact.metadata,
+                            occurred_at=fact.occurred_at or datetime.now(timezone.utc),
+                        )
+                        facts_persisted += 1
+                    except Exception as e:
+                        logger.error(
+                            f"Failed to persist fact from {fact.source_connector}: {e}",
+                            exc_info=True
+                        )
+                        # Continue processing other facts
+            
+            logger.info(f"Persisted {facts_persisted} normalized facts")
+            
+            # Update investigation status to COMPLETED
+            investigation.status = InvestigationStatus.COMPLETED
+            self._repo.update(investigation)
+            
+            finished_at = datetime.now(timezone.utc)
+            duration = (finished_at - started_at).total_seconds()
+            
+            logger.info(
+                f"Investigation {investigation_id} completed successfully in {duration:.2f}s"
+            )
+            
+            return InvestigationExecutionResult(
+                investigation_id=investigation_id,
+                status=InvestigationStatus.COMPLETED,
+                executed_connectors=executed_count,
+                successful_connectors=successful_count,
+                failed_connectors=failed_count,
+                connector_results_count=successful_count,
+                normalized_facts_count=facts_persisted,
+                execution_duration_seconds=duration,
+                started_at=started_at,
+                finished_at=finished_at,
+                raw_responses=raw_responses,
+            )
+            
+        except Exception as e:
+            logger.error(
+                f"Investigation {investigation_id} failed: {type(e).__name__}: {e}",
+                exc_info=True
+            )
+            
+            # Update investigation status to FAILED
+            investigation.status = InvestigationStatus.FAILED
+            self._repo.update(investigation)
+            
+            finished_at = datetime.now(timezone.utc)
+            duration = (finished_at - started_at).total_seconds()
+            
+            return InvestigationExecutionResult(
+                investigation_id=investigation_id,
+                status=InvestigationStatus.FAILED,
+                executed_connectors=0,
+                successful_connectors=0,
+                failed_connectors=0,
+                connector_results_count=0,
+                normalized_facts_count=0,
+                execution_duration_seconds=duration,
+                started_at=started_at,
+                finished_at=finished_at,
+                raw_responses=[],
+            )
