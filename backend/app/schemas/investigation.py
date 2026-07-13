@@ -1,9 +1,7 @@
 """
 Pydantic schemas for the Investigation resource.
 
-These define the API's request/response contracts and are intentionally
-decoupled from the SQLAlchemy model (app.models.investigation) so that
-storage details never leak into the API surface.
+Milestone 15: Extended with complete execution result schemas.
 """
 
 import uuid
@@ -68,24 +66,28 @@ class ConnectorExecutionResult(BaseModel):
     started_at: datetime | None = None
     finished_at: datetime | None = None
     error_message: str | None = None
-    raw_payload_preview: str | None = Field(
-        None,
-        description="Brief preview of raw response for debugging. Full payload not returned in Sprint 3.",
-    )
+
+
+class ExecutionStatistics(BaseModel):
+    """Execution statistics."""
+
+    executed_connectors: int
+    successful_connectors: int
+    failed_connectors: int
+    connector_results_count: int
+    normalized_facts_count: int
+    execution_duration_seconds: float
 
 
 class InvestigationExecuteResponse(BaseModel):
     """Response body for `POST /investigations/{id}/execute`."""
 
-    status: str = Field(
+    investigation_id: uuid.UUID
+    status: InvestigationStatus = Field(
         ...,
-        description="Overall execution status. 'running' in Sprint 3 (synchronous execution).",
+        description="Final investigation status after execution.",
     )
-    connectors_executed: int = Field(
-        ...,
-        description="Number of connectors that were executed.",
-    )
-    results: list[ConnectorExecutionResult] = Field(
-        ...,
-        description="Per-connector execution results.",
-    )
+    started_at: datetime
+    finished_at: datetime
+    statistics: ExecutionStatistics
+    connector_results: list[ConnectorExecutionResult]
