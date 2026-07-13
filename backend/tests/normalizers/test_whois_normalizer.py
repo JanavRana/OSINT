@@ -24,34 +24,26 @@ def test_normalize_full_whois_data(normalizer):
 
     assert len(facts) == 7
     
-    fact_types = {fact.fact_type for fact in facts}
-    assert "registrar" in fact_types
-    assert "domain_registration" in fact_types
-    assert "domain_expiration" in fact_types
-    assert "nameserver" in fact_types
-    assert "registrant_organization" in fact_types
-    assert "registrant_country" in fact_types
-
-    registrar_fact = next(f for f in facts if f.fact_type == "registrar")
+    registrar_fact = next(f for f in facts if f.metadata.get("field") == "registrar")
     assert registrar_fact.value == "Example Registrar Inc."
 
-    registration_fact = next(f for f in facts if f.fact_type == "domain_registration")
+    registration_fact = next(f for f in facts if f.metadata.get("field") == "creation_date")
     assert registration_fact.occurred_at == datetime(2020, 1, 15, 10, 30, 0)
-    assert registration_fact.attributes["creation_date"] == "2020-01-15T10:30:00"
+    assert registration_fact.value == "2020-01-15T10:30:00"
 
-    expiration_fact = next(f for f in facts if f.fact_type == "domain_expiration")
+    expiration_fact = next(f for f in facts if f.metadata.get("field") == "expiration_date")
     assert expiration_fact.occurred_at == datetime(2025, 1, 15, 10, 30, 0)
 
-    ns_facts = [f for f in facts if f.fact_type == "nameserver"]
+    ns_facts = [f for f in facts if f.metadata.get("field") == "nameserver"]
     assert len(ns_facts) == 2
     ns_values = {f.value for f in ns_facts}
     assert "ns1.example.com" in ns_values
     assert "ns2.example.com" in ns_values
 
-    org_fact = next(f for f in facts if f.fact_type == "registrant_organization")
+    org_fact = next(f for f in facts if f.metadata.get("field") == "registrant_organization")
     assert org_fact.value == "Example Organization"
 
-    country_fact = next(f for f in facts if f.fact_type == "registrant_country")
+    country_fact = next(f for f in facts if f.metadata.get("field") == "registrant_country")
     assert country_fact.value == "US"
 
 
@@ -65,13 +57,13 @@ def test_normalize_list_values(normalizer):
 
     facts = normalizer.normalize(raw_payload)
 
-    registrar_fact = next(f for f in facts if f.fact_type == "registrar")
+    registrar_fact = next(f for f in facts if f.metadata.get("field") == "registrar")
     assert registrar_fact.value == "Registrar 1"
 
-    org_fact = next(f for f in facts if f.fact_type == "registrant_organization")
+    org_fact = next(f for f in facts if f.metadata.get("field") == "registrant_organization")
     assert org_fact.value == "Org 1"
 
-    country_fact = next(f for f in facts if f.fact_type == "registrant_country")
+    country_fact = next(f for f in facts if f.metadata.get("field") == "registrant_country")
     assert country_fact.value == "US"
 
 
@@ -83,7 +75,7 @@ def test_normalize_iso_date_strings(normalizer):
 
     facts = normalizer.normalize(raw_payload)
 
-    registration_fact = next(f for f in facts if f.fact_type == "domain_registration")
+    registration_fact = next(f for f in facts if f.metadata.get("field") == "creation_date")
     assert registration_fact.occurred_at is not None
     assert registration_fact.occurred_at.year == 2020
     assert registration_fact.occurred_at.month == 1
@@ -98,7 +90,7 @@ def test_normalize_missing_fields(normalizer):
     facts = normalizer.normalize(raw_payload)
 
     assert len(facts) == 1
-    assert facts[0].fact_type == "registrar"
+    assert facts[0].metadata.get("field") == "registrar"
 
 
 def test_normalize_empty_payload(normalizer):
@@ -118,13 +110,13 @@ def test_normalize_whitespace_handling(normalizer):
 
     facts = normalizer.normalize(raw_payload)
 
-    registrar_fact = next(f for f in facts if f.fact_type == "registrar")
+    registrar_fact = next(f for f in facts if f.metadata.get("field") == "registrar")
     assert registrar_fact.value == "Example Registrar"
 
-    org_fact = next(f for f in facts if f.fact_type == "registrant_organization")
+    org_fact = next(f for f in facts if f.metadata.get("field") == "registrant_organization")
     assert org_fact.value == "Example Org"
 
-    country_fact = next(f for f in facts if f.fact_type == "registrant_country")
+    country_fact = next(f for f in facts if f.metadata.get("field") == "registrant_country")
     assert country_fact.value == "US"
 
 
@@ -147,7 +139,7 @@ def test_nameserver_deduplication(normalizer):
 
     facts = normalizer.normalize(raw_payload)
 
-    ns_facts = [f for f in facts if f.fact_type == "nameserver"]
+    ns_facts = [f for f in facts if f.metadata.get("field") == "nameserver"]
     assert len(ns_facts) == 2
     ns_values = {f.value for f in ns_facts}
     assert "ns1.example.com" in ns_values
@@ -161,6 +153,6 @@ def test_nameserver_single_string(normalizer):
 
     facts = normalizer.normalize(raw_payload)
 
-    ns_facts = [f for f in facts if f.fact_type == "nameserver"]
+    ns_facts = [f for f in facts if f.metadata.get("field") == "nameserver"]
     assert len(ns_facts) == 1
     assert ns_facts[0].value == "ns1.example.com"
