@@ -20,7 +20,7 @@ def test_normalize_full_whois_data(normalizer):
         "country": "US",
     }
 
-    facts = normalizer.normalize(raw_payload, "whois")
+    facts = normalizer.normalize(raw_payload)
 
     assert len(facts) == 7
     
@@ -34,7 +34,6 @@ def test_normalize_full_whois_data(normalizer):
 
     registrar_fact = next(f for f in facts if f.fact_type == "registrar")
     assert registrar_fact.value == "Example Registrar Inc."
-    assert registrar_fact.source_connector == "whois"
 
     registration_fact = next(f for f in facts if f.fact_type == "domain_registration")
     assert registration_fact.occurred_at == datetime(2020, 1, 15, 10, 30, 0)
@@ -64,7 +63,7 @@ def test_normalize_list_values(normalizer):
         "country": ["US", "CA"],
     }
 
-    facts = normalizer.normalize(raw_payload, "whois")
+    facts = normalizer.normalize(raw_payload)
 
     registrar_fact = next(f for f in facts if f.fact_type == "registrar")
     assert registrar_fact.value == "Registrar 1"
@@ -82,7 +81,7 @@ def test_normalize_iso_date_strings(normalizer):
         "expiration_date": "2025-01-15T10:30:00Z",
     }
 
-    facts = normalizer.normalize(raw_payload, "whois")
+    facts = normalizer.normalize(raw_payload)
 
     registration_fact = next(f for f in facts if f.fact_type == "domain_registration")
     assert registration_fact.occurred_at is not None
@@ -96,7 +95,7 @@ def test_normalize_missing_fields(normalizer):
         "registrar": "Example Registrar",
     }
 
-    facts = normalizer.normalize(raw_payload, "whois")
+    facts = normalizer.normalize(raw_payload)
 
     assert len(facts) == 1
     assert facts[0].fact_type == "registrar"
@@ -105,7 +104,7 @@ def test_normalize_missing_fields(normalizer):
 def test_normalize_empty_payload(normalizer):
     raw_payload = {}
 
-    facts = normalizer.normalize(raw_payload, "whois")
+    facts = normalizer.normalize(raw_payload)
 
     assert len(facts) == 0
 
@@ -117,7 +116,7 @@ def test_normalize_whitespace_handling(normalizer):
         "country": "  US  ",
     }
 
-    facts = normalizer.normalize(raw_payload, "whois")
+    facts = normalizer.normalize(raw_payload)
 
     registrar_fact = next(f for f in facts if f.fact_type == "registrar")
     assert registrar_fact.value == "Example Registrar"
@@ -136,7 +135,7 @@ def test_normalize_empty_strings(normalizer):
         "country": "",
     }
 
-    facts = normalizer.normalize(raw_payload, "whois")
+    facts = normalizer.normalize(raw_payload)
 
     assert len(facts) == 0
 
@@ -146,7 +145,7 @@ def test_nameserver_deduplication(normalizer):
         "name_servers": ["NS1.EXAMPLE.COM", "ns1.example.com", "ns2.example.com"],
     }
 
-    facts = normalizer.normalize(raw_payload, "whois")
+    facts = normalizer.normalize(raw_payload)
 
     ns_facts = [f for f in facts if f.fact_type == "nameserver"]
     assert len(ns_facts) == 2
@@ -160,7 +159,7 @@ def test_nameserver_single_string(normalizer):
         "name_servers": "ns1.example.com",
     }
 
-    facts = normalizer.normalize(raw_payload, "whois")
+    facts = normalizer.normalize(raw_payload)
 
     ns_facts = [f for f in facts if f.fact_type == "nameserver"]
     assert len(ns_facts) == 1

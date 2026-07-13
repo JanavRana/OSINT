@@ -3,15 +3,16 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, ClassVar, List, Optional
 
-from ..base import BaseNormalizer, NormalizedFact
-from ..registry import registry
+from ..base import BaseNormalizer
+from ..registry import normalizer_registry
+from ..types import NormalizedFact
 
 
-@registry.register
+@normalizer_registry.register
 class WhoisNormalizer(BaseNormalizer):
-    name: ClassVar[str] = "whois"
+    connector_name: ClassVar[str] = "whois"
 
-    def normalize(self, raw_payload: dict, source_connector: str) -> List[NormalizedFact]:
+    def normalize(self, raw_payload: dict) -> List[NormalizedFact]:
         facts: List[NormalizedFact] = []
 
         registrar = self._extract_registrar(raw_payload)
@@ -20,7 +21,6 @@ class WhoisNormalizer(BaseNormalizer):
                 NormalizedFact(
                     fact_type="registrar",
                     value=registrar,
-                    source_connector=source_connector,
                 )
             )
 
@@ -32,7 +32,6 @@ class WhoisNormalizer(BaseNormalizer):
                     value=None,
                     attributes={"creation_date": creation_date.isoformat()},
                     occurred_at=creation_date,
-                    source_connector=source_connector,
                 )
             )
 
@@ -44,7 +43,6 @@ class WhoisNormalizer(BaseNormalizer):
                     value=None,
                     attributes={"expiration_date": expiration_date.isoformat()},
                     occurred_at=expiration_date,
-                    source_connector=source_connector,
                 )
             )
 
@@ -55,7 +53,6 @@ class WhoisNormalizer(BaseNormalizer):
                     NormalizedFact(
                         fact_type="nameserver",
                         value=ns,
-                        source_connector=source_connector,
                     )
                 )
 
@@ -65,7 +62,6 @@ class WhoisNormalizer(BaseNormalizer):
                 NormalizedFact(
                     fact_type="registrant_organization",
                     value=registrant_org,
-                    source_connector=source_connector,
                 )
             )
 
@@ -75,7 +71,6 @@ class WhoisNormalizer(BaseNormalizer):
                 NormalizedFact(
                     fact_type="registrant_country",
                     value=registrant_country,
-                    source_connector=source_connector,
                 )
             )
 
