@@ -231,3 +231,88 @@ def get_timeline(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Timeline retrieval failed"
         ) from exc
+
+
+def get_report_service(db: Session = Depends(get_db)):
+    """FastAPI dependency for ReportService."""
+    from app.services.report_service import ReportService
+    return ReportService(db)
+
+
+@router.post(
+    "/{investigation_id}/report",
+    status_code=status.HTTP_201_CREATED,
+    summary="Generate investigation report",
+)
+def generate_report(
+    investigation_id: uuid.UUID,
+    report_service = Depends(get_report_service),
+):
+    """Generate PDF report for an investigation."""
+    try:
+        report = report_service.generate_report(investigation_id)
+        return {
+            "id": str(report.id),
+            "investigation_id": str(report.investigation_id),
+            "status": report.status.value,
+            "file_size": report.file_size,
+            "generated_at": report.generated_at.isoformat(),
+        }
+    except NotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
+    except Exception as exc:
+        logger.error(f"Report generation failed: {exc}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Report generation failed"
+        ) from exc
+
+
+@router.get(
+    "/{investigation_id}/report",
+    summary="Download investigation report",
+)
+def download_report(
+    investigation_id: uuid.UUID,
+    report_service = Depends(get_report_service),
+):
+    """Download the latest PDF report for an investigation."""
+    from fastapi.responses import Response
+    
+    try:
+        report = report_service.get_latest_report(investigation_id)
+        
+        if report.status != "completed":
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Report is {report.status}, not available for download"
+            )
+        
+        if not report.pdf_content:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Report PDF content not found"
+            )
+        
+        return Response(
+            content=report.pdf_content,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename=investigation_{investigation_id}_report.pdf"
+            }
+        )
+    
+    except NotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error(f"Report download failed: {exc}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Report download failed"
+        ) from exc
