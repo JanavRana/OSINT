@@ -17,3 +17,32 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+
+# Build outputs
+dist/
+build/
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# Coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# React/Vite
+.vite/
+
+# TypeScript
+*.tsbuildinfo
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
