@@ -44,39 +44,30 @@ class GraphGenerator:
     
     def _create_node(self, node: GraphNode, investigation_id: str) -> None:
         """Create a single node using MERGE to prevent duplicates."""
-        query = f"""
-        MERGE (n:{node.node_type.value} {{node_id: $node_id}})
-        ON CREATE SET n += $properties, n.investigation_id = $investigation_id
-        ON MATCH SET n += $properties
-        """
-        
+        query = QueryBuilder.create_node_query(node.node_type.value)
+
         self.client.execute_write(
             query,
             {
                 "node_id": node.node_id,
                 "properties": node.properties,
-                "investigation_id": investigation_id
-            }
+                "investigation_id": investigation_id,
+            },
         )
     
     def _create_relationship(
-        self, rel: GraphRelationship, investigation_id: str
-    ) -> None:
+        self, rel: GraphRelationship, investigation_id: str) -> None:
         """Create a single relationship using MERGE to prevent duplicates."""
-        query = f"""
-        MATCH (source {{node_id: $source_id}})
-        MATCH (target {{node_id: $target_id}})
-        MERGE (source)-[r:{rel.relationship_type.value}]->(target)
-        ON CREATE SET r += $properties, r.investigation_id = $investigation_id
-        ON MATCH SET r += $properties
-        """
-        
+        query = QueryBuilder.create_relationship_query(
+            rel.relationship_type.value
+        )
+
         self.client.execute_write(
             query,
             {
                 "source_id": rel.source_node_id,
                 "target_id": rel.target_node_id,
                 "properties": rel.properties,
-                "investigation_id": investigation_id
-            }
+                "investigation_id": investigation_id,
+            },
         )
