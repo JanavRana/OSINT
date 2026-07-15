@@ -3,7 +3,6 @@ from datetime import datetime
 from fastapi import APIRouter
 from sqlalchemy import text
 
-from ..core.config import get_settings
 from ..db.session import engine
 
 router = APIRouter()
@@ -11,7 +10,6 @@ router = APIRouter()
 
 @router.get("/health")
 async def health_check():
-    settings = get_settings()
     health_status = {
         "status": "healthy",
         "version": "1.0.0",
