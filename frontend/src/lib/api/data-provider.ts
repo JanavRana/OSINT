@@ -13,6 +13,7 @@ import type {
   GeneratedReport,
   GraphData,
   Identifier,
+  IdentifierType,
   IdentityProfile,
   Investigation,
   NewInvestigationInput,
@@ -47,7 +48,10 @@ export interface DataProvider {
 
   // Mutations (aligned with existing backend endpoints)
   createInvestigation(input: NewInvestigationInput): Promise<Investigation>;
-  executeInvestigation(investigationId: string): Promise<ExecutionResult>;
+  executeInvestigation(
+    investigationId: string,
+    identifier: { value: string; type: IdentifierType },
+  ): Promise<ExecutionResult>;
   generateReport(investigationId: string): Promise<GeneratedReport>;
   downloadReport(investigationId: string, reportId?: string): Promise<ReportDownload>;
 }
@@ -130,10 +134,10 @@ export const mockDataProvider: DataProvider = {
     investigationsFixture.unshift(created);
     return created;
   },
-  async executeInvestigation(investigationId) {
+  async executeInvestigation(investigationId: string, identifier: { value: string; type: IdentifierType }) {
     return {
       investigationId,
-      status: "queued",
+      status: "queued" as const,
       startedAt: new Date().toISOString(),
     };
   },
@@ -154,6 +158,7 @@ export const mockDataProvider: DataProvider = {
   },
 };
 
+// Active provider - using mock data provider for now
 let activeProvider: DataProvider = mockDataProvider;
 
 export function setDataProvider(provider: DataProvider): void {

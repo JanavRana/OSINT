@@ -17,6 +17,7 @@ import type {
   GeneratedReport,
   GraphData,
   Identifier,
+  IdentifierType,
   IdentityProfile,
   Investigation,
   MutationResource,
@@ -173,8 +174,11 @@ export function useCreateInvestigation() {
 }
 
 export function useExecuteInvestigation() {
-  return useMutation<string, ExecutionResult>((investigationId) =>
-    getDataProvider().executeInvestigation(investigationId),
+  return useMutation<
+    { investigationId: string; identifier: { value: string; type: IdentifierType } },
+    ExecutionResult
+  >(({ investigationId, identifier }) =>
+    getDataProvider().executeInvestigation(investigationId, identifier),
   );
 }
 

@@ -122,6 +122,20 @@ function Detail() {
   const connectorsRes = useConnectors(id);
   const execute = useExecuteInvestigation();
 
+  // Helper to derive identifier from investigation target
+  // This is a workaround until backend stores seed identifiers properly
+  const deriveIdentifierType = (target: string): IdentifierType => {
+    if (!target) return "domain";
+    // Simple heuristics to detect identifier type
+    if (target.includes("@")) return "email";
+    if (target.startsWith("0x") || target.length === 42) return "wallet";
+    if (target.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) return "ip";
+    if (target.match(/^\+?\d+$/)) return "phone";
+    if (target.startsWith("@")) return "username";
+    // Default to domain for things like "example.com"
+    return "domain";
+  };
+
   return (
     <AsyncBoundary
       resource={invRes}
@@ -164,8 +178,18 @@ function Detail() {
                   <RefreshCw className="h-4 w-4" aria-hidden="true" /> Refresh
                 </Button>
                 <Button
-                  onClick={() => execute.mutate(inv.id).catch(() => {})}
-                  disabled={execute.isPending}
+                  onClick={() => {
+                    if (inv.target) {
+                      execute.mutate({
+                        investigationId: inv.id,
+                        identifier: {
+                          value: inv.target,
+                          type: deriveIdentifierType(inv.target),
+                        },
+                      }).catch(() => {});
+                    }
+                  }}
+                  disabled={execute.isPending || !inv.target}
                   className="gap-2 bg-gradient-to-r from-primary to-accent text-primary-foreground"
                 >
                   <Play className="h-4 w-4" aria-hidden="true" />
