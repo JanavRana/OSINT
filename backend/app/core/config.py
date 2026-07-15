@@ -8,6 +8,7 @@ define anything related to models, connectors, auth, or Neo4j — those are
 out of scope for this piece of the project (see MASTER_DESIGN.md).
 """
 
+import sys
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -60,3 +61,18 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Return a cached Settings instance (avoids re-parsing env on every call)."""
     return Settings()
+
+
+def validate_config():
+    """Validate required configuration at startup."""
+    settings = get_settings()
+    errors = []
+    
+    if not settings.sqlalchemy_database_url:
+        errors.append("Database URL configuration is invalid")
+    
+    if errors:
+        print("Configuration validation failed:", file=sys.stderr)
+        for error in errors:
+            print(f"  - {error}", file=sys.stderr)
+        sys.exit(1)

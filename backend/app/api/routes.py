@@ -39,7 +39,7 @@ def health_check(db: Session = Depends(get_db)) -> dict:
 # API Version 1
 # -------------------------
 
-v1_router = APIRouter(prefix="/api/v1")
+v1_router = APIRouter()
 
 v1_router.include_router(
     investigations_router,
