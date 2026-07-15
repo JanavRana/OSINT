@@ -4,7 +4,7 @@ from fastapi import APIRouter
 from sqlalchemy import text
 
 from ..core.config import get_settings
-from ..db.session import get_engine
+from ..db.session import engine
 
 router = APIRouter()
 
@@ -23,7 +23,6 @@ async def health_check():
     }
     
     try:
-        engine = get_engine()
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         health_status["services"]["database"] = "healthy"
