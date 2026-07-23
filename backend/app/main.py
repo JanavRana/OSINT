@@ -11,6 +11,14 @@ from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.db.session import Base, engine
+
+# Import models so SQLAlchemy registers them
+from app.models.investigation import Investigation
+from app.models.normalized_fact import NormalizedFact
+from app.models.connector_result import ConnectorResult
+from app.models.report import Report
+
 from app.api.health import router as health_router
 from app.api.routes import router as api_router
 from app.core.config import get_settings, validate_config
@@ -34,7 +42,10 @@ app.add_middleware(LoggingMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:8080",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -47,6 +58,22 @@ app.add_exception_handler(Exception, general_exception_handler)
 app.include_router(health_router)
 app.include_router(api_router, prefix=settings.api_v1_prefix)
 
+import time
+from sqlalchemy import text
+from sqlalchemy.exc import OperationalError
+
+@app.on_event("startup")
+async def startup():
+    for attempt in range(30):
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            break
+        except OperationalError:
+            print(f"Waiting for PostgreSQL... ({attempt + 1}/30)")
+            time.sleep(2)
+
+    Base.metadata.create_all(bind=engine)
 
 @app.get("/")
 async def root():
