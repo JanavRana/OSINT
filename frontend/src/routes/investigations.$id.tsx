@@ -7,12 +7,20 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Mail, Globe, User, Wallet, Share2, Phone, Server,
-  Network, Clock, FileText, ArrowLeft, Play, Pause, RefreshCw, AlertTriangle,
+  Network, Clock, FileText, ArrowLeft, Play, RefreshCw, AlertTriangle,
+  CheckCircle2, XCircle, Loader2, RotateCcw,
 } from "lucide-react";
 import { AsyncBoundary, EmptyState } from "@/components/states";
 import { ConfidenceBar } from "@/components/confidence-bar";
+import { ConnectorTimeline } from "@/components/investigations/connector-timeline";
 import { fmtDate } from "@/lib/format";
-import { useConnectors, useExecuteInvestigation, useIdentifiers, useInvestigation } from "@/hooks/use-osint-data";
+import { cn } from "@/lib/utils";
+import {
+  useConnectors,
+  useExecuteInvestigation,
+  useIdentifiers,
+  useInvestigation,
+} from "@/hooks/use-osint-data";
 import type { Connector, Identifier, IdentifierType } from "@/types/domain";
 
 export const Route = createFileRoute("/investigations/$id")({
@@ -37,9 +45,11 @@ const jumpLinks = [
   { icon: FileText, label: "Reports", to: "/reports" as const },
 ];
 
+// ─── Identifier table ─────────────────────────────────────────────────────────
+
 function IdentifierTable({ items }: { items: Identifier[] }) {
   if (items.length === 0) {
-    return <EmptyState title="No identifiers enriched yet." description="Run a connector to gather identifiers." />;
+    return <EmptyState title="No identifiers enriched yet." description="Run connectors to gather identifiers." />;
   }
   return (
     <table className="w-full text-sm">
@@ -79,41 +89,113 @@ function IdentifierTable({ items }: { items: Identifier[] }) {
   );
 }
 
-function ConnectorCard({ connector }: { connector: Connector }) {
+// ─── Connector card ───────────────────────────────────────────────────────────
+
+function ConnectorCard({
+  connector,
+  onRetry,
+  isRetrying,
+}: {
+  connector: Connector;
+  onRetry?: () => void;
+  isRetrying?: boolean;
+}) {
   const c = connector;
+
+  const statusConfig = {
+    success: { icon: CheckCircle2, color: "text-success", bg: "bg-success/15", label: "Succeeded" },
+    failed: { icon: XCircle, color: "text-destructive", bg: "bg-destructive/15", label: "Failed" },
+    running: { icon: Loader2, color: "text-primary", bg: "bg-primary/15", label: "Running" },
+    queued: { icon: Clock, color: "text-muted-foreground", bg: "bg-white/5", label: "Queued" },
+  };
+
+  const cfg = statusConfig[c.status as keyof typeof statusConfig] ?? statusConfig.queued;
+  const Icon = cfg.icon;
+
   return (
-    <Card className="glass p-4 border-border/60">
-      <div className="flex items-start justify-between">
-        <div>
+    <Card
+      className={cn(
+        "glass p-4 border-border/60 flex flex-col gap-3",
+        c.status === "failed" && "border-destructive/30"
+      )}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{c.category}</div>
-          <div className="font-medium mt-0.5">{c.name}</div>
+          <div className="font-medium mt-0.5 truncate">{c.name}</div>
         </div>
-        <StatusBadge status={c.status} />
+        <div className={cn("h-7 w-7 rounded-md grid place-items-center shrink-0", cfg.bg)} aria-hidden="true">
+          <Icon className={cn("h-3.5 w-3.5", cfg.color, c.status === "running" && "animate-spin")} />
+        </div>
       </div>
-      <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-        <span>Hits: <span className="text-foreground font-mono">{c.hits}</span></span>
-        <span>Runtime: <span className="text-foreground font-mono">{c.runtime}</span></span>
+
+      {/* Stats row */}
+      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        <span>
+          Hits: <span className="text-foreground font-mono font-medium">{c.hits}</span>
+        </span>
+        <span>
+          Runtime: <span className="text-foreground font-mono">{c.runtime}</span>
+        </span>
+        <span className={cn("ml-auto text-[10px] font-medium px-2 py-0.5 rounded-full", cfg.bg, cfg.color)}>
+          {cfg.label}
+        </span>
       </div>
+
+      {/* Running progress bar */}
       {c.status === "running" && (
         <div
-          className="mt-3 h-1 bg-white/5 rounded-full overflow-hidden"
+          className="h-1 bg-white/5 rounded-full overflow-hidden"
           role="progressbar"
           aria-label={`${c.name} running`}
         >
           <div className="h-full w-1/2 bg-gradient-to-r from-primary to-accent animate-pulse" />
         </div>
       )}
-      <div className="mt-3 flex gap-2">
-        <Button size="sm" variant="ghost" className="h-7 gap-1">
-          <Play className="h-3 w-3" aria-hidden="true" /> Rerun
-        </Button>
-        <Button size="sm" variant="ghost" className="h-7 gap-1">
-          <Pause className="h-3 w-3" aria-hidden="true" /> Pause
+
+      {/* Actions */}
+      <div className="flex gap-2">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 gap-1 text-xs"
+          onClick={onRetry}
+          disabled={isRetrying}
+          aria-label={`Retry ${c.name}`}
+        >
+          {isRetrying ? (
+            <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+          ) : (
+            <RotateCcw className="h-3 w-3" aria-hidden="true" />
+          )}
+          {isRetrying ? "Running…" : "Re-run all"}
         </Button>
       </div>
     </Card>
   );
 }
+
+// ─── Skeleton loader for connector cards ─────────────────────────────────────
+
+function ConnectorCardSkeleton() {
+  return (
+    <Card className="glass p-4 border-border/60 animate-pulse">
+      <div className="flex items-start justify-between">
+        <div className="space-y-2">
+          <div className="h-2.5 w-20 rounded bg-white/10" />
+          <div className="h-4 w-32 rounded bg-white/10" />
+        </div>
+        <div className="h-7 w-7 rounded-md bg-white/10" />
+      </div>
+      <div className="mt-4 flex gap-3">
+        <div className="h-3 w-16 rounded bg-white/10" />
+        <div className="h-3 w-20 rounded bg-white/10" />
+      </div>
+    </Card>
+  );
+}
+
+// ─── Detail page ──────────────────────────────────────────────────────────────
 
 function Detail() {
   const { id } = Route.useParams();
@@ -122,42 +204,48 @@ function Detail() {
   const connectorsRes = useConnectors(id);
   const execute = useExecuteInvestigation();
 
-  // Helper to derive identifier from investigation target
-  // This is a workaround until backend stores seed identifiers properly
   const deriveIdentifierType = (target: string): IdentifierType => {
     if (!target) return "domain";
-    // Simple heuristics to detect identifier type
     if (target.includes("@")) return "email";
     if (target.startsWith("0x") || target.length === 42) return "wallet";
     if (target.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) return "ip";
     if (target.match(/^\+?\d+$/)) return "phone";
     if (target.startsWith("@")) return "username";
-    // Default to domain for things like "example.com"
     return "domain";
   };
 
   const handleExecute = async (inv: { id: string; target: string; seedType?: IdentifierType }) => {
     if (!inv.target) return;
-    // Use the persisted seedType when available (the reliable path).
-    // Fall back to heuristic detection only for legacy investigations that
-    // were created before seed persistence was implemented.
     const identifierType = inv.seedType ?? deriveIdentifierType(inv.target);
     try {
       await execute.mutate({
         investigationId: inv.id,
-        identifier: {
-          value: inv.target,
-          type: identifierType,
-        },
+        identifier: { value: inv.target, type: identifierType },
       });
-      // Refresh all data after successful execution
       invRes.refetch?.();
       identifiersRes.refetch?.();
       connectorsRes.refetch?.();
     } catch {
-      // Error is captured in execute.error — no silent swallow
+      // Error in execute.error
     }
   };
+
+  // Derive progress from connector results
+  const connectors = connectorsRes.data ?? [];
+  const totalConnectors = connectors.length;
+  const doneConnectors = connectors.filter(
+    (c) => c.status === "success" || c.status === "failed"
+  ).length;
+  const derivedProgress =
+    execute.data?.statistics
+      ? Math.round(
+          (execute.data.statistics.successfulConnectors /
+            Math.max(execute.data.statistics.executedConnectors, 1)) *
+            100
+        )
+      : totalConnectors > 0
+      ? Math.round((doneConnectors / totalConnectors) * 100)
+      : invRes.data?.progress ?? 0;
 
   return (
     <AsyncBoundary
@@ -187,7 +275,7 @@ function Detail() {
             subtitle={
               <>
                 <span className="font-mono text-xs">{inv.id}</span> · target{" "}
-                <span className="font-mono">{inv.target}</span>
+                <span className="font-mono">{inv.target || "—"}</span>
               </>
             }
             actions={
@@ -197,11 +285,15 @@ function Detail() {
                     <ArrowLeft className="h-4 w-4" aria-hidden="true" /> All cases
                   </Button>
                 </Link>
-                <Button variant="secondary" className="gap-2" onClick={() => {
-                  invRes.refetch?.();
-                  identifiersRes.refetch?.();
-                  connectorsRes.refetch?.();
-                }}>
+                <Button
+                  variant="secondary"
+                  className="gap-2"
+                  onClick={() => {
+                    invRes.refetch?.();
+                    identifiersRes.refetch?.();
+                    connectorsRes.refetch?.();
+                  }}
+                >
                   <RefreshCw className="h-4 w-4" aria-hidden="true" /> Refresh
                 </Button>
                 <Button
@@ -224,12 +316,7 @@ function Detail() {
                     <div className="text-sm font-medium text-destructive">Execution failed</div>
                     <div className="text-xs text-muted-foreground mt-0.5">{execute.error.message}</div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="ml-auto text-xs"
-                    onClick={() => execute.reset()}
-                  >
+                  <Button variant="ghost" size="sm" className="ml-auto text-xs" onClick={() => execute.reset()}>
                     Dismiss
                   </Button>
                 </div>
@@ -241,7 +328,7 @@ function Detail() {
               <Card className="glass border-primary/40 p-4 mb-4">
                 <div className="flex items-center gap-3">
                   <div className="h-7 w-7 rounded-md bg-primary/10 text-primary grid place-items-center">
-                    <Play className="h-3.5 w-3.5" aria-hidden="true" />
+                    <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
                   </div>
                   <div className="flex-1">
                     <div className="text-sm font-medium">
@@ -249,24 +336,19 @@ function Detail() {
                     </div>
                     {execute.data.statistics && (
                       <div className="text-xs text-muted-foreground mt-0.5 flex gap-3 flex-wrap">
-                        <span>{execute.data.statistics.executedConnectors} connectors executed</span>
-                        <span className="text-emerald-400">{execute.data.statistics.successfulConnectors} succeeded</span>
+                        <span>{execute.data.statistics.executedConnectors} connectors</span>
+                        <span className="text-success">{execute.data.statistics.successfulConnectors} succeeded</span>
                         {execute.data.statistics.failedConnectors > 0 && (
                           <span className="text-destructive">{execute.data.statistics.failedConnectors} failed</span>
                         )}
-                        <span>{execute.data.statistics.normalizedFactsCount} facts extracted</span>
+                        <span>{execute.data.statistics.normalizedFactsCount} facts</span>
                         {execute.data.statistics.executionDurationSeconds != null && (
                           <span>{execute.data.statistics.executionDurationSeconds.toFixed(1)}s</span>
                         )}
                       </div>
                     )}
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs"
-                    onClick={() => execute.reset()}
-                  >
+                  <Button variant="ghost" size="sm" className="text-xs" onClick={() => execute.reset()}>
                     Dismiss
                   </Button>
                 </div>
@@ -293,7 +375,7 @@ function Detail() {
                 </div>
                 <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[
-                    { label: "Progress", value: `${inv.progress}%` },
+                    { label: "Progress", value: `${derivedProgress}%` },
                     { label: "Identifiers", value: identifiersRes.data?.length ?? inv.identifiers },
                     { label: "Connectors", value: connectorsRes.data?.length ?? inv.connectors },
                     { label: "Created", value: fmtDate(inv.createdAt) },
@@ -304,7 +386,7 @@ function Detail() {
                     </div>
                   ))}
                 </div>
-                <Progress value={inv.progress} className="h-1.5 mt-4" />
+                <Progress value={derivedProgress} className="h-1.5 mt-4" />
               </Card>
 
               <Card className="glass p-5 border-border/60">
@@ -333,9 +415,11 @@ function Detail() {
                 <TabsTrigger value="connectors">
                   Connectors ({connectorsRes.data?.length ?? 0})
                 </TabsTrigger>
+                <TabsTrigger value="execution">Execution Log</TabsTrigger>
                 <TabsTrigger value="activity">Activity</TabsTrigger>
               </TabsList>
 
+              {/* Identifiers tab */}
               <TabsContent value="identifiers">
                 <Card className="glass border-border/60 overflow-hidden">
                   <AsyncBoundary
@@ -347,23 +431,66 @@ function Detail() {
                 </Card>
               </TabsContent>
 
+              {/* Connectors tab */}
               <TabsContent value="connectors">
-                <AsyncBoundary
-                  resource={connectorsRes}
-                  isEmpty={(items) => items.length === 0}
-                >
-                  {(items) => (
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                      {items.map((c) => <ConnectorCard key={c.id} connector={c} />)}
-                    </div>
-                  )}
-                </AsyncBoundary>
+                {connectorsRes.isLoading ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <ConnectorCardSkeleton key={i} />
+                    ))}
+                  </div>
+                ) : (
+                  <AsyncBoundary
+                    resource={connectorsRes}
+                    isEmpty={(items) => items.length === 0}
+                  >
+                    {(items) => (
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                        {items.map((c) => (
+                          <ConnectorCard
+                            key={c.id}
+                            connector={c}
+                            onRetry={() => handleExecute(inv)}
+                            isRetrying={execute.isPending}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </AsyncBoundary>
+                )}
               </TabsContent>
 
+              {/* Execution log tab */}
+              <TabsContent value="execution">
+                <Card className="glass p-6 border-border/60">
+                  <h3 className="font-display font-semibold mb-4">Execution Timeline</h3>
+                  {execute.data?.connectorResults && execute.data.connectorResults.length > 0 ? (
+                    <ConnectorTimeline results={execute.data.connectorResults} />
+                  ) : (
+                    <EmptyState
+                      title="No execution log yet"
+                      description="Run all connectors to see a step-by-step execution timeline."
+                      action={
+                        <Button
+                          onClick={() => handleExecute(inv)}
+                          disabled={execute.isPending || !inv.target}
+                          className="gap-2 bg-gradient-to-r from-primary to-accent text-primary-foreground"
+                        >
+                          <Play className="h-3.5 w-3.5" aria-hidden="true" /> Run now
+                        </Button>
+                      }
+                    />
+                  )}
+                </Card>
+              </TabsContent>
+
+              {/* Activity tab */}
               <TabsContent value="activity">
                 <Card className="glass p-6 border-border/60 text-sm text-muted-foreground">
                   See the full chronological event log in the{" "}
-                  <Link to="/timeline" className="text-primary hover:underline">Timeline</Link> view.
+                  <Link to="/timeline" className="text-primary hover:underline">Timeline</Link> view,
+                  or switch to the <span className="text-foreground">Execution Log</span> tab above for
+                  per-connector timing details.
                 </Card>
               </TabsContent>
             </Tabs>
