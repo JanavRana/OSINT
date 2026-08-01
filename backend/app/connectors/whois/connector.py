@@ -62,11 +62,16 @@ class WhoisConnector(BaseConnector):
         # The library handles the WHOIS protocol lookup internally
         whois_data = whois.whois(identifier.value)
 
-        # Convert the WhoisEntry object to a dictionary for consistent handling
-        if hasattr(whois_data, "__dict__"):
+        # Convert the WhoisEntry object to a dictionary for consistent handling.
+        # IMPORTANT: python-whois stores parsed fields (registrar, creation_date,
+        # etc.) behind a dict-like interface (__getitem__/keys()), NOT in
+        # __dict__ (which only holds "domain" and "text"). Using dict() calls
+        # the correct interface and captures all parsed WHOIS fields.
+        if hasattr(whois_data, "keys"):
+            raw_dict = dict(whois_data)
+        elif hasattr(whois_data, "__dict__"):
             raw_dict = whois_data.__dict__.copy()
         else:
-            # Fallback if the library returns a plain dict
             raw_dict = dict(whois_data) if whois_data else {}
 
         # Use the parser to produce a JSON-serializable dict
