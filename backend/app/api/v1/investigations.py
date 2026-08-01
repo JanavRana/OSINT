@@ -15,14 +15,22 @@ from app.connectors.types import Identifier
 from app.db.session import get_db
 from app.schemas.investigation import (
     ConnectorExecutionResult,
+    ConnectorResultListResponse,
+    ConnectorResultRead,
     ExecutionStatistics,
+    IdentifierListResponse,
+    IdentifierRead,
     InvestigationCreate,
     InvestigationExecuteRequest,
     InvestigationExecuteResponse,
     InvestigationList,
     InvestigationRead,
+    SeedIdentifierSchema,
 )
 from app.schemas.timeline import TimelineEventResponse, TimelineResponse
+from app.repositories.connector_result_repository import ConnectorResultRepository
+from app.repositories.normalized_fact_repository import NormalizedFactRepository
+from app.repositories.seed_identifier_repository import SeedIdentifierRepository
 from app.services.exceptions import NotFoundError
 from app.services.investigation_service import InvestigationService
 from app.timeline.service import TimelineService
@@ -52,8 +60,24 @@ def create_investigation(
     payload: InvestigationCreate,
     service: InvestigationService = Depends(get_investigation_service),
 ) -> InvestigationRead:
-    investigation = service.create_investigation(name=payload.name)
-    return InvestigationRead.model_validate(investigation)
+    seed_value = payload.seed_identifier.value if payload.seed_identifier else None
+    seed_type = payload.seed_identifier.type.value if payload.seed_identifier else None
+    investigation, seed = service.create_investigation(
+        name=payload.name,
+        seed_value=seed_value,
+        seed_type=seed_type,
+    )
+    return InvestigationRead(
+        id=investigation.id,
+        name=investigation.name,
+        status=investigation.status,
+        created_at=investigation.created_at,
+        updated_at=investigation.updated_at,
+        seed_identifier=SeedIdentifierSchema(
+            value=seed.value,
+            type=seed.type,
+        ) if seed else None,
+    )
 
 
 @router.get(
@@ -83,6 +107,7 @@ def list_investigations(
 def get_investigation(
     investigation_id: uuid.UUID,
     service: InvestigationService = Depends(get_investigation_service),
+    db: Session = Depends(get_db),
 ) -> InvestigationRead:
     try:
         investigation = service.get_investigation(investigation_id)
@@ -90,7 +115,28 @@ def get_investigation(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
         ) from exc
-    return InvestigationRead.model_validate(investigation)
+
+    # Attach seed identifier if one was saved at creation time
+    seed_repo = SeedIdentifierRepository(db)
+    seed = seed_repo.get_primary_by_investigation(investigation_id)
+
+    logger.info(f"GET investigation_id={investigation_id}")
+    logger.info(f"Seed object={seed}")
+
+    if seed:
+        logger.info(f"value={seed.value} type={seed.type}")
+
+    return InvestigationRead(
+        id=investigation.id,
+        name=investigation.name,
+        status=investigation.status,
+        created_at=investigation.created_at,
+        updated_at=investigation.updated_at,
+        seed_identifier=SeedIdentifierSchema(
+            value=seed.value,
+            type=seed.type,
+        ) if seed else None,
+    )
 
 
 @router.post(
@@ -168,6 +214,119 @@ async def execute_investigation(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Investigation execution failed"
         ) from exc
+
+
+
+@router.get(
+    "/{investigation_id}/identifiers",
+    response_model=IdentifierListResponse,
+    summary="List identifiers discovered for an investigation",
+)
+def list_identifiers(
+    investigation_id: uuid.UUID,
+    service: InvestigationService = Depends(get_investigation_service),
+    db: Session = Depends(get_db),
+) -> IdentifierListResponse:
+    """
+    List normalized facts as identifiers for an investigation.
+
+    Maps fact_type to identifier type for the frontend.
+    """
+    try:
+        service.get_investigation(investigation_id)
+    except NotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
+
+    fact_repo = NormalizedFactRepository(db)
+    facts = fact_repo.list_by_investigation(investigation_id)
+
+    # Map fact_type to frontend identifier types
+    fact_type_to_identifier = {
+        "email": "email",
+        "domain": "domain",
+        "domain_registration": "domain",
+        "phone": "phone",
+        "username": "username",
+        "wallet_address": "wallet",
+        "social_account": "social",
+        "contact_info": "email",
+        "organization": "domain",
+        "location": "domain",
+        "certificate": "domain",
+        "archive_snapshot": "domain",
+        "profile_data": "username",
+        "image_hash": "domain",
+        "generic": "domain",
+    }
+
+    items = [
+        IdentifierRead(
+            id=str(f.id),
+            type=fact_type_to_identifier.get(f.fact_type, "domain"),
+            value=str(f.value),
+            confidence=f.confidence,
+            sources=1,
+            first_seen=f.created_at.isoformat() if f.created_at else "",
+        )
+        for f in facts
+    ]
+
+    return IdentifierListResponse(items=items, count=len(items))
+
+
+@router.get(
+    "/{investigation_id}/connectors",
+    response_model=ConnectorResultListResponse,
+    summary="List connector execution results for an investigation",
+)
+def list_connectors(
+    investigation_id: uuid.UUID,
+    service: InvestigationService = Depends(get_investigation_service),
+    db: Session = Depends(get_db),
+) -> ConnectorResultListResponse:
+    """
+    List connector execution results for an investigation.
+
+    Returns a summary of each connector that was run, including hit count
+    and execution status.
+    """
+    try:
+        service.get_investigation(investigation_id)
+    except NotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
+
+    result_repo = ConnectorResultRepository(db)
+    results = result_repo.list_by_investigation(investigation_id)
+
+    # Derive category from connector name
+    connector_categories = {
+        "whois": "Domain Intelligence",
+        "rdap": "Domain Intelligence",
+        "crtsh": "Certificate Transparency",
+        "wayback": "Web Archives",
+        "github": "Code & Social",
+        "gravatar": "Profile Lookup",
+    }
+
+    items = [
+        ConnectorResultRead(
+            id=str(r.id),
+            name=r.connector_name,
+            category=connector_categories.get(
+                r.connector_name.lower(), "OSINT"
+            ),
+            status="success" if r.raw_response else "failed",
+            hits=len(r.raw_response) if isinstance(r.raw_response, dict) else 0,
+            runtime=r.created_at.strftime("%H:%M:%S") if r.created_at else "—",
+        )
+        for r in results
+    ]
+
+    return ConnectorResultListResponse(items=items, count=len(items))
 
 
 @router.get(

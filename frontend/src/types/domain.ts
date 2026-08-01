@@ -25,6 +25,8 @@ export interface Investigation {
   id: string;
   name: string;
   target: string;
+  /** The persisted type of the seed identifier, if available. */
+  seedType?: IdentifierType;
   status: InvestigationStatus;
   severity: Severity;
   progress: number;
@@ -193,10 +195,30 @@ export interface NewInvestigationInput {
 
 export type ExecutionStatus = "queued" | "running" | "completed" | "failed";
 
+export interface ExecutionConnectorResult {
+  connectorName: string;
+  status: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+  errorMessage: string | null;
+}
+
+export interface ExecutionStatistics {
+  executedConnectors: number;
+  successfulConnectors: number;
+  failedConnectors: number;
+  connectorResultsCount: number;
+  normalizedFactsCount: number;
+  executionDurationSeconds: number;
+}
+
 export interface ExecutionResult {
   investigationId: string;
   status: ExecutionStatus;
   startedAt: string;
+  finishedAt?: string;
+  statistics?: ExecutionStatistics;
+  connectorResults?: ExecutionConnectorResult[];
 }
 
 export interface GeneratedReport {

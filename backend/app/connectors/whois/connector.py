@@ -22,6 +22,8 @@ from ..base import BaseConnector
 from ..registry import registry
 from ..types import Identifier, IdentifierType
 
+from .parser import parse_whois_response
+
 
 @registry.register
 class WhoisConnector(BaseConnector):
@@ -47,25 +49,9 @@ class WhoisConnector(BaseConnector):
             identifier: A domain identifier (e.g., value="example.com")
 
         Returns:
-            A dictionary containing the raw WHOIS response data from the
-            python-whois library. The structure is determined by the
-            library and may vary slightly by TLD and registrar, but
-            typically includes:
-                - domain_name: str or list of domain names
-                - registrar: str
-                - creation_date: datetime or list of datetimes
-                - expiration_date: datetime or list of datetimes
-                - updated_date: datetime or list of datetimes
-                - name_servers: list of nameservers
-                - status: list of status strings
-                - emails: list of email addresses
-                - name: registrant name
-                - org: registrant organization
-                - address: registrant address
-                - city: registrant city
-                - state: registrant state
-                - zipcode: registrant zipcode
-                - country: registrant country
+            A JSON-serializable dictionary containing the parsed WHOIS
+            response data. Datetimes are converted to ISO strings, lists
+            are deduplicated, and None values are preserved.
 
         Raises:
             whois.parser.PywhoisError: If the domain doesn't exist or
@@ -77,11 +63,12 @@ class WhoisConnector(BaseConnector):
         whois_data = whois.whois(identifier.value)
 
         # Convert the WhoisEntry object to a dictionary for consistent handling
-        # The parser module provides this as a dict-like object
         if hasattr(whois_data, "__dict__"):
             raw_dict = whois_data.__dict__.copy()
         else:
             # Fallback if the library returns a plain dict
             raw_dict = dict(whois_data) if whois_data else {}
 
-        return raw_dict
+        # Use the parser to produce a JSON-serializable dict
+        # (converts datetime→ISO strings, deduplicates lists, etc.)
+        return parse_whois_response(raw_dict)

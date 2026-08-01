@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Mail, Globe, User, Wallet, Share2, Phone, Server,
-  Network, Clock, FileText, ArrowLeft, Play, Pause, RefreshCw,
+  Network, Clock, FileText, ArrowLeft, Play, Pause, RefreshCw, AlertTriangle,
 } from "lucide-react";
 import { AsyncBoundary, EmptyState } from "@/components/states";
 import { ConfidenceBar } from "@/components/confidence-bar";
@@ -136,6 +136,29 @@ function Detail() {
     return "domain";
   };
 
+  const handleExecute = async (inv: { id: string; target: string; seedType?: IdentifierType }) => {
+    if (!inv.target) return;
+    // Use the persisted seedType when available (the reliable path).
+    // Fall back to heuristic detection only for legacy investigations that
+    // were created before seed persistence was implemented.
+    const identifierType = inv.seedType ?? deriveIdentifierType(inv.target);
+    try {
+      await execute.mutate({
+        investigationId: inv.id,
+        identifier: {
+          value: inv.target,
+          type: identifierType,
+        },
+      });
+      // Refresh all data after successful execution
+      invRes.refetch?.();
+      identifiersRes.refetch?.();
+      connectorsRes.refetch?.();
+    } catch {
+      // Error is captured in execute.error — no silent swallow
+    }
+  };
+
   return (
     <AsyncBoundary
       resource={invRes}
@@ -174,30 +197,82 @@ function Detail() {
                     <ArrowLeft className="h-4 w-4" aria-hidden="true" /> All cases
                   </Button>
                 </Link>
-                <Button variant="secondary" className="gap-2" onClick={() => invRes.refetch?.()}>
+                <Button variant="secondary" className="gap-2" onClick={() => {
+                  invRes.refetch?.();
+                  identifiersRes.refetch?.();
+                  connectorsRes.refetch?.();
+                }}>
                   <RefreshCw className="h-4 w-4" aria-hidden="true" /> Refresh
                 </Button>
                 <Button
-                  onClick={() => {
-                    if (inv.target) {
-                      execute.mutate({
-                        investigationId: inv.id,
-                        identifier: {
-                          value: inv.target,
-                          type: deriveIdentifierType(inv.target),
-                        },
-                      }).catch(() => {});
-                    }
-                  }}
+                  onClick={() => handleExecute(inv)}
                   disabled={execute.isPending || !inv.target}
                   className="gap-2 bg-gradient-to-r from-primary to-accent text-primary-foreground"
                 >
                   <Play className="h-4 w-4" aria-hidden="true" />
-                  {execute.isPending ? "Queuing…" : "Run all connectors"}
+                  {execute.isPending ? "Executing…" : "Run all connectors"}
                 </Button>
               </div>
             }
           >
+            {/* Execution error banner */}
+            {execute.error && (
+              <Card className="glass border-destructive/40 p-4 mb-4" role="alert">
+                <div className="flex items-center gap-3">
+                  <AlertTriangle className="h-4 w-4 text-destructive shrink-0" aria-hidden="true" />
+                  <div>
+                    <div className="text-sm font-medium text-destructive">Execution failed</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">{execute.error.message}</div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="ml-auto text-xs"
+                    onClick={() => execute.reset()}
+                  >
+                    Dismiss
+                  </Button>
+                </div>
+              </Card>
+            )}
+
+            {/* Execution success banner */}
+            {execute.data && !execute.isPending && !execute.error && (
+              <Card className="glass border-primary/40 p-4 mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-7 w-7 rounded-md bg-primary/10 text-primary grid place-items-center">
+                    <Play className="h-3.5 w-3.5" aria-hidden="true" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-sm font-medium">
+                      Execution {execute.data.status === "completed" ? "completed" : execute.data.status}
+                    </div>
+                    {execute.data.statistics && (
+                      <div className="text-xs text-muted-foreground mt-0.5 flex gap-3 flex-wrap">
+                        <span>{execute.data.statistics.executedConnectors} connectors executed</span>
+                        <span className="text-emerald-400">{execute.data.statistics.successfulConnectors} succeeded</span>
+                        {execute.data.statistics.failedConnectors > 0 && (
+                          <span className="text-destructive">{execute.data.statistics.failedConnectors} failed</span>
+                        )}
+                        <span>{execute.data.statistics.normalizedFactsCount} facts extracted</span>
+                        {execute.data.statistics.executionDurationSeconds != null && (
+                          <span>{execute.data.statistics.executionDurationSeconds.toFixed(1)}s</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs"
+                    onClick={() => execute.reset()}
+                  >
+                    Dismiss
+                  </Button>
+                </div>
+              </Card>
+            )}
+
             {/* Overview */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
               <Card className="glass p-5 border-border/60 lg:col-span-3">
@@ -219,8 +294,8 @@ function Detail() {
                 <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[
                     { label: "Progress", value: `${inv.progress}%` },
-                    { label: "Identifiers", value: inv.identifiers },
-                    { label: "Connectors", value: inv.connectors },
+                    { label: "Identifiers", value: identifiersRes.data?.length ?? inv.identifiers },
+                    { label: "Connectors", value: connectorsRes.data?.length ?? inv.connectors },
                     { label: "Created", value: fmtDate(inv.createdAt) },
                   ].map((m) => (
                     <div key={m.label}>

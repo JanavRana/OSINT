@@ -10,11 +10,17 @@ import type {
   InvestigationStatus,
   ExecutionResult,
   ExecutionStatus,
+  ExecutionConnectorResult,
+  ExecutionStatistics,
   TimelineEvent,
   TimelineChannel,
   Severity,
   GeneratedReport,
   DashboardStat,
+  Identifier,
+  IdentifierType,
+  Connector,
+  ConnectorRunStatus,
 } from "@/types/domain";
 
 // ============================================================================
@@ -27,6 +33,10 @@ interface BackendInvestigationRead {
   status: "created" | "running" | "completed" | "failed";
   created_at: string;
   updated_at: string;
+  seed_identifier?: {
+    value: string;
+    type: string;
+  } | null;
 }
 
 interface BackendInvestigationList {
@@ -170,26 +180,64 @@ function deriveChannel(
 }
 
 /**
+ * Map backend IdentifierType string to frontend IdentifierType.
+ * Backend uses "wallet_address"; frontend uses "wallet". Etc.
+ */
+export function mapBackendIdentifierType(
+  backendType: string | undefined | null
+): IdentifierType {
+  switch (backendType) {
+    case "email":         return "email";
+    case "domain":        return "domain";
+    case "username":      return "username";
+    case "wallet_address": return "wallet";
+    case "phone":         return "phone";
+    case "image":         return "domain"; // no frontend image type
+    default:              return "domain";
+  }
+}
+
+/**
+ * Map frontend IdentifierType to backend IdentifierType string.
+ * Used when sending seed identifier in createInvestigation.
+ */
+export function mapFrontendIdentifierType(frontendType: IdentifierType): string {
+  switch (frontendType) {
+    case "email":    return "email";
+    case "domain":   return "domain";
+    case "username": return "username";
+    case "wallet":   return "wallet_address";
+    case "phone":    return "phone";
+    case "social":   return "username"; // closest backend equivalent
+    case "ip":       return "domain";   // no ip type in backend yet
+    default:         return "domain";
+  }
+}
+
+/**
  * Map backend investigation to frontend Investigation.
- * 
- * Adds default values for fields that don't exist in backend yet.
+ *
+ * Populates target and seedType from the persisted seed_identifier when
+ * available (the fix for the "Run all connectors" disabled bug).
  */
 export function mapInvestigation(
   backend: BackendInvestigationRead
 ): Investigation {
+  const seed = backend.seed_identifier;
   return {
     id: backend.id,
     name: backend.name,
-    target: "", // Backend doesn't store target yet
+    target: seed?.value ?? "",
+    seedType: seed ? mapBackendIdentifierType(seed.type) : undefined,
     status: mapInvestigationStatus(backend.status),
     severity: "medium", // Default until backend supports it
     progress: backend.status === "completed" ? 100 : backend.status === "running" ? 50 : 0,
-    identifiers: 0, // Will be populated when endpoint exists
-    connectors: 0, // Will be populated when endpoint exists
+    identifiers: 0, // Will be populated from the identifiers endpoint
+    connectors: 0,  // Will be populated from the connectors endpoint
     createdAt: backend.created_at,
     updatedAt: backend.updated_at,
-    owner: "You", // Default until backend supports users
-    tags: [], // Default until backend supports tags
+    owner: "You",  // Default until backend supports users
+    tags: [],       // Default until backend supports tags
   };
 }
 
@@ -212,6 +260,24 @@ export function mapExecutionResult(
     investigationId: backend.investigation_id,
     status: mapExecutionStatus(backend.status),
     startedAt: backend.started_at,
+    finishedAt: backend.finished_at,
+    statistics: backend.statistics
+      ? {
+          executedConnectors: backend.statistics.executed_connectors,
+          successfulConnectors: backend.statistics.successful_connectors,
+          failedConnectors: backend.statistics.failed_connectors,
+          connectorResultsCount: backend.statistics.connector_results_count,
+          normalizedFactsCount: backend.statistics.normalized_facts_count,
+          executionDurationSeconds: backend.statistics.execution_duration_seconds,
+        }
+      : undefined,
+    connectorResults: backend.connector_results?.map((cr) => ({
+      connectorName: cr.connector_name,
+      status: cr.status,
+      startedAt: cr.started_at,
+      finishedAt: cr.finished_at,
+      errorMessage: cr.error_message,
+    })),
   };
 }
 
@@ -320,4 +386,79 @@ export function deriveDashboardStats(
       tone: "danger",
     },
   ];
+}
+
+// ============================================================================
+// Identifier & Connector Mappers
+// ============================================================================
+
+interface BackendIdentifierRead {
+  id: string;
+  type: string;
+  value: string;
+  confidence: number;
+  sources: number;
+  first_seen: string;
+}
+
+interface BackendIdentifierListResponse {
+  items: BackendIdentifierRead[];
+  count: number;
+}
+
+interface BackendConnectorResultRead {
+  id: string;
+  name: string;
+  category: string;
+  status: string;
+  hits: number;
+  runtime: string;
+}
+
+interface BackendConnectorResultListResponse {
+  items: BackendConnectorResultRead[];
+  count: number;
+}
+
+function mapConnectorRunStatus(status: string): ConnectorRunStatus {
+  switch (status) {
+    case "success":
+    case "succeeded":
+      return "success";
+    case "running":
+      return "running";
+    case "queued":
+      return "queued";
+    case "failed":
+    case "timed_out":
+      return "failed";
+    default:
+      return "queued";
+  }
+}
+
+export function mapIdentifierList(
+  backend: BackendIdentifierListResponse
+): Identifier[] {
+  return backend.items.map((item) => ({
+    id: item.id,
+    type: (item.type || "domain") as Identifier["type"],
+    value: item.value,
+    confidence: item.confidence,
+    sources: item.sources,
+    firstSeen: item.first_seen,
+  }));
+}
+
+export function mapConnectorResultList(
+  backend: BackendConnectorResultListResponse
+): Connector[] {
+  return backend.items.map((item) => ({
+    id: item.id,
+    name: item.name,
+    category: item.category,
+    status: mapConnectorRunStatus(item.status),
+    hits: item.hits,
+    runtime: item.runtime,
+  }));
 }

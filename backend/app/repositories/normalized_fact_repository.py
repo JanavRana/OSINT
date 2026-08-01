@@ -46,3 +46,16 @@ class NormalizedFactRepository:
         self._db.commit()
         self._db.refresh(fact)
         return fact
+
+    def list_by_investigation(
+        self, investigation_id: uuid.UUID
+    ) -> list[NormalizedFact]:
+        """Return all normalized facts for a given investigation."""
+        from sqlalchemy import select
+
+        stmt = (
+            select(NormalizedFact)
+            .where(NormalizedFact.investigation_id == investigation_id)
+            .order_by(NormalizedFact.created_at.desc())
+        )
+        return list(self._db.scalars(stmt).all())

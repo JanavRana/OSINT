@@ -24,6 +24,11 @@ from .types import (
     NormalizedFact,
 )
 
+# Import concrete normalizers to trigger auto-registration
+# via @normalizer_registry.register decorator
+from .whois import WhoisNormalizer  # noqa: F401
+from .rdap import RdapNormalizer  # noqa: F401
+
 __all__ = [
     "BaseNormalizer",
     "NormalizerRegistry",
@@ -34,4 +39,6 @@ __all__ = [
     "NormalizedFact",
     "NormalizationResult",
     "NormalizationError",
+    "WhoisNormalizer",
+    "RdapNormalizer",
 ]

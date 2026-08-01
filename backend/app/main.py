@@ -18,6 +18,7 @@ from app.models.investigation import Investigation
 from app.models.normalized_fact import NormalizedFact
 from app.models.connector_result import ConnectorResult
 from app.models.report import Report
+from app.models.seed_identifier import SeedIdentifier
 
 from app.api.health import router as health_router
 from app.api.routes import router as api_router

@@ -17,9 +17,11 @@ from sqlalchemy.orm import Session
 from app.connectors.types import Identifier, RawResponseEnvelope
 from app.models.investigation import Investigation, InvestigationStatus
 from app.models.normalized_fact import NormalizedFact
+from app.models.seed_identifier import SeedIdentifier
 from app.normalizers.manager import normalization_manager
 from app.repositories.investigation_repository import InvestigationRepository
 from app.repositories.normalized_fact_repository import NormalizedFactRepository
+from app.repositories.seed_identifier_repository import SeedIdentifierRepository
 from app.services.connector_execution_service import ConnectorExecutionService
 from app.services.exceptions import NotFoundError
 
@@ -51,10 +53,31 @@ class InvestigationService:
         self._repo = InvestigationRepository(db)
         self._connector_service = ConnectorExecutionService(db=db)
         self._fact_repo = NormalizedFactRepository(db)
+        self._seed_repo = SeedIdentifierRepository(db)
 
-    def create_investigation(self, *, name: str) -> Investigation:
-        """Create a new investigation."""
-        return self._repo.create(name=name)
+    def create_investigation(
+        self,
+        *,
+        name: str,
+        seed_value: str | None = None,
+        seed_type: str | None = None,
+    ) -> tuple[Investigation, SeedIdentifier | None]:
+        """
+        Create a new investigation, optionally with a primary seed identifier.
+
+        Returns:
+            A tuple of (Investigation, SeedIdentifier | None).
+        """
+        investigation = self._repo.create(name=name)
+        seed: SeedIdentifier | None = None
+        if seed_value and seed_type:
+            seed = self._seed_repo.create(
+                investigation_id=investigation.id,
+                value=seed_value,
+                identifier_type=seed_type,
+            )
+        return investigation, seed
+
 
     def get_investigation(self, investigation_id: uuid.UUID) -> Investigation:
         """Fetch a single investigation, raising NotFoundError if absent."""

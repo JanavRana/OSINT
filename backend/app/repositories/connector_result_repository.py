@@ -39,3 +39,16 @@ class ConnectorResultRepository:
         self._db.commit()
         self._db.refresh(result)
         return result
+
+    def list_by_investigation(
+        self, investigation_id: uuid.UUID
+    ) -> list[ConnectorResult]:
+        """Return all connector results for a given investigation."""
+        from sqlalchemy import select
+
+        stmt = (
+            select(ConnectorResult)
+            .where(ConnectorResult.investigation_id == investigation_id)
+            .order_by(ConnectorResult.created_at.desc())
+        )
+        return list(self._db.scalars(stmt).all())

@@ -29,8 +29,11 @@ import type { DataProvider } from "./data-provider";
 import { apiClient, extractFilename, isNotFoundError } from "./client";
 import {
   deriveDashboardStats,
+  mapConnectorResultList,
   mapExecutionResult,
+  mapFrontendIdentifierType,
   mapGeneratedReport,
+  mapIdentifierList,
   mapInvestigation,
   mapInvestigationList,
   mapTimelineResponse,
@@ -85,18 +88,50 @@ class FastAPIDataProvider implements DataProvider {
     }
   }
 
-  async listIdentifiers(_investigationId?: string): Promise<Identifier[]> {
-    // TODO: Backend endpoint not yet implemented
-    // GET /api/v1/investigations/{id}/identifiers
-    // For now, return empty array - investigation detail page will handle gracefully
-    return [];
+  async listIdentifiers(investigationId?: string): Promise<Identifier[]> {
+    if (!investigationId) return [];
+
+    try {
+      const response = await apiClient.get<{
+        items: Array<{
+          id: string;
+          type: string;
+          value: string;
+          confidence: number;
+          sources: number;
+          first_seen: string;
+        }>;
+        count: number;
+      }>(`/api/v1/investigations/investigations/${investigationId}/identifiers`);
+
+      return mapIdentifierList(response.data);
+    } catch (error) {
+      if (isNotFoundError(error)) return [];
+      throw error;
+    }
   }
 
-  async listConnectors(_investigationId?: string): Promise<Connector[]> {
-    // TODO: Backend endpoint not yet implemented
-    // GET /api/v1/investigations/{id}/connectors
-    // For now, return empty array - investigation detail page will handle gracefully
-    return [];
+  async listConnectors(investigationId?: string): Promise<Connector[]> {
+    if (!investigationId) return [];
+
+    try {
+      const response = await apiClient.get<{
+        items: Array<{
+          id: string;
+          name: string;
+          category: string;
+          status: string;
+          hits: number;
+          runtime: string;
+        }>;
+        count: number;
+      }>(`/api/v1/investigations/investigations/${investigationId}/connectors`);
+
+      return mapConnectorResultList(response.data);
+    } catch (error) {
+      if (isNotFoundError(error)) return [];
+      throw error;
+    }
   }
 
   async listTimeline(investigationId?: string): Promise<TimelineEvent[]> {
@@ -163,27 +198,28 @@ class FastAPIDataProvider implements DataProvider {
   async createInvestigation(
     input: NewInvestigationInput
   ): Promise<Investigation> {
-    // Backend currently only accepts name
-    // Store other fields (target, severity, etc.) for future use
     const response = await apiClient.post<{
       id: string;
       name: string;
       status: "created" | "running" | "completed" | "failed";
       created_at: string;
       updated_at: string;
+      seed_identifier?: {
+        value: string;
+        type: string;
+      } | null;
     }>("/api/v1/investigations/investigations", {
       name: input.name,
+      // Persist the seed identifier so it survives page reloads
+      seed_identifier: input.target
+        ? {
+            value: input.target,
+            type: mapFrontendIdentifierType(input.seedType),
+          }
+        : undefined,
     });
 
-    const investigation = mapInvestigation(response.data);
-    
-    // Enhance with frontend-provided fields
-    // These aren't persisted yet but improve UX
-    investigation.target = input.target;
-    investigation.severity = input.severity;
-    investigation.identifiers = input.seedIdentifiers.length;
-
-    return investigation;
+    return mapInvestigation(response.data);
   }
 
   async executeInvestigation(
