@@ -1,64 +1,98 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, Download, Eye, Plus, Sparkles, ChevronRight } from "lucide-react";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  FileText, Download, Plus, Sparkles, ChevronRight, Clock, CheckCircle2,
+  XCircle, Loader2, AlertTriangle,
+} from "lucide-react";
 import { AsyncBoundary, EmptyState } from "@/components/states";
-import { useDownloadReport, useGenerateReport, useReports } from "@/hooks/use-osint-data";
+import {
+  useDownloadReport,
+  useGenerateReport,
+  useInvestigations,
+} from "@/hooks/use-osint-data";
+import { useSessionReports, type SessionReport } from "@/hooks/use-settings";
 import { cn } from "@/lib/utils";
-import type { Report } from "@/types/domain";
+import { fmtDate } from "@/lib/format";
+import type { Investigation } from "@/types/domain";
 
 export const Route = createFileRoute("/reports")({
   head: () => ({ meta: [{ title: "Reports — AXIOM OSINT" }] }),
   component: ReportsPage,
 });
 
+// ─── Status icon ──────────────────────────────────────────────────────────────
+
+function ReportStatusIcon({ status }: { status: SessionReport["status"] }) {
+  switch (status) {
+    case "ready":
+      return <CheckCircle2 className="h-4 w-4 text-success" />;
+    case "failed":
+      return <XCircle className="h-4 w-4 text-destructive" />;
+    case "generating":
+      return <Loader2 className="h-4 w-4 text-primary animate-spin" />;
+    default:
+      return <Clock className="h-4 w-4 text-muted-foreground" />;
+  }
+}
+
+const statusLabel: Record<SessionReport["status"], string> = {
+  ready: "Ready",
+  failed: "Failed",
+  generating: "Generating",
+  queued: "Queued",
+};
+
+const statusColor: Record<SessionReport["status"], string> = {
+  ready: "text-success bg-success/15",
+  failed: "text-destructive bg-destructive/15",
+  generating: "text-primary bg-primary/15",
+  queued: "text-muted-foreground bg-white/5",
+};
+
+// ─── Report list item ─────────────────────────────────────────────────────────
+
 function ReportListItem({
   report,
   active,
   onSelect,
 }: {
-  report: Report;
+  report: SessionReport;
   active: boolean;
-  onSelect: (r: Report) => void;
+  onSelect: (r: SessionReport) => void;
 }) {
-  const r = report;
   return (
     <button
-      onClick={() => onSelect(r)}
+      onClick={() => onSelect(report)}
       aria-pressed={active}
       className={cn(
         "w-full text-left rounded-xl p-4 border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
         active
           ? "border-primary/50 bg-primary/[0.06] shadow-[0_0_20px_-6px_var(--primary)]"
-          : "border-border/60 hover:border-border bg-card/60 glass",
+          : "border-border/60 hover:border-border bg-card/60 glass"
       )}
     >
       <div className="flex items-start gap-3">
-        <div
-          className={cn(
-            "h-10 w-10 rounded-lg grid place-items-center shrink-0",
-            r.format === "PDF"
-              ? "bg-destructive/15 text-destructive"
-              : r.format === "JSON"
-                ? "bg-accent/15 text-accent"
-                : "bg-primary/15 text-primary",
-          )}
-          aria-hidden="true"
-        >
+        <div className="h-10 w-10 rounded-lg bg-destructive/15 text-destructive grid place-items-center shrink-0" aria-hidden="true">
           <FileText className="h-4 w-4" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="font-medium text-sm truncate">{r.name}</div>
-          <div className="text-[11px] text-muted-foreground font-mono mt-0.5">
-            {r.investigation} · {r.createdAt}
+          <div className="font-medium text-sm truncate">
+            Report — {report.investigationName}
           </div>
-          <div className="mt-2 flex items-center gap-2 text-[10px] text-muted-foreground">
-            <span className="px-1.5 py-0.5 rounded bg-white/5 border border-border/60">{r.format}</span>
-            <span>{r.pages > 0 ? `${r.pages} pages` : "IOC bundle"}</span>
-            <span>·</span>
-            <span>{r.size}</span>
+          <div className="text-[11px] text-muted-foreground font-mono mt-0.5">
+            {report.investigationId} · {fmtDate(report.createdAt)}
+          </div>
+          <div className="mt-2 flex items-center gap-2 text-[10px]">
+            <span className={cn("px-1.5 py-0.5 rounded-full font-medium", statusColor[report.status])}>
+              {statusLabel[report.status]}
+            </span>
+            <span className="text-muted-foreground">PDF</span>
           </div>
         </div>
         <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
@@ -67,74 +101,136 @@ function ReportListItem({
   );
 }
 
-function ReportPreview({ report }: { report: Report }) {
+// ─── Report preview / details ─────────────────────────────────────────────────
+
+function ReportPreview({
+  report,
+  investigation,
+}: {
+  report: SessionReport;
+  investigation?: Investigation;
+}) {
   const download = useDownloadReport();
+  const isReady = report.status === "ready";
+
+  const handleDownload = async () => {
+    try {
+      const result = await download.mutate({ investigationId: report.investigationId, reportId: report.reportId });
+      if (result.url) {
+        const a = document.createElement("a");
+        a.href = result.url;
+        a.download = result.filename;
+        a.click();
+        URL.revokeObjectURL(result.url);
+      }
+    } catch {
+      // surfaced via download.error
+    }
+  };
+
   return (
     <Card className="glass border-border/60 overflow-hidden">
+      {/* Header */}
       <div className="flex items-center gap-2 p-4 border-b border-border/60">
         <FileText className="h-4 w-4 text-primary" aria-hidden="true" />
-        <div className="min-w-0">
-          <div className="font-medium text-sm truncate">{report.name}</div>
+        <div className="min-w-0 flex-1">
+          <div className="font-medium text-sm truncate">
+            {investigation?.name ?? report.investigationId}
+          </div>
           <div className="text-[11px] text-muted-foreground font-mono">
-            {report.investigation} · {report.createdAt}
+            {report.investigationId} · Generated {fmtDate(report.createdAt)}
           </div>
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <Button variant="ghost" size="sm" className="gap-1">
-            <Eye className="h-3.5 w-3.5" aria-hidden="true" /> Preview
-          </Button>
+          <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium", statusColor[report.status])}>
+            {statusLabel[report.status]}
+          </span>
           <Button
             size="sm"
-            disabled={download.isPending}
-            onClick={() => download.mutate({ investigationId: report.investigation, reportId: report.id }).catch(() => {})}
+            disabled={!isReady || download.isPending}
+            onClick={handleDownload}
             className="bg-gradient-to-r from-primary to-accent text-primary-foreground gap-1"
           >
-            <Download className="h-3.5 w-3.5" aria-hidden="true" />
-            {download.isPending ? "Preparing…" : "Download"}
+            {download.isPending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+            ) : (
+              <Download className="h-3.5 w-3.5" aria-hidden="true" />
+            )}
+            {download.isPending ? "Preparing…" : "Download PDF"}
           </Button>
         </div>
       </div>
 
+      {/* Download error */}
+      {download.error && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-destructive/10 text-destructive text-xs">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          {download.error.message}
+        </div>
+      )}
 
-      <div className="p-6 bg-[oklch(0.11_0.015_260)] min-h-[600px]">
-        <div className="max-w-2xl mx-auto bg-white text-black rounded-md p-10 shadow-2xl aspect-[8.5/11]">
+      {/* Mock report preview */}
+      <div className="p-6 bg-[oklch(0.11_0.015_260)] min-h-[520px]">
+        <div className="max-w-2xl mx-auto bg-white text-black rounded-md p-10 shadow-2xl">
           <div className="flex items-center justify-between border-b pb-4">
             <div>
               <div className="text-xs uppercase tracking-widest text-slate-500">Confidential — TLP:AMBER</div>
-              <div className="mt-1 text-xl font-bold">{report.name}</div>
+              <div className="mt-1 text-xl font-bold">{investigation?.name ?? "Investigation Report"}</div>
             </div>
             <div className="text-right">
               <div className="text-[10px] uppercase tracking-widest text-slate-400">AXIOM Intel</div>
-              <div className="text-[10px] font-mono text-slate-500">{report.investigation}</div>
+              <div className="text-[10px] font-mono text-slate-500">{report.investigationId}</div>
             </div>
           </div>
+
           <div className="mt-6 space-y-4 text-xs text-slate-700">
             <div>
-              <div className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">Executive Summary</div>
-              <p>Between 2024-11-02 and 2026-07-10 the subject was observed operating across 12 platforms using 3 primary email identities and a linked Ethereum wallet…</p>
+              <div className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">Report Status</div>
+              <div className="flex items-center gap-2">
+                <ReportStatusIcon status={report.status} />
+                <span className="font-medium">{statusLabel[report.status]}</span>
+                <span className="text-slate-400 ml-auto">Generated {fmtDate(report.createdAt)}</span>
+              </div>
             </div>
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                ["Identifiers", "47"],
-                ["Connectors", "12"],
-                ["Confidence", "86%"],
-              ].map(([l, v]) => (
-                <div key={l} className="border border-slate-200 rounded p-2">
-                  <div className="text-[9px] uppercase text-slate-400">{l}</div>
-                  <div className="font-bold text-slate-900">{v}</div>
+
+            {investigation && (
+              <>
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    ["Target", investigation.target || "—"],
+                    ["Status", investigation.status],
+                    ["Severity", investigation.severity],
+                  ].map(([l, v]) => (
+                    <div key={l} className="border border-slate-200 rounded p-2">
+                      <div className="text-[9px] uppercase text-slate-400">{l}</div>
+                      <div className="font-bold text-slate-900 capitalize">{v}</div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <div>
-              <div className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">Key Findings</div>
-              <ul className="list-disc pl-4 space-y-1">
-                <li>Subject wallet interacts with sanctioned mixer service.</li>
-                <li>Alias @nullbyte_x cross-verified against 4 platforms.</li>
-                <li>Typosquat domain registered within 72h of campaign start.</li>
-              </ul>
-            </div>
+
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">Investigation Details</div>
+                  <p>
+                    Investigation <strong>{investigation.id}</strong> was created on{" "}
+                    {fmtDate(investigation.createdAt)} and targets{" "}
+                    <code className="bg-slate-100 px-1 rounded">{investigation.target || "—"}</code>.
+                    {investigation.tags.length > 0 && (
+                      <> Tagged: {investigation.tags.map((t) => `#${t}`).join(", ")}.</>
+                    )}
+                  </p>
+                </div>
+              </>
+            )}
+
+            {!isReady && (
+              <div className="border-t pt-4 text-center text-slate-400">
+                <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
+                <p>Report is being generated. Download will be available shortly.</p>
+              </div>
+            )}
+
             <div className="border-t pt-3 text-[9px] text-slate-400">
-              Page 1 of {report.pages || 1} · Generated {report.createdAt}
+              Generated {fmtDate(report.createdAt)} · AXIOM OSINT Platform
             </div>
           </div>
         </div>
@@ -143,27 +239,35 @@ function ReportPreview({ report }: { report: Report }) {
   );
 }
 
+// ─── Reports page ─────────────────────────────────────────────────────────────
+
 function ReportsPage() {
-  const resource = useReports();
+  const invRes = useInvestigations();
   const generate = useGenerateReport();
-  const [selected, setSelected] = useState<Report | null>(null);
+  const { reports, addReport } = useSessionReports();
+  const [selectedReport, setSelectedReport] = useState<SessionReport | null>(null);
+  const [selectedInvId, setSelectedInvId] = useState<string>("");
 
-  useEffect(() => {
-    if (!selected && resource.data && resource.data.length > 0) {
-      setSelected(resource.data[0]);
-    }
-  }, [resource.data, selected]);
+  const investigations = invRes.data ?? [];
+  const selectedInv = investigations.find((i) => i.id === selectedInvId);
 
-  const generateFor = selected?.investigation;
-  async function handleGenerate() {
-    if (!generateFor) return;
+  const handleGenerate = async () => {
+    if (!selectedInvId || !selectedInv) return;
     try {
-      await generate.mutate(generateFor);
-      resource.refetch?.();
+      const result = await generate.mutate(selectedInvId);
+      const newReport: SessionReport = {
+        reportId: result.reportId,
+        investigationId: result.investigationId,
+        investigationName: selectedInv.name,
+        status: result.status === "ready" ? "ready" : result.status === "failed" ? "failed" : "generating",
+        createdAt: result.createdAt,
+      };
+      addReport(newReport);
+      setSelectedReport(newReport);
     } catch {
-      /* surfaced via generate.error */
+      // surfaced via generate.error
     }
-  }
+  };
 
   return (
     <AppShell
@@ -172,58 +276,89 @@ function ReportsPage() {
       actions={
         <Button
           onClick={handleGenerate}
-          disabled={!generateFor || generate.isPending}
+          disabled={!selectedInvId || generate.isPending}
           className="bg-gradient-to-r from-primary to-accent text-primary-foreground gap-2"
         >
-          <Plus className="h-4 w-4" aria-hidden="true" />
+          {generate.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+          ) : (
+            <Plus className="h-4 w-4" aria-hidden="true" />
+          )}
           {generate.isPending ? "Generating…" : "Generate report"}
         </Button>
       }
     >
       <div className="grid grid-cols-1 xl:grid-cols-[420px_1fr] gap-4">
-        {/* Report history */}
+        {/* Left: report history */}
         <div className="space-y-3">
+          {/* Generate card */}
           <Card className="glass p-4 border-border/60 border-dashed">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-primary to-accent grid place-items-center" aria-hidden="true">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-primary to-accent grid place-items-center shrink-0" aria-hidden="true">
                 <Sparkles className="h-4 w-4 text-primary-foreground" />
               </div>
               <div className="flex-1">
                 <div className="font-medium text-sm">Generate a new PDF report</div>
-                <div className="text-xs text-muted-foreground">Pick a case, template and evidence scope.</div>
+                <div className="text-xs text-muted-foreground">Select an investigation then click Generate.</div>
               </div>
-              <Button size="sm" variant="secondary">Start</Button>
             </div>
+
+            {/* Investigation picker */}
+            <AsyncBoundary resource={invRes}>
+              {(investigations) => (
+                <Select value={selectedInvId} onValueChange={setSelectedInvId}>
+                  <SelectTrigger className="w-full bg-surface/60 text-sm" aria-label="Select investigation to report on">
+                    <SelectValue placeholder="Choose investigation…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {investigations.map((inv) => (
+                      <SelectItem key={inv.id} value={inv.id}>
+                        {inv.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </AsyncBoundary>
+
+            {generate.error && (
+              <p className="mt-2 text-xs text-destructive flex items-center gap-1">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {generate.error.message}
+              </p>
+            )}
           </Card>
 
-          <AsyncBoundary
-            resource={resource}
-            isEmpty={(l) => l.length === 0}
-            empty={<EmptyState title="No reports generated yet." description="Start by generating your first report above." />}
-          >
-            {(list) => (
-              <>
-                {list.map((r) => (
-                  <ReportListItem
-                    key={r.id}
-                    report={r}
-                    active={selected?.id === r.id}
-                    onSelect={setSelected}
-                  />
-                ))}
-              </>
-            )}
-          </AsyncBoundary>
+          {/* Session report list */}
+          {reports.length === 0 ? (
+            <EmptyState
+              title="No reports generated yet."
+              description="Select an investigation and click Generate to create your first report."
+            />
+          ) : (
+            <div className="space-y-2">
+              {reports.map((r) => (
+                <ReportListItem
+                  key={r.reportId}
+                  report={r}
+                  active={selectedReport?.reportId === r.reportId}
+                  onSelect={setSelectedReport}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Preview */}
-        {selected ? (
-          <ReportPreview report={selected} />
+        {/* Right: preview */}
+        {selectedReport ? (
+          <ReportPreview
+            report={selectedReport}
+            investigation={investigations.find((i) => i.id === selectedReport.investigationId)}
+          />
         ) : (
           <Card className="glass border-border/60 min-h-[400px] grid place-items-center">
             <EmptyState
               title="Select a report to preview"
-              description="Choose one from the list on the left to view its contents."
+              description="Generate a report or choose one from the list on the left."
             />
           </Card>
         )}

@@ -30,6 +30,7 @@ import {
   reportsFixture,
   timelineFixture,
 } from "./mock-fixtures";
+import { fastAPIProvider } from "./fastapi-provider";
 
 export interface DataProvider {
   // Reads
@@ -158,8 +159,9 @@ export const mockDataProvider: DataProvider = {
   },
 };
 
-// Active provider - using mock data provider for now
-let activeProvider: DataProvider = mockDataProvider;
+// Active provider — wired to the real FastAPI backend.
+// To use mock data locally, call setDataProvider(mockDataProvider) from your dev bootstrap.
+let activeProvider: DataProvider = fastAPIProvider;
 
 export function setDataProvider(provider: DataProvider): void {
   activeProvider = provider;

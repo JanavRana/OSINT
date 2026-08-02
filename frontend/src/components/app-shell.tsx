@@ -2,11 +2,16 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
   LayoutDashboard, Search, Network, UserSearch, Clock, FileText,
-  Settings, Bell, Command, Plus, Radar, Shield, LogOut, ChevronDown
+  Settings, Command, Plus, Radar, Shield, LogOut, ChevronDown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Toaster } from "sonner";
 import { cn } from "@/lib/utils";
+import { useNotifications } from "@/hooks/use-notifications";
+import { useProfileSettings } from "@/hooks/use-settings";
+import { NotificationsPanel } from "@/components/notifications-panel";
+import { useConnectors } from "@/hooks/use-osint-data";
 
 const nav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -18,13 +23,63 @@ const nav = [
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
+function ConnectorStatusSidebar() {
+  // Pull connectors for any investigation to show online/offline counts.
+  // Without investigationId the FastAPI provider returns [] — we derive status
+  // from the investigation list length instead, keeping the sidebar lightweight.
+  const connectorsRes = useConnectors(undefined);
+  const connectors = connectorsRes.data ?? [];
+
+  const online = connectors.filter((c) => c.status === "success").length;
+  const total = connectors.length;
+
+  // Fallback when no investigation has been run yet
+  const display = total === 0 ? "No runs yet" : `${online} / ${total} succeeded`;
+  const pct = total === 0 ? 0 : Math.round((online / total) * 100);
+
+  return (
+    <div className="glass rounded-xl p-3">
+      <div className="flex items-center gap-2 text-xs">
+        <Shield className="h-3.5 w-3.5 text-primary" />
+        <span className="text-muted-foreground">Last run</span>
+        <span className={cn("ml-auto font-medium", total === 0 ? "text-muted-foreground" : pct === 100 ? "text-success" : pct > 50 ? "text-warning" : "text-destructive")}>
+          {total === 0 ? "—" : `${pct}%`}
+        </span>
+      </div>
+      <div className="mt-2 h-1.5 rounded-full bg-white/5 overflow-hidden">
+        <div
+          className={cn(
+            "h-full rounded-full transition-all",
+            pct === 100 ? "bg-success" : pct > 50 ? "bg-gradient-to-r from-warning to-primary" : "bg-destructive"
+          )}
+          style={{ width: `${pct || 0}%` }}
+        />
+      </div>
+      <div className="mt-1.5 text-[10px] text-muted-foreground">{display}</div>
+    </div>
+  );
+}
+
 export function AppShell({ children, title, subtitle, actions }: {
   children: ReactNode; title?: string; subtitle?: ReactNode; actions?: ReactNode;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { notifications, unreadCount, markAllRead, markRead } = useNotifications();
+  const { profile } = useProfileSettings();
+
+  const initials = profile.initials ||
+    profile.fullName
+      .split(" ")
+      .map((n) => n[0])
+      .slice(0, 2)
+      .join("")
+      .toUpperCase() || "AI";
 
   return (
     <div className="min-h-screen w-full flex bg-background text-foreground">
+      {/* Sonner toast container */}
+      <Toaster richColors position="top-right" />
+
       {/* Sidebar */}
       <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-border/60 bg-sidebar/70 backdrop-blur-xl">
         <div className="flex items-center gap-2 px-5 h-16 border-b border-border/60">
@@ -62,17 +117,7 @@ export function AppShell({ children, title, subtitle, actions }: {
           })}
         </nav>
         <div className="p-3 border-t border-border/60">
-          <div className="glass rounded-xl p-3">
-            <div className="flex items-center gap-2 text-xs">
-              <Shield className="h-3.5 w-3.5 text-primary" />
-              <span className="text-muted-foreground">System status</span>
-              <span className="ml-auto text-success font-medium">Operational</span>
-            </div>
-            <div className="mt-2 h-1.5 rounded-full bg-white/5 overflow-hidden">
-              <div className="h-full w-[86%] bg-gradient-to-r from-primary to-accent" />
-            </div>
-            <div className="mt-1.5 text-[10px] text-muted-foreground">38 / 42 connectors online</div>
-          </div>
+          <ConnectorStatusSidebar />
         </div>
       </aside>
 
@@ -91,10 +136,13 @@ export function AppShell({ children, title, subtitle, actions }: {
             </kbd>
           </div>
           <div className="ml-auto flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-4 w-4" />
-              <span className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-destructive" />
-            </Button>
+            {/* Real notifications panel */}
+            <NotificationsPanel
+              notifications={notifications}
+              unreadCount={unreadCount}
+              markAllRead={markAllRead}
+              markRead={markRead}
+            />
             <Link to="/investigations/new">
               <Button className="bg-gradient-to-r from-primary to-accent text-primary-foreground hover:opacity-90 gap-2 shadow-[0_0_20px_-6px_var(--primary)]">
                 <Plus className="h-4 w-4" /> New Investigation
@@ -102,11 +150,11 @@ export function AppShell({ children, title, subtitle, actions }: {
             </Link>
             <div className="hidden sm:flex items-center gap-2 pl-2 ml-2 border-l border-border/60">
               <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary/70 to-accent/70 grid place-items-center text-xs font-bold text-primary-foreground">
-                MC
+                {initials}
               </div>
               <div className="hidden lg:block leading-tight">
-                <div className="text-xs font-medium">M. Chen</div>
-                <div className="text-[10px] text-muted-foreground">Sr. Analyst</div>
+                <div className="text-xs font-medium">{profile.fullName}</div>
+                <div className="text-[10px] text-muted-foreground">{profile.role}</div>
               </div>
               <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
             </div>

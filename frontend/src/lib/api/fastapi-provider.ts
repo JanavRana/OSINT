@@ -185,10 +185,69 @@ class FastAPIDataProvider implements DataProvider {
     return identityProfileFixture;
   }
 
-  async getGraph(_investigationId?: string): Promise<GraphData> {
-    // TODO: Future feature - requires M4 + Neo4j integration
-    // For now, return mock data so graph page doesn't break
-    return graphFixture;
+  async getGraph(investigationId?: string): Promise<GraphData> {
+    if (!investigationId) return graphFixture;
+
+    try {
+      const identifiers = await this.listIdentifiers(investigationId);
+      if (!identifiers || identifiers.length === 0) return graphFixture;
+
+      // Map identifier types to graph node types
+      const typeMap: Record<string, import("@/types/domain").GraphNodeType> = {
+        email: "email",
+        domain: "domain",
+        username: "user",
+        wallet: "wallet",
+        ip: "ip",
+        social: "user",
+        phone: "user",
+      };
+
+      // Build nodes — spread them in a rough circle for readability
+      const nodes: import("@/types/domain").GraphNode[] = identifiers.map((id, i) => {
+        const angle = (2 * Math.PI * i) / identifiers.length;
+        const radius = identifiers.length === 1 ? 0 : 35;
+        const cx = 50 + radius * Math.cos(angle);
+        const cy = 50 + radius * Math.sin(angle);
+        return {
+          id: id.id,
+          label: id.value.length > 28 ? id.value.slice(0, 26) + "…" : id.value,
+          type: typeMap[id.type] ?? "domain",
+          x: Math.round(cx),
+          y: Math.round(cy),
+          size: i === 0 ? 34 : 24,
+          primary: i === 0,
+        };
+      });
+
+      // Build edges: connect every node back to the primary (seed) node
+      // Also connect nodes of the same type to each other (max 2 extra edges per type)
+      const edges: import("@/types/domain").GraphEdge[] = [];
+      const primary = nodes[0];
+      if (primary) {
+        for (const node of nodes.slice(1)) {
+          edges.push({ from: primary.id, to: node.id, kind: "related-to" });
+        }
+        // Cross-link same-type nodes for visual clustering
+        const byType = new Map<string, string[]>();
+        for (const n of nodes) {
+          const arr = byType.get(n.type) ?? [];
+          arr.push(n.id);
+          byType.set(n.type, arr);
+        }
+        for (const ids of byType.values()) {
+          for (let i = 0; i < Math.min(ids.length - 1, 2); i++) {
+            if (ids[i] !== primary.id && ids[i + 1] !== primary.id) {
+              edges.push({ from: ids[i], to: ids[i + 1], kind: "same-type" });
+            }
+          }
+        }
+      }
+
+      return { nodes, edges };
+    } catch {
+      return graphFixture;
+    }
   }
 
   // =========================================================================
