@@ -31,16 +31,16 @@ export const statsFixture: DashboardStat[] = [
 ];
 
 export const identifiersFixture: Identifier[] = [
-  { id: "id1", type: "email", value: "j.doe@protonmail.com", confidence: 98, sources: 6, firstSeen: "2024-11-02" },
-  { id: "id2", type: "email", value: "shadow.doe@tuta.io", confidence: 82, sources: 3, firstSeen: "2025-02-19" },
-  { id: "id3", type: "domain", value: "secure-login-verify.io", confidence: 91, sources: 5, firstSeen: "2025-06-01" },
-  { id: "id4", type: "username", value: "nullbyte_x", confidence: 76, sources: 4, firstSeen: "2024-09-11" },
-  { id: "id5", type: "username", value: "j.doe_1990", confidence: 64, sources: 2, firstSeen: "2023-04-08" },
-  { id: "id6", type: "wallet", value: "0x9a8b3f4c2d1e5f6a7b8c9d0e1f2a3b4c5d6e7f21c", confidence: 88, sources: 7, firstSeen: "2025-01-14" },
-  { id: "id7", type: "social", value: "twitter.com/nullbyte_x", confidence: 79, sources: 3, firstSeen: "2024-09-12" },
-  { id: "id8", type: "social", value: "t.me/ring42", confidence: 84, sources: 4, firstSeen: "2025-03-22" },
-  { id: "id9", type: "phone", value: "+1 415 ••• 0142", confidence: 55, sources: 1, firstSeen: "2025-05-04" },
-  { id: "id10", type: "ip", value: "185.220.101.47", confidence: 70, sources: 3, firstSeen: "2025-06-30" },
+  { id: "id1", type: "email", value: "j.doe@protonmail.com", confidence: 0.98, sources: 6, firstSeen: "2024-11-02" },
+  { id: "id2", type: "email", value: "shadow.doe@tuta.io", confidence: 0.82, sources: 3, firstSeen: "2025-02-19" },
+  { id: "id3", type: "domain", value: "secure-login-verify.io", confidence: 0.91, sources: 5, firstSeen: "2025-06-01" },
+  { id: "id4", type: "username", value: "nullbyte_x", confidence: 0.76, sources: 4, firstSeen: "2024-09-11" },
+  { id: "id5", type: "username", value: "j.doe_1990", confidence: 0.64, sources: 2, firstSeen: "2023-04-08" },
+  { id: "id6", type: "wallet", value: "0x9a8b3f4c2d1e5f6a7b8c9d0e1f2a3b4c5d6e7f21c", confidence: 0.88, sources: 7, firstSeen: "2025-01-14" },
+  { id: "id7", type: "social", value: "twitter.com/nullbyte_x", confidence: 0.79, sources: 3, firstSeen: "2024-09-12" },
+  { id: "id8", type: "social", value: "t.me/ring42", confidence: 0.84, sources: 4, firstSeen: "2025-03-22" },
+  { id: "id9", type: "phone", value: "+1 415 ••• 0142", confidence: 0.55, sources: 1, firstSeen: "2025-05-04" },
+  { id: "id10", type: "ip", value: "185.220.101.47", confidence: 0.70, sources: 3, firstSeen: "2025-06-30" },
 ];
 
 export const connectorsFixture: Connector[] = [
@@ -76,10 +76,10 @@ export const reportsFixture: Report[] = [
 ];
 
 const evidenceFixture: EvidenceEntry[] = [
-  { src: "HaveIBeenPwned", finding: "6 breach matches for j.doe@protonmail.com", conf: 98 },
-  { src: "Etherscan", finding: "Wallet 0x9a8b…f21c received 0.42 ETH from mixer", conf: 92 },
-  { src: "Whoxy", finding: "Domain secure-login-verify.io registered with same phone hash", conf: 84 },
-  { src: "Twitter Graph", finding: "@nullbyte_x bio contains proton email pattern", conf: 71 },
+  { src: "HaveIBeenPwned", finding: "6 breach matches for j.doe@protonmail.com", conf: 0.98 },
+  { src: "Etherscan", finding: "Wallet 0x9a8b…f21c received 0.42 ETH from mixer", conf: 0.92 },
+  { src: "Whoxy", finding: "Domain secure-login-verify.io registered with same phone hash", conf: 0.84 },
+  { src: "Twitter Graph", finding: "@nullbyte_x bio contains proton email pattern", conf: 0.71 },
 ];
 
 export const identityProfileFixture: IdentityProfile = {
@@ -89,38 +89,38 @@ export const identityProfileFixture: IdentityProfile = {
   linkedInvestigation: "INV-1042",
   totalIdentifiers: 47,
   totalSources: 12,
-  overallConfidence: 86,
+  overallConfidence: 0.86,
   evidence: evidenceFixture,
   sections: [
     { key: "emails", title: "Emails", items: [
-      { value: "j.doe@protonmail.com", confidence: 98, sources: 6, note: "Primary — active" },
-      { value: "shadow.doe@tuta.io", confidence: 82, sources: 3, note: "Alias" },
-      { value: "jd1990@gmail.com", confidence: 61, sources: 2, note: "Historical" },
+      { value: "j.doe@protonmail.com", confidence: 0.98, sources: 6, note: "Primary — active" },
+      { value: "shadow.doe@tuta.io", confidence: 0.82, sources: 3, note: "Alias" },
+      { value: "jd1990@gmail.com", confidence: 0.61, sources: 2, note: "Historical" },
     ]},
     { key: "domains", title: "Domains", items: [
-      { value: "secure-login-verify.io", confidence: 91, sources: 5, note: "Typosquat" },
-      { value: "doe-consulting.net", confidence: 74, sources: 3, note: "Personal" },
+      { value: "secure-login-verify.io", confidence: 0.91, sources: 5, note: "Typosquat" },
+      { value: "doe-consulting.net", confidence: 0.74, sources: 3, note: "Personal" },
     ]},
     { key: "usernames", title: "Usernames", items: [
-      { value: "nullbyte_x", confidence: 76, sources: 4, note: "Twitter / GitHub" },
-      { value: "j.doe_1990", confidence: 64, sources: 2, note: "Reddit" },
-      { value: "jdoe", confidence: 48, sources: 1, note: "Steam" },
+      { value: "nullbyte_x", confidence: 0.76, sources: 4, note: "Twitter / GitHub" },
+      { value: "j.doe_1990", confidence: 0.64, sources: 2, note: "Reddit" },
+      { value: "jdoe", confidence: 0.48, sources: 1, note: "Steam" },
     ]},
     { key: "wallets", title: "Wallets", items: [
-      { value: "0x9a8b3f4c2d1e5f6a7b8c9d0e1f2a3b4c5d6e7f21c", confidence: 88, sources: 7, note: "Ethereum" },
-      { value: "bc1q…9v3f", confidence: 55, sources: 1, note: "Bitcoin — unverified" },
+      { value: "0x9a8b3f4c2d1e5f6a7b8c9d0e1f2a3b4c5d6e7f21c", confidence: 0.88, sources: 7, note: "Ethereum" },
+      { value: "bc1q…9v3f", confidence: 0.55, sources: 1, note: "Bitcoin — unverified" },
     ]},
     { key: "social", title: "Social Accounts", items: [
-      { value: "twitter.com/nullbyte_x", confidence: 79, sources: 3, note: "2.1k followers" },
-      { value: "t.me/ring42", confidence: 84, sources: 4, note: "Channel admin" },
-      { value: "github.com/nullbyte", confidence: 66, sources: 2, note: "12 repos" },
+      { value: "twitter.com/nullbyte_x", confidence: 0.79, sources: 3, note: "2.1k followers" },
+      { value: "t.me/ring42", confidence: 0.84, sources: 4, note: "Channel admin" },
+      { value: "github.com/nullbyte", confidence: 0.66, sources: 2, note: "12 repos" },
     ]},
     { key: "phones", title: "Phones", items: [
-      { value: "+1 415 ••• 0142", confidence: 55, sources: 1, note: "SF Bay Area" },
+      { value: "+1 415 ••• 0142", confidence: 0.55, sources: 1, note: "SF Bay Area" },
     ]},
     { key: "network", title: "Network", items: [
-      { value: "185.220.101.47", confidence: 70, sources: 3, note: "Tor exit" },
-      { value: "AS14061 — DigitalOcean", confidence: 62, sources: 2, note: "Recent" },
+      { value: "185.220.101.47", confidence: 0.70, sources: 3, note: "Tor exit" },
+      { value: "AS14061 — DigitalOcean", confidence: 0.62, sources: 2, note: "Recent" },
     ]},
   ],
 };

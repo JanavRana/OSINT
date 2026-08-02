@@ -8,6 +8,11 @@ interface ConfidenceBarProps {
   ariaLabel?: string;
 }
 
+export function formatConfidencePercent(value: number): number {
+  const pct = value <= 1 ? value * 100 : value;
+  return Math.round(pct);
+}
+
 function toneFor(value: number) {
   if (value >= 85) return "bg-success";
   if (value >= 65) return "bg-warning";
@@ -21,7 +26,8 @@ export function ConfidenceBar({
   valueWidthClass = "w-8",
   ariaLabel = "Confidence",
 }: ConfidenceBarProps) {
-  const clamped = Math.max(0, Math.min(100, value));
+  const percentValue = formatConfidencePercent(value);
+  const clamped = Math.max(0, Math.min(100, percentValue));
   return (
     <div className={cn("flex items-center gap-2", className)}>
       <div
