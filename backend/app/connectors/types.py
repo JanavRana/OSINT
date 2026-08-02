@@ -20,7 +20,7 @@ from typing import Any, Optional
 
 class IdentifierType(str, enum.Enum):
     """
-    The six identifier types supported per Section 4.1 / FR1.1.
+    The identifier types supported per Section 4.1 / FR1.1.
 
     This enum is the single vocabulary connectors and the registry use
     to agree on "what kind of input is this." Adding a new identifier
@@ -32,6 +32,7 @@ class IdentifierType(str, enum.Enum):
     PHONE = "phone"
     USERNAME = "username"
     DOMAIN = "domain"
+    IP = "ip"
     WALLET_ADDRESS = "wallet_address"
     IMAGE = "image"
 

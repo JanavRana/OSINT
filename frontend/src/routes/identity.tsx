@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Mail, Globe, User, Wallet, Share2, Phone, Server, Shield, Copy, ExternalLink } from "lucide-react";
 import { AsyncBoundary } from "@/components/states";
-import { ConfidenceBar } from "@/components/confidence-bar";
+import { ConfidenceBar, formatConfidencePercent } from "@/components/confidence-bar";
 import { MetricPill } from "@/components/field";
 import { useIdentityProfile } from "@/hooks/use-osint-data";
 import type { IdentitySection, IdentitySectionKey } from "@/types/domain";
@@ -99,7 +99,7 @@ function Identity() {
                   <div className="ml-auto flex flex-wrap gap-2">
                     <MetricPill label="Total identifiers" value={String(profile.totalIdentifiers)} />
                     <MetricPill label="Sources" value={String(profile.totalSources)} />
-                    <MetricPill label="Overall confidence" value={`${profile.overallConfidence}%`} tone="success" />
+                    <MetricPill label="Overall confidence" value={`${formatConfidencePercent(profile.overallConfidence)}%`} tone="success" />
                   </div>
                 </div>
               </div>

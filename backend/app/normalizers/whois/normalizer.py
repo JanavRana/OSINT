@@ -19,9 +19,10 @@ class WhoisNormalizer(BaseNormalizer):
         if registrar:
             facts.append(
                 NormalizedFact(
-                    fact_type=FactType.GENERIC,
+                    fact_type=FactType.REGISTRAR,
                     value=registrar,
                     source_connector=self.connector_name,
+                    confidence=0.95,
                     metadata={"field": "registrar"},
                 )
             )
@@ -34,6 +35,7 @@ class WhoisNormalizer(BaseNormalizer):
                     value=creation_date.isoformat(),
                     source_connector=self.connector_name,
                     occurred_at=creation_date,
+                    confidence=0.95,
                     metadata={"field": "creation_date"},
                 )
             )
@@ -42,10 +44,11 @@ class WhoisNormalizer(BaseNormalizer):
         if expiration_date:
             facts.append(
                 NormalizedFact(
-                    fact_type=FactType.GENERIC,
+                    fact_type=FactType.EXPIRATION,
                     value=expiration_date.isoformat(),
                     source_connector=self.connector_name,
                     occurred_at=expiration_date,
+                    confidence=0.90,
                     metadata={"field": "expiration_date"},
                 )
             )
@@ -55,9 +58,10 @@ class WhoisNormalizer(BaseNormalizer):
             for ns in nameservers:
                 facts.append(
                     NormalizedFact(
-                        fact_type=FactType.GENERIC,
+                        fact_type=FactType.NAMESERVER,
                         value=ns,
                         source_connector=self.connector_name,
+                        confidence=0.90,
                         metadata={"field": "nameserver"},
                     )
                 )
@@ -69,6 +73,7 @@ class WhoisNormalizer(BaseNormalizer):
                     fact_type=FactType.ORGANIZATION,
                     value=registrant_org,
                     source_connector=self.connector_name,
+                    confidence=0.80,
                     metadata={"field": "registrant_organization"},
                 )
             )
@@ -80,7 +85,21 @@ class WhoisNormalizer(BaseNormalizer):
                     fact_type=FactType.LOCATION,
                     value=registrant_country,
                     source_connector=self.connector_name,
+                    confidence=0.75,
                     metadata={"field": "registrant_country"},
+                )
+            )
+
+        # Extract emails if present
+        emails = self._extract_emails(raw_payload)
+        for email in emails:
+            facts.append(
+                NormalizedFact(
+                    fact_type=FactType.EMAIL,
+                    value=email,
+                    source_connector=self.connector_name,
+                    confidence=0.85,
+                    metadata={"field": "email"},
                 )
             )
 
@@ -152,3 +171,20 @@ class WhoisNormalizer(BaseNormalizer):
             first = country[0]
             return first.strip() if isinstance(first, str) and first.strip() else None
         return None
+
+    def _extract_emails(self, raw_payload: dict) -> List[str]:
+        emails = raw_payload.get("emails")
+        if emails is None:
+            return []
+        if isinstance(emails, str):
+            stripped = emails.strip().lower()
+            return [stripped] if stripped else []
+        if isinstance(emails, list):
+            result = []
+            for e in emails:
+                if isinstance(e, str):
+                    cleaned = e.strip().lower()
+                    if cleaned and cleaned not in result:
+                        result.append(cleaned)
+            return result
+        return []

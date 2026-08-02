@@ -22,7 +22,10 @@ class RdapConnector(BaseConnector):
         
         rdap_bootstrap_url = f"https://rdap.org/domain/{domain}"
         
-        async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
+        async with httpx.AsyncClient(
+            timeout=self.timeout_seconds,
+            follow_redirects=True,
+        ) as client:
             response = await client.get(rdap_bootstrap_url)
             response.raise_for_status()
             return response.json()

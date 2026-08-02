@@ -35,6 +35,10 @@ class FactType(str, enum.Enum):
     IMAGE_HASH = "image_hash"
     
     DOMAIN_REGISTRATION = "domain_registration"
+    EXPIRATION = "expiration"
+    REGISTRAR = "registrar"
+    NAMESERVER = "nameserver"
+    DNS_RECORD = "dns_record"
     CERTIFICATE = "certificate"
     ARCHIVE_SNAPSHOT = "archive_snapshot"
     SOCIAL_ACCOUNT = "social_account"
