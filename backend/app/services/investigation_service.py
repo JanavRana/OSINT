@@ -51,6 +51,17 @@ class InvestigationService:
     def __init__(self, db: Session) -> None:
         self._db = db
         self._repo = InvestigationRepository(db)
+        self._fact_repo = NormalizedFactRepository(db)
+        self._connector_service = ConnectorExecutionService()
+    
+    async def get_correlated_entities(self, investigation_id: uuid.UUID):
+        """
+        Get correlated entities for an investigation.
+        
+        Placeholder - requires correlation results to be persisted.
+        """
+        from ..correlation.types import CorrelatedEntities
+        return CorrelatedEntities()
         self._connector_service = ConnectorExecutionService(db=db)
         self._fact_repo = NormalizedFactRepository(db)
         self._seed_repo = SeedIdentifierRepository(db)
