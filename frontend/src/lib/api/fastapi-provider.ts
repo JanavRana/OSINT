@@ -307,7 +307,7 @@ class FastAPIDataProvider implements DataProvider {
       }>;
     }>(`/api/v1/investigations/investigations/${investigationId}/execute`, {
       identifier: identifier.value,
-      type: identifier.type,
+      type: mapFrontendIdentifierType(identifier.type),
     });
 
     return mapExecutionResult(response.data);
