@@ -53,6 +53,7 @@ class InvestigationService:
         self._repo = InvestigationRepository(db)
         self._fact_repo = NormalizedFactRepository(db)
         self._connector_service = ConnectorExecutionService()
+        self._seed_repo = SeedIdentifierRepository(db)
     
     async def get_correlated_entities(self, investigation_id: uuid.UUID):
         """
@@ -62,9 +63,6 @@ class InvestigationService:
         """
         from ..correlation.types import CorrelatedEntities
         return CorrelatedEntities()
-        self._connector_service = ConnectorExecutionService(db=db)
-        self._fact_repo = NormalizedFactRepository(db)
-        self._seed_repo = SeedIdentifierRepository(db)
 
     def create_investigation(
         self,
