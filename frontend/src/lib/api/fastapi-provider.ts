@@ -203,44 +203,80 @@ class FastAPIDataProvider implements DataProvider {
         phone: "user",
       };
 
-      // Build nodes — spread them in a rough circle for readability
-      const nodes: import("@/types/domain").GraphNode[] = identifiers.map((id, i) => {
-        const angle = (2 * Math.PI * i) / identifiers.length;
-        const radius = identifiers.length === 1 ? 0 : 35;
-        const cx = 50 + radius * Math.cos(angle);
-        const cy = 50 + radius * Math.sin(angle);
-        return {
-          id: id.id,
-          label: id.value.length > 28 ? id.value.slice(0, 26) + "…" : id.value,
-          type: typeMap[id.type] ?? "domain",
-          x: Math.round(cx),
-          y: Math.round(cy),
-          size: i === 0 ? 34 : 24,
-          primary: i === 0,
-        };
-      });
+      // ── Hierarchical ring layout ─────────────────────────────────────────
+      // Primary node at center. Secondary nodes are grouped by type and
+      // placed in up to two concentric rings so same-type nodes cluster
+      // together visually instead of making a dense star.
+      const [primaryId, ...secondaryIds] = identifiers;
 
-      // Build edges: connect every node back to the primary (seed) node
-      // Also connect nodes of the same type to each other (max 2 extra edges per type)
+      const primaryNode: import("@/types/domain").GraphNode = {
+        id: primaryId.id,
+        label: primaryId.value.length > 28 ? primaryId.value.slice(0, 26) + "…" : primaryId.value,
+        type: typeMap[primaryId.type] ?? "domain",
+        x: 50,
+        y: 50,
+        size: 36,
+        primary: true,
+      };
+
+      // Group secondaries by type to keep same-type nodes adjacent on ring
+      const byType = new Map<string, typeof secondaryIds>();
+      for (const id of secondaryIds) {
+        const t = typeMap[id.type] ?? "domain";
+        const arr = byType.get(t) ?? [];
+        arr.push(id);
+        byType.set(t, arr);
+      }
+
+      // Flatten back out, grouped by type — ring 1 ≤ 8 nodes, rest go to ring 2
+      const grouped = Array.from(byType.values()).flat();
+      const ring1 = grouped.slice(0, 8);
+      const ring2 = grouped.slice(8);
+
+      const buildRingNodes = (
+        items: typeof secondaryIds,
+        radius: number,
+        offsetAngle = 0,
+      ): import("@/types/domain").GraphNode[] =>
+        items.map((id, i) => {
+          const angle = offsetAngle + (2 * Math.PI * i) / items.length;
+          return {
+            id: id.id,
+            label: id.value.length > 28 ? id.value.slice(0, 26) + "…" : id.value,
+            type: typeMap[id.type] ?? "domain",
+            x: Math.round(50 + radius * Math.cos(angle - Math.PI / 2)),
+            y: Math.round(50 + radius * Math.sin(angle - Math.PI / 2)),
+            size: 24,
+            primary: false,
+          };
+        });
+
+      const ring1Nodes = buildRingNodes(ring1, identifiers.length === 1 ? 0 : 28);
+      const ring2Nodes = buildRingNodes(ring2, 42, Math.PI / ring2.length || 0);
+      const nodes: import("@/types/domain").GraphNode[] = [primaryNode, ...ring1Nodes, ...ring2Nodes];
+
+      // ── Edges ─────────────────────────────────────────────────────────────
       const edges: import("@/types/domain").GraphEdge[] = [];
-      const primary = nodes[0];
-      if (primary) {
-        for (const node of nodes.slice(1)) {
-          edges.push({ from: primary.id, to: node.id, kind: "related-to" });
-        }
-        // Cross-link same-type nodes for visual clustering
-        const byType = new Map<string, string[]>();
-        for (const n of nodes) {
-          const arr = byType.get(n.type) ?? [];
-          arr.push(n.id);
-          byType.set(n.type, arr);
-        }
-        for (const ids of byType.values()) {
-          for (let i = 0; i < Math.min(ids.length - 1, 2); i++) {
-            if (ids[i] !== primary.id && ids[i + 1] !== primary.id) {
-              edges.push({ from: ids[i], to: ids[i + 1], kind: "same-type" });
-            }
-          }
+
+      // All ring-1 nodes connect to primary
+      for (const n of ring1Nodes) {
+        edges.push({ from: primaryNode.id, to: n.id, kind: "related-to" });
+      }
+      // Ring-2 nodes connect to the nearest ring-1 node of matching type, or primary
+      for (const n of ring2Nodes) {
+        const peer = ring1Nodes.find((r) => r.type === n.type) ?? primaryNode;
+        edges.push({ from: peer.id, to: n.id, kind: "same-type" });
+      }
+      // Cross-link same-type ring-1 nodes (max 2 per type group)
+      const r1ByType = new Map<string, string[]>();
+      for (const n of ring1Nodes) {
+        const arr = r1ByType.get(n.type) ?? [];
+        arr.push(n.id);
+        r1ByType.set(n.type, arr);
+      }
+      for (const ids of r1ByType.values()) {
+        for (let i = 0; i < Math.min(ids.length - 1, 2); i++) {
+          edges.push({ from: ids[i], to: ids[i + 1], kind: "same-type" });
         }
       }
 
