@@ -17,9 +17,9 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, String, func
+from sqlalchemy import DateTime, Enum, ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
 
@@ -62,6 +62,15 @@ class Investigation(Base):
         default=InvestigationStatus.CREATED,
         server_default=InvestigationStatus.CREATED.value,
     )
+
+    # Owner — nullable so pre-auth investigations are not orphaned.
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -72,5 +81,10 @@ class Investigation(Base):
         onupdate=func.now(),
     )
 
+    # Relationship to the owning user
+    user: Mapped["app.models.user.User | None"] = relationship(  # type: ignore[name-defined]
+        "User", back_populates="investigations", lazy="select"
+    )
+
     def __repr__(self) -> str:  # pragma: no cover - debugging aid only
-        return f"<Investigation id={self.id!s} name={self.name!r} status={self.status!s}>"
+        return f"<Investigation id={self.id!s} name={self.name!r} status={self.status!s}>"

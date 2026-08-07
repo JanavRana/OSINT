@@ -243,3 +243,19 @@ export interface MutationResource<TInput, TOutput> {
   mutate: (input: TInput) => Promise<TOutput>;
   reset: () => void;
 }
+
+// ── Auth ─────────────────────────────────────────────────────────────────────
+
+export interface User {
+  id: string;
+  email: string;
+  fullName: string;
+  isVerified: boolean;
+  createdAt: string;
+}
+
+export interface AuthState {
+  user: User | null;
+  token: string | null;
+  isAuthenticated: boolean;
+}

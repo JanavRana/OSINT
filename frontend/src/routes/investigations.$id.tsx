@@ -1,4 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, redirect, Link } from "@tanstack/react-router";
+import { isAuthenticated } from "@/lib/auth";
 import { AppShell } from "@/components/app-shell";
 import { StatusBadge, SeverityBadge } from "@/components/badges";
 import { Card } from "@/components/ui/card";
@@ -24,6 +25,9 @@ import {
 import type { Connector, Identifier, IdentifierType } from "@/types/domain";
 
 export const Route = createFileRoute("/investigations/$id")({
+  beforeLoad: () => {
+    if (!isAuthenticated()) throw redirect({ to: "/auth" });
+  },
   head: ({ params }) => ({ meta: [{ title: `${params.id} — AXIOM OSINT` }] }),
   component: Detail,
 });

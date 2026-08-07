@@ -197,3 +197,8 @@ export function useDownloadReport() {
   );
 }
 
+export function useDeleteInvestigation() {
+  return useMutation<string, void>((id) =>
+    getDataProvider().deleteInvestigation(id),
+  );
+}

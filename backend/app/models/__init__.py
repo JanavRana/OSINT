@@ -3,5 +3,6 @@ from .investigation import Investigation
 from .normalized_fact import NormalizedFact
 from .report import Report
 from .seed_identifier import SeedIdentifier
+from .user import User
 
-__all__ = ["ConnectorResult", "Investigation", "NormalizedFact", "Report", "SeedIdentifier"]
+__all__ = ["ConnectorResult", "Investigation", "NormalizedFact", "Report", "SeedIdentifier", "User"]
