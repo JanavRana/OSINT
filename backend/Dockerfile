@@ -23,11 +23,13 @@ EXPOSE 8000
 # Use entrypoint script for proper initialization
 CMD ["sh", "-c", "\
     echo 'Waiting for PostgreSQL...' && \
-    until pg_isready -h ${POSTGRES_HOST:-postgres} -p ${POSTGRES_PORT:-5432} -U ${POSTGRES_USER:-osint_user}; do \
-        sleep 2; \
-    done && \
+    if [ -n \"$DATABASE_URL\" ]; then \
+        until pg_isready -d \"$DATABASE_URL\"; do sleep 2; done; \
+    else \
+        until pg_isready -h ${POSTGRES_HOST:-postgres} -p ${POSTGRES_PORT:-5432} -U ${POSTGRES_USER:-osint_user}; do sleep 2; done; \
+    fi && \
     echo 'Running Alembic migrations...' && \
     alembic upgrade head && \
     echo 'Starting FastAPI application...' && \
-    uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload \
+    uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --reload \
 "]
