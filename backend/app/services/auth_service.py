@@ -18,6 +18,7 @@ from app.core.security import (
 )
 from app.models.user import User
 from app.repositories.user_repository import UserRepository
+from app.services.email_service import EmailService
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -25,15 +26,17 @@ settings = get_settings()
 
 def _send_otp_email(email: str, otp: str) -> None:
     """
-    Send the OTP to the user.
-
-    Currently logs to stdout. Swap this implementation for a real SMTP/
-    transactional email call when an email provider is configured.
+    Send the OTP to the user via EmailService.
     """
-    logger.info("=" * 60)
-    logger.info(f"OTP for {email}: {otp}  (expires in {settings.otp_expire_minutes} minutes)")
-    logger.info("=" * 60)
-    print(f"\n[AXIOM AUTH] OTP for {email} → {otp}  (check server logs)\n", flush=True)
+    try:
+        EmailService.send_otp_email(email, otp)
+        logger.info(f"Successfully sent OTP to {email}")
+    except Exception as e:
+        logger.error(f"Failed to send OTP email to {email}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to send OTP email. Please try again later."
+        )
 
 
 class AuthService:
