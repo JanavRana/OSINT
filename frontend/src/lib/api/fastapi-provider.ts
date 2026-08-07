@@ -1,10 +1,10 @@
 /**
  * FastAPI DataProvider implementation.
- * 
+ *
  * This is the production data provider that connects to the FastAPI backend.
  * It implements the DataProvider interface and maps backend DTOs to frontend
  * domain types using the mappers module.
- * 
+ *
  * All components consume data through the DataProvider interface, so swapping
  * this provider in place of mockDataProvider requires no component changes.
  */
@@ -23,10 +23,12 @@ import type {
   Report,
   ReportDownload,
   TimelineEvent,
+  User,
 } from "@/types/domain";
 
 import type { DataProvider } from "./data-provider";
 import { apiClient, extractFilename, isNotFoundError } from "./client";
+import { saveAuth, clearAuth } from "@/lib/auth";
 import {
   deriveDashboardStats,
   mapConnectorResultList,
@@ -42,6 +44,23 @@ import {
   graphFixture,
   identityProfileFixture,
 } from "./mock-fixtures";
+
+/** Map the backend UserRead shape to the frontend User type. */
+function mapUser(raw: {
+  id: string;
+  email: string;
+  full_name: string;
+  is_verified: boolean;
+  created_at: string;
+}): User {
+  return {
+    id: raw.id,
+    email: raw.email,
+    fullName: raw.full_name,
+    isVerified: raw.is_verified,
+    createdAt: raw.created_at,
+  };
+}
 
 /**
  * FastAPI-backed implementation of the DataProvider interface.
@@ -80,17 +99,13 @@ class FastAPIDataProvider implements DataProvider {
 
       return mapInvestigation(response.data);
     } catch (error) {
-      // Return undefined for 404s, rethrow other errors
-      if (isNotFoundError(error)) {
-        return undefined;
-      }
+      if (isNotFoundError(error)) return undefined;
       throw error;
     }
   }
 
   async listIdentifiers(investigationId?: string): Promise<Identifier[]> {
     if (!investigationId) return [];
-
     try {
       const response = await apiClient.get<{
         items: Array<{
@@ -103,7 +118,6 @@ class FastAPIDataProvider implements DataProvider {
         }>;
         count: number;
       }>(`/api/v1/investigations/investigations/${investigationId}/identifiers`);
-
       return mapIdentifierList(response.data);
     } catch (error) {
       if (isNotFoundError(error)) return [];
@@ -113,7 +127,6 @@ class FastAPIDataProvider implements DataProvider {
 
   async listConnectors(investigationId?: string): Promise<Connector[]> {
     if (!investigationId) return [];
-
     try {
       const response = await apiClient.get<{
         items: Array<{
@@ -126,7 +139,6 @@ class FastAPIDataProvider implements DataProvider {
         }>;
         count: number;
       }>(`/api/v1/investigations/investigations/${investigationId}/connectors`);
-
       return mapConnectorResultList(response.data);
     } catch (error) {
       if (isNotFoundError(error)) return [];
@@ -135,11 +147,7 @@ class FastAPIDataProvider implements DataProvider {
   }
 
   async listTimeline(investigationId?: string): Promise<TimelineEvent[]> {
-    if (!investigationId) {
-      // Global timeline not supported yet - return empty array
-      return [];
-    }
-
+    if (!investigationId) return [];
     try {
       const response = await apiClient.get<{
         events: Array<{
@@ -156,43 +164,32 @@ class FastAPIDataProvider implements DataProvider {
         }>;
         count: number;
       }>(`/api/v1/investigations/investigations/${investigationId}/timeline`);
-
       return mapTimelineResponse(response.data);
     } catch (error) {
-      if (isNotFoundError(error)) {
-        return [];
-      }
+      if (isNotFoundError(error)) return [];
       throw error;
     }
   }
 
   async listReports(_investigationId?: string): Promise<Report[]> {
-    // TODO: Backend endpoint not yet implemented
-    // GET /api/v1/investigations/{id}/reports (list of reports)
-    // For now, return empty array
     return [];
   }
 
   async getDashboardStats(): Promise<DashboardStat[]> {
-    // Derive stats from investigation list until backend provides dedicated endpoint
     const investigations = await this.listInvestigations();
     return deriveDashboardStats(investigations);
   }
 
   async getIdentityProfile(_subjectId?: string): Promise<IdentityProfile> {
-    // TODO: Future feature - requires M4 (Entity Correlation Engine)
-    // For now, return mock data so identity page doesn't break
     return identityProfileFixture;
   }
 
   async getGraph(investigationId?: string): Promise<GraphData> {
     if (!investigationId) return graphFixture;
-
     try {
       const identifiers = await this.listIdentifiers(investigationId);
       if (!identifiers || identifiers.length === 0) return graphFixture;
 
-      // Map identifier types to graph node types
       const typeMap: Record<string, import("@/types/domain").GraphNodeType> = {
         email: "email",
         domain: "domain",
@@ -203,7 +200,6 @@ class FastAPIDataProvider implements DataProvider {
         phone: "user",
       };
 
-      // Build nodes — spread them in a rough circle for readability
       const nodes: import("@/types/domain").GraphNode[] = identifiers.map((id, i) => {
         const angle = (2 * Math.PI * i) / identifiers.length;
         const radius = identifiers.length === 1 ? 0 : 35;
@@ -220,15 +216,12 @@ class FastAPIDataProvider implements DataProvider {
         };
       });
 
-      // Build edges: connect every node back to the primary (seed) node
-      // Also connect nodes of the same type to each other (max 2 extra edges per type)
       const edges: import("@/types/domain").GraphEdge[] = [];
       const primary = nodes[0];
       if (primary) {
         for (const node of nodes.slice(1)) {
           edges.push({ from: primary.id, to: node.id, kind: "related-to" });
         }
-        // Cross-link same-type nodes for visual clustering
         const byType = new Map<string, string[]>();
         for (const n of nodes) {
           const arr = byType.get(n.type) ?? [];
@@ -254,30 +247,20 @@ class FastAPIDataProvider implements DataProvider {
   // Mutation Operations
   // =========================================================================
 
-  async createInvestigation(
-    input: NewInvestigationInput
-  ): Promise<Investigation> {
+  async createInvestigation(input: NewInvestigationInput): Promise<Investigation> {
     const response = await apiClient.post<{
       id: string;
       name: string;
       status: "created" | "running" | "completed" | "failed";
       created_at: string;
       updated_at: string;
-      seed_identifier?: {
-        value: string;
-        type: string;
-      } | null;
+      seed_identifier?: { value: string; type: string } | null;
     }>("/api/v1/investigations/investigations", {
       name: input.name,
-      // Persist the seed identifier so it survives page reloads
       seed_identifier: input.target
-        ? {
-            value: input.target,
-            type: mapFrontendIdentifierType(input.seedType),
-          }
+        ? { value: input.target, type: mapFrontendIdentifierType(input.seedType) }
         : undefined,
     });
-
     return mapInvestigation(response.data);
   }
 
@@ -309,7 +292,6 @@ class FastAPIDataProvider implements DataProvider {
       identifier: identifier.value,
       type: mapFrontendIdentifierType(identifier.type),
     });
-
     return mapExecutionResult(response.data);
   }
 
@@ -321,37 +303,77 @@ class FastAPIDataProvider implements DataProvider {
       file_size: number;
       generated_at: string;
     }>(`/api/v1/investigations/investigations/${investigationId}/report`);
-
     return mapGeneratedReport(response.data);
   }
 
-  async downloadReport(
-    investigationId: string,
-    _reportId?: string
-  ): Promise<ReportDownload> {
-    // Backend endpoint: GET /api/v1/investigations/{id}/report
-    // Returns binary PDF with Content-Disposition header
+  async downloadReport(investigationId: string, _reportId?: string): Promise<ReportDownload> {
     const response = await apiClient.get(
       `/api/v1/investigations/investigations/${investigationId}/report`,
-      {
-        responseType: "blob",
-      }
+      { responseType: "blob" }
     );
-
-    // Extract filename from Content-Disposition header
     const contentDisposition = response.headers["content-disposition"];
     const filename = extractFilename(contentDisposition);
-
-    // Create object URL for the blob
     const blob = new Blob([response.data], { type: "application/pdf" });
     const url = URL.createObjectURL(blob);
-
     return {
       reportId: _reportId || `RPT-${investigationId}`,
       filename,
       contentType: "application/pdf",
       url,
     };
+  }
+
+  // =========================================================================
+  // Auth Operations
+  // =========================================================================
+
+  async signup(email: string, fullName: string, password: string): Promise<User> {
+    const response = await apiClient.post<{
+      id: string;
+      email: string;
+      full_name: string;
+      is_verified: boolean;
+      created_at: string;
+    }>("/api/v1/auth/signup", { email, full_name: fullName, password });
+    return mapUser(response.data);
+  }
+
+  async verifyOtp(email: string, otp: string): Promise<{ token: string; user: User }> {
+    const response = await apiClient.post<{
+      access_token: string;
+      token_type: string;
+      user: { id: string; email: string; full_name: string; is_verified: boolean; created_at: string };
+    }>("/api/v1/auth/verify-otp", { email, otp });
+    const user = mapUser(response.data.user);
+    saveAuth(response.data.access_token, user);
+    return { token: response.data.access_token, user };
+  }
+
+  async login(email: string, password: string): Promise<{ token: string; user: User }> {
+    const response = await apiClient.post<{
+      access_token: string;
+      token_type: string;
+      user: { id: string; email: string; full_name: string; is_verified: boolean; created_at: string };
+    }>("/api/v1/auth/login", { email, password });
+    const user = mapUser(response.data.user);
+    saveAuth(response.data.access_token, user);
+    return { token: response.data.access_token, user };
+  }
+
+  async resendOtp(email: string): Promise<void> {
+    await apiClient.post("/api/v1/auth/resend-otp", { email });
+  }
+
+  async logout(): Promise<void> {
+    clearAuth();
+  }
+
+  // =========================================================================
+  // Investigation Delete
+  // =========================================================================
+
+  async deleteInvestigation(id: string): Promise<void> {
+    await apiClient.delete(`/api/v1/investigations/investigations/${id}`);
   }
 }
 

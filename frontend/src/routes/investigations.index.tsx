@@ -1,5 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { useMemo, useState, useCallback } from "react";
 import { AppShell } from "@/components/app-shell";
 import { StatusBadge, SeverityBadge } from "@/components/badges";
 import { Card } from "@/components/ui/card";
@@ -7,13 +7,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Plus, Filter, ChevronLeft, ChevronRight, ArrowUpDown } from "lucide-react";
+import { Search, Plus, Filter, ChevronLeft, ChevronRight, ArrowUpDown, Trash2 } from "lucide-react";
 import { AsyncBoundary, EmptyState } from "@/components/states";
-import { useInvestigations } from "@/hooks/use-osint-data";
+import { useInvestigations, useDeleteInvestigation } from "@/hooks/use-osint-data";
 import { fmtDate } from "@/lib/format";
+import { isAuthenticated } from "@/lib/auth";
+import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import type { Investigation, InvestigationStatus, Severity } from "@/types/domain";
 
 export const Route = createFileRoute("/investigations/")({
+  beforeLoad: () => {
+    if (!isAuthenticated()) throw redirect({ to: "/auth" });
+  },
   head: () => ({ meta: [{ title: "Investigations — AXIOM OSINT" }] }),
   component: List,
 });
@@ -58,12 +63,23 @@ function List() {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [sort, setSort] = useState<SortKey>("recent");
+  const [deleteTarget, setDeleteTarget] = useState<Investigation | null>(null);
   const resource = useInvestigations();
+  const deleteInv = useDeleteInvestigation();
   const all = resource.data ?? [];
   const filtered = useMemo(
     () => applyFilters(all, query, status, sort),
     [all, query, status, sort],
   );
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!deleteTarget) return;
+    try {
+      await deleteInv.mutate(deleteTarget.id);
+      resource.refetch?.();
+    } catch { /* error surfaced via deleteInv.error */ }
+    finally { setDeleteTarget(null); }
+  }, [deleteTarget, deleteInv, resource]);
 
   return (
     <AppShell
@@ -77,6 +93,24 @@ function List() {
         </Link>
       }
     >
+      {/* Delete confirmation modal */}
+      <ConfirmationModal
+        open={!!deleteTarget}
+        title="Delete investigation?"
+        description={
+          <>
+            <strong className="text-foreground">{deleteTarget?.name}</strong> will be permanently deleted
+            along with all its connector results, identifiers, and facts.
+            This action cannot be undone.
+          </>
+        }
+        confirmLabel="Delete"
+        destructive
+        isPending={deleteInv.isPending}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteTarget(null)}
+      />
+
       <Card className="glass p-4 border-border/60">
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[220px]">
@@ -130,11 +164,12 @@ function List() {
                       <th scope="col" className="px-5 py-3 font-medium">Progress</th>
                       <th scope="col" className="px-5 py-3 font-medium">Owner</th>
                       <th scope="col" className="px-5 py-3 font-medium">Updated</th>
+                      <th scope="col" className="px-5 py-3 font-medium sr-only">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filtered.map((inv) => (
-                      <tr key={inv.id} className="border-b border-border/40 hover:bg-white/[0.02] transition">
+                      <tr key={inv.id} className="border-b border-border/40 hover:bg-white/[0.02] transition group">
                         <td className="px-5 py-3">
                           <Link to="/investigations/$id" params={{ id: inv.id }} className="flex items-center gap-3">
                             <div className="h-8 w-8 rounded-md bg-gradient-to-br from-primary/20 to-accent/20 grid place-items-center text-[10px] font-mono text-primary">
@@ -157,11 +192,22 @@ function List() {
                         </td>
                         <td className="px-5 py-3 text-xs">{inv.owner}</td>
                         <td className="px-5 py-3 text-xs text-muted-foreground">{fmtDate(inv.updatedAt)}</td>
+                        <td className="px-5 py-3">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Delete ${inv.name}`}
+                            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => setDeleteTarget(inv)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </td>
                       </tr>
                     ))}
                     {filtered.length === 0 && (
                       <tr>
-                        <td colSpan={7} className="px-5 py-16 text-center text-muted-foreground">
+                        <td colSpan={8} className="px-5 py-16 text-center text-muted-foreground">
                           <EmptyState
                             title="No investigations match your filters."
                             description="Adjust your search or clear filters to see more results."

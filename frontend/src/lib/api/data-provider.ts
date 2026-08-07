@@ -20,6 +20,7 @@ import type {
   Report,
   ReportDownload,
   TimelineEvent,
+  User,
 } from "@/types/domain";
 import {
   connectorsFixture,
@@ -55,6 +56,16 @@ export interface DataProvider {
   ): Promise<ExecutionResult>;
   generateReport(investigationId: string): Promise<GeneratedReport>;
   downloadReport(investigationId: string, reportId?: string): Promise<ReportDownload>;
+
+  // Auth
+  signup(email: string, fullName: string, password: string): Promise<User>;
+  verifyOtp(email: string, otp: string): Promise<{ token: string; user: User }>;
+  login(email: string, password: string): Promise<{ token: string; user: User }>;
+  resendOtp(email: string): Promise<void>;
+  logout(): Promise<void>;
+
+  // Investigation mutations
+  deleteInvestigation(id: string): Promise<void>;
 }
 
 // ---- Mock implementation ---------------------------------------------------
@@ -156,6 +167,25 @@ export const mockDataProvider: DataProvider = {
       filename: `${investigationId}-report.pdf`,
       contentType: "application/pdf",
     };
+  },
+
+  // Auth — no-ops in mock
+  async signup() {
+    throw new Error("Not implemented in mock provider");
+  },
+  async verifyOtp() {
+    throw new Error("Not implemented in mock provider");
+  },
+  async login() {
+    throw new Error("Not implemented in mock provider");
+  },
+  async resendOtp() { /* no-op */ },
+  async logout() { /* no-op */ },
+
+  // Delete — optimistic mock
+  async deleteInvestigation(id) {
+    const idx = investigationsFixture.findIndex((i) => i.id === id);
+    if (idx !== -1) investigationsFixture.splice(idx, 1);
   },
 };
 

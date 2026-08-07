@@ -12,6 +12,7 @@ import { useNotifications } from "@/hooks/use-notifications";
 import { useProfileSettings } from "@/hooks/use-settings";
 import { NotificationsPanel } from "@/components/notifications-panel";
 import { useConnectors } from "@/hooks/use-osint-data";
+import { useLogout, useCurrentUser } from "@/hooks/use-auth";
 
 const nav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -74,6 +75,14 @@ export function AppShell({ children, title, subtitle, actions }: {
       .slice(0, 2)
       .join("")
       .toUpperCase() || "AI";
+
+  const logout = useLogout();
+  const authUser = useCurrentUser();
+  const displayName = authUser?.fullName || profile.fullName;
+  const displayInitials = authUser
+    ? authUser.fullName.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase() || "AI"
+    : initials;
+  const displayRole = authUser?.email || profile.role;
 
   return (
     <div className="min-h-screen w-full flex bg-background text-foreground">
@@ -150,19 +159,23 @@ export function AppShell({ children, title, subtitle, actions }: {
             </Link>
             <div className="hidden sm:flex items-center gap-2 pl-2 ml-2 border-l border-border/60">
               <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary/70 to-accent/70 grid place-items-center text-xs font-bold text-primary-foreground">
-                {initials}
+                {displayInitials}
               </div>
               <div className="hidden lg:block leading-tight">
-                <div className="text-xs font-medium">{profile.fullName}</div>
-                <div className="text-[10px] text-muted-foreground">{profile.role}</div>
+                <div className="text-xs font-medium">{displayName}</div>
+                <div className="text-[10px] text-muted-foreground">{displayRole}</div>
               </div>
               <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
             </div>
-            <Link to="/auth" className="hidden sm:block">
-              <Button variant="ghost" size="icon" title="Sign out">
-                <LogOut className="h-4 w-4" />
-              </Button>
-            </Link>
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Sign out"
+              onClick={logout}
+              className="hidden sm:flex"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
         </header>
 

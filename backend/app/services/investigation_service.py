@@ -70,6 +70,7 @@ class InvestigationService:
         name: str,
         seed_value: str | None = None,
         seed_type: str | None = None,
+        user_id: uuid.UUID | None = None,
     ) -> tuple[Investigation, SeedIdentifier | None]:
         """
         Create a new investigation, optionally with a primary seed identifier.
@@ -77,7 +78,7 @@ class InvestigationService:
         Returns:
             A tuple of (Investigation, SeedIdentifier | None).
         """
-        investigation = self._repo.create(name=name)
+        investigation = self._repo.create(name=name, user_id=user_id)
         seed: SeedIdentifier | None = None
         if seed_value and seed_type:
             seed = self._seed_repo.create(
@@ -96,10 +97,38 @@ class InvestigationService:
         return investigation
 
     def list_investigations(
-        self, *, skip: int = 0, limit: int = 100
+        self,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+        user_id: uuid.UUID | None = None,
     ) -> tuple[list[Investigation], int]:
-        """Return a page of investigations and the total count available."""
-        return self._repo.list(skip=skip, limit=limit)
+        """Return a page of investigations (filtered by user) and the total count."""
+        return self._repo.list(skip=skip, limit=limit, user_id=user_id)
+
+    def delete_investigation(
+        self,
+        investigation_id: uuid.UUID,
+        user_id: uuid.UUID,
+    ) -> None:
+        """
+        Delete an investigation by ID after verifying ownership.
+
+        Raises:
+            NotFoundError: Investigation does not exist.
+            HTTPException 403: Caller does not own the investigation.
+        """
+        from fastapi import HTTPException, status
+
+        investigation = self._repo.get_by_id(investigation_id)
+        if investigation is None:
+            raise NotFoundError(f"Investigation {investigation_id} not found")
+        if investigation.user_id is not None and investigation.user_id != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to delete this investigation.",
+            )
+        self._repo.delete(investigation)
 
     async def execute_investigation(
         self, investigation_id: uuid.UUID, identifier: Identifier

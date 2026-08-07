@@ -19,6 +19,7 @@ from app.models.normalized_fact import NormalizedFact
 from app.models.connector_result import ConnectorResult
 from app.models.report import Report
 from app.models.seed_identifier import SeedIdentifier
+from app.models.user import User
 
 from app.api.health import router as health_router
 from app.api.routes import router as api_router
@@ -66,16 +67,25 @@ from sqlalchemy.exc import OperationalError
 
 @app.on_event("startup")
 async def startup():
+    """Wait for PostgreSQL to be ready.
+    
+    NOTE: Database schema initialization is handled by Alembic migrations.
+    DO NOT call Base.metadata.create_all() here - it bypasses migration tracking
+    and causes the 'alembic_version' table to be missing.
+    
+    For proper initialization, run: alembic upgrade head
+    """
     for attempt in range(30):
         try:
             with engine.connect() as conn:
                 conn.execute(text("SELECT 1"))
+            print("✓ PostgreSQL connection established")
             break
         except OperationalError:
             print(f"Waiting for PostgreSQL... ({attempt + 1}/30)")
             time.sleep(2)
-
-    Base.metadata.create_all(bind=engine)
+    else:
+        raise RuntimeError("Failed to connect to PostgreSQL after 30 attempts")
 
 @app.get("/")
 async def root():

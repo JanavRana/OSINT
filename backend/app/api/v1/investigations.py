@@ -3,6 +3,7 @@ Investigation API router.
 
 Milestone 15: Complete end-to-end investigation execution pipeline.
 Milestone 18: Added timeline endpoint.
+Auth: All endpoints require a valid JWT. Investigations are scoped per user.
 """
 
 import logging
@@ -12,7 +13,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.connectors.types import Identifier
+from app.core.deps import get_current_user
 from app.db.session import get_db
+from app.models.user import User
 from app.schemas.investigation import (
     ConnectorExecutionResult,
     ConnectorResultListResponse,
@@ -50,6 +53,15 @@ def get_timeline_service(db: Session = Depends(get_db)) -> TimelineService:
     return TimelineService(db)
 
 
+def _assert_owner(investigation, current_user: User) -> None:
+    """Raise HTTP 403 if the investigation does not belong to the current user."""
+    if investigation.user_id is not None and investigation.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have access to this investigation.",
+        )
+
+
 @router.post(
     "",
     response_model=InvestigationRead,
@@ -59,6 +71,7 @@ def get_timeline_service(db: Session = Depends(get_db)) -> TimelineService:
 def create_investigation(
     payload: InvestigationCreate,
     service: InvestigationService = Depends(get_investigation_service),
+    current_user: User = Depends(get_current_user),
 ) -> InvestigationRead:
     seed_value = payload.seed_identifier.value if payload.seed_identifier else None
     seed_type = payload.seed_identifier.type.value if payload.seed_identifier else None
@@ -66,6 +79,7 @@ def create_investigation(
         name=payload.name,
         seed_value=seed_value,
         seed_type=seed_type,
+        user_id=current_user.id,
     )
     return InvestigationRead(
         id=investigation.id,
@@ -91,8 +105,11 @@ def list_investigations(
         100, ge=1, le=500, description="Maximum number of records to return."
     ),
     service: InvestigationService = Depends(get_investigation_service),
+    current_user: User = Depends(get_current_user),
 ) -> InvestigationList:
-    items, total = service.list_investigations(skip=skip, limit=limit)
+    items, total = service.list_investigations(
+        skip=skip, limit=limit, user_id=current_user.id
+    )
     return InvestigationList(
         items=[InvestigationRead.model_validate(item) for item in items],
         count=total,
@@ -108,6 +125,7 @@ def get_investigation(
     investigation_id: uuid.UUID,
     service: InvestigationService = Depends(get_investigation_service),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> InvestigationRead:
     try:
         investigation = service.get_investigation(investigation_id)
@@ -115,6 +133,8 @@ def get_investigation(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
         ) from exc
+
+    _assert_owner(investigation, current_user)
 
     # Attach seed identifier if one was saved at creation time
     seed_repo = SeedIdentifierRepository(db)
@@ -139,6 +159,25 @@ def get_investigation(
     )
 
 
+@router.delete(
+    "/{investigation_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete an investigation",
+)
+def delete_investigation(
+    investigation_id: uuid.UUID,
+    service: InvestigationService = Depends(get_investigation_service),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Permanently delete an investigation. Only the owner can delete their own cases."""
+    try:
+        service.delete_investigation(investigation_id, current_user.id)
+    except NotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
+
+
 @router.post(
     "/{investigation_id}/execute",
     response_model=InvestigationExecuteResponse,
@@ -149,10 +188,11 @@ async def execute_investigation(
     investigation_id: uuid.UUID,
     payload: InvestigationExecuteRequest,
     service: InvestigationService = Depends(get_investigation_service),
+    current_user: User = Depends(get_current_user),
 ) -> InvestigationExecuteResponse:
     """
     Execute complete investigation pipeline.
-    
+
     Pipeline:
     - Execute all registered connectors
     - Persist connector results
@@ -161,18 +201,22 @@ async def execute_investigation(
     - Return complete execution result
     """
     try:
+        # Verify ownership before executing
+        investigation = service.get_investigation(investigation_id)
+        _assert_owner(investigation, current_user)
+
         identifier = Identifier(value=payload.identifier, type=payload.type)
-        
+
         logger.info(
             f"API: Executing investigation {investigation_id} for "
             f"{identifier.value} ({identifier.type})"
         )
-        
+
         # Execute full pipeline
         execution_result = await service.execute_investigation(
             investigation_id, identifier
         )
-        
+
         # Transform raw responses into connector results
         connector_results = [
             ConnectorExecutionResult(
@@ -184,7 +228,7 @@ async def execute_investigation(
             )
             for envelope in execution_result.raw_responses
         ]
-        
+
         return InvestigationExecuteResponse(
             investigation_id=execution_result.investigation_id,
             status=execution_result.status,
@@ -200,11 +244,13 @@ async def execute_investigation(
             ),
             connector_results=connector_results,
         )
-    
+
     except NotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
         ) from exc
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.error(
             f"API: Investigation execution failed: {exc}",
@@ -216,7 +262,6 @@ async def execute_investigation(
         ) from exc
 
 
-
 @router.get(
     "/{investigation_id}/identifiers",
     response_model=IdentifierListResponse,
@@ -226,6 +271,7 @@ def list_identifiers(
     investigation_id: uuid.UUID,
     service: InvestigationService = Depends(get_investigation_service),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> IdentifierListResponse:
     """
     List normalized facts as identifiers for an investigation.
@@ -233,11 +279,13 @@ def list_identifiers(
     Maps fact_type to identifier type for the frontend.
     """
     try:
-        service.get_investigation(investigation_id)
+        investigation = service.get_investigation(investigation_id)
     except NotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
         ) from exc
+
+    _assert_owner(investigation, current_user)
 
     fact_repo = NormalizedFactRepository(db)
     facts = fact_repo.list_by_investigation(investigation_id)
@@ -285,6 +333,7 @@ def list_connectors(
     investigation_id: uuid.UUID,
     service: InvestigationService = Depends(get_investigation_service),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> ConnectorResultListResponse:
     """
     List connector execution results for an investigation.
@@ -293,11 +342,13 @@ def list_connectors(
     and execution status.
     """
     try:
-        service.get_investigation(investigation_id)
+        investigation = service.get_investigation(investigation_id)
     except NotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
         ) from exc
+
+    _assert_owner(investigation, current_user)
 
     result_repo = ConnectorResultRepository(db)
     results = result_repo.list_by_investigation(investigation_id)
@@ -340,24 +391,26 @@ def get_timeline(
     event_type: str | None = Query(None, description="Filter by event type"),
     timeline_service: TimelineService = Depends(get_timeline_service),
     investigation_service: InvestigationService = Depends(get_investigation_service),
+    current_user: User = Depends(get_current_user),
 ) -> TimelineResponse:
     """
     Get timeline of events for an investigation.
-    
+
     Extracts temporal events from normalized facts and returns them
     in chronological order. Supports filtering by entity and event type.
     """
     try:
-        # Verify investigation exists
-        investigation_service.get_investigation(investigation_id)
-        
+        # Verify investigation exists and ownership
+        investigation = investigation_service.get_investigation(investigation_id)
+        _assert_owner(investigation, current_user)
+
         # Get timeline events
         events = timeline_service.get_timeline(
             investigation_id=investigation_id,
             entity_id=entity_id,
             event_type=event_type,
         )
-        
+
         return TimelineResponse(
             events=[
                 TimelineEventResponse(
@@ -376,11 +429,13 @@ def get_timeline(
             ],
             count=len(events),
         )
-    
+
     except NotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
         ) from exc
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.error(
             f"API: Timeline retrieval failed: {exc}",
@@ -405,10 +460,14 @@ def get_report_service(db: Session = Depends(get_db)):
 )
 def generate_report(
     investigation_id: uuid.UUID,
-    report_service = Depends(get_report_service),
+    report_service=Depends(get_report_service),
+    service: InvestigationService = Depends(get_investigation_service),
+    current_user: User = Depends(get_current_user),
 ):
     """Generate PDF report for an investigation."""
     try:
+        investigation = service.get_investigation(investigation_id)
+        _assert_owner(investigation, current_user)
         report = report_service.generate_report(investigation_id)
         return {
             "id": str(report.id),
@@ -421,6 +480,8 @@ def generate_report(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
         ) from exc
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.error(f"Report generation failed: {exc}", exc_info=True)
         raise HTTPException(
@@ -435,26 +496,30 @@ def generate_report(
 )
 def download_report(
     investigation_id: uuid.UUID,
-    report_service = Depends(get_report_service),
+    report_service=Depends(get_report_service),
+    service: InvestigationService = Depends(get_investigation_service),
+    current_user: User = Depends(get_current_user),
 ):
     """Download the latest PDF report for an investigation."""
     from fastapi.responses import Response
-    
+
     try:
+        investigation = service.get_investigation(investigation_id)
+        _assert_owner(investigation, current_user)
         report = report_service.get_latest_report(investigation_id)
-        
+
         if report.status != "completed":
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Report is {report.status}, not available for download"
             )
-        
+
         if not report.pdf_content:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Report PDF content not found"
             )
-        
+
         return Response(
             content=report.pdf_content,
             media_type="application/pdf",
@@ -462,7 +527,7 @@ def download_report(
                 "Content-Disposition": f"attachment; filename=investigation_{investigation_id}_report.pdf"
             }
         )
-    
+
     except NotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)

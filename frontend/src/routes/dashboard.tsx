@@ -1,4 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { isAuthenticated } from "@/lib/auth";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,9 @@ import { fmtDate } from "@/lib/format";
 import type { Investigation } from "@/types/domain";
 
 export const Route = createFileRoute("/dashboard")({
+  beforeLoad: () => {
+    if (!isAuthenticated()) throw redirect({ to: "/auth" });
+  },
   head: () => ({
     meta: [
       { title: "Dashboard — AXIOM OSINT" },
