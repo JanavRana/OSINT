@@ -41,6 +41,14 @@ class Settings(BaseSettings):
     # POSTGRES_* fields above in the `database_url` property below.
     database_url: str | None = None
 
+    # --- JWT Auth ---
+    jwt_secret_key: str = "CHANGE-THIS-IN-PRODUCTION-USE-A-LONG-RANDOM-STRING"
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 60 * 24 * 7  # 7 days
+
+    # --- OTP ---
+    otp_expire_minutes: int = 5
+
     @property
     def sqlalchemy_database_url(self) -> str:
         """Return the connection string SQLAlchemy should use.
@@ -67,10 +75,10 @@ def validate_config():
     """Validate required configuration at startup."""
     settings = get_settings()
     errors = []
-    
+
     if not settings.sqlalchemy_database_url:
         errors.append("Database URL configuration is invalid")
-    
+
     if errors:
         print("Configuration validation failed:", file=sys.stderr)
         for error in errors:

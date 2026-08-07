@@ -13,6 +13,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
+from app.api.v1.auth import router as auth_router
 from app.api.v1.investigations import router as investigations_router
 from app.api.v1.graph import router as graph_router
 from app.api.v1.risk import router as risk_router
@@ -44,6 +45,11 @@ def health_check(db: Session = Depends(get_db)) -> dict:
 # -------------------------
 
 v1_router = APIRouter()
+
+v1_router.include_router(
+    auth_router,
+    tags=["Auth"],
+)
 
 v1_router.include_router(
     investigations_router,

@@ -1,4 +1,5 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
+import { isAuthenticated } from "@/lib/auth";
 import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
@@ -12,6 +13,9 @@ import { useCreateInvestigation } from "@/hooks/use-osint-data";
 import type { IdentifierType, Severity } from "@/types/domain";
 
 export const Route = createFileRoute("/investigations/new")({
+  beforeLoad: () => {
+    if (!isAuthenticated()) throw redirect({ to: "/auth" });
+  },
   head: () => ({ meta: [{ title: "New Investigation — AXIOM OSINT" }] }),
   component: New,
 });
