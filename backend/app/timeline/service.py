@@ -289,6 +289,10 @@ class TimelineService:
 
         This allows future connectors to automatically participate in timeline
         generation if they include timestamp fields.
+
+        If no timestamp fields are found in metadata, a synthetic fallback event
+        is emitted from fact.created_at so that every normalized fact always
+        produces at least one timeline entry.
         """
         events = []
 
@@ -323,7 +327,25 @@ class TimelineService:
                         f"Could not parse timestamp {field} from fact {fact.id}"
                     )
 
+        # Fallback: if no timestamp metadata found, synthesise an event from
+        # fact.created_at so that every fact appears in the timeline.
+        if not events and fact.created_at is not None:
+            events.append(
+                TimelineEvent(
+                    investigation_id=fact.investigation_id,
+                    entity_id=fact.value,
+                    occurred_at=fact.created_at,
+                    event_type=fact.fact_type,
+                    title=f"{fact.fact_type.replace('_', ' ').title()}: {fact.value}",
+                    description=f"Discovered by {fact.connector_name}",
+                    connector=fact.connector_name,
+                    source_fact_id=fact.id,
+                    confidence=fact.confidence,
+                )
+            )
+
         return events
+
 
     def _parse_timestamp(self, value: any) -> datetime:
         """

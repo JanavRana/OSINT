@@ -43,9 +43,11 @@ interface Selection {
   edge: GraphEdge | null;
 }
 
-// ─── Draggable Graph Canvas ──────────────────────────────────────────────────
+// ─── Node position map ────────────────────────────────────────────────────────
 
 type NodePositions = Map<string, { x: number; y: number }>;
+
+// ─── Draggable + Pannable Graph Canvas ───────────────────────────────────────
 
 function GraphCanvas({
   data,
@@ -56,6 +58,8 @@ function GraphCanvas({
   query,
   onSelect,
   onNodeDrag,
+  onPanChange,
+  onZoomChange,
 }: {
   data: GraphData;
   zoom: number;
@@ -65,10 +69,22 @@ function GraphCanvas({
   query: string;
   onSelect: (s: Selection) => void;
   onNodeDrag: (id: string, x: number, y: number) => void;
+  onPanChange: (pan: { x: number; y: number }) => void;
+  onZoomChange: (zoom: number) => void;
 }) {
   const { nodes, edges } = data;
-  const canvasRef = useRef<HTMLDivElement>(null);
-  const draggingRef = useRef<{ id: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  // Drag state: either dragging a node or panning the canvas
+  const dragState = useRef<{
+    type: "node" | "pan";
+    nodeId?: string;
+    startX: number;
+    startY: number;
+    origX: number;
+    origY: number;
+  } | null>(null);
 
   const getPos = (n: GraphNode) => positions.get(n.id) ?? { x: n.x, y: n.y };
 
@@ -78,118 +94,218 @@ function GraphCanvas({
     return new Set(nodes.filter((n) => n.label.toLowerCase().includes(lowerQ)).map((n) => n.id));
   }, [nodes, lowerQ]);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent, nodeId: string, currentX: number, currentY: number) => {
+  // ── Wheel zoom ──────────────────────────────────────────────────────────────
+  const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
-    draggingRef.current = { id: nodeId, startX: e.clientX, startY: e.clientY, origX: currentX, origY: currentY };
+    const delta = -e.deltaY * 0.05;
+    onZoomChange(Math.max(30, Math.min(250, zoom + delta)));
+  }, [zoom, onZoomChange]);
 
-    const onMouseMove = (me: MouseEvent) => {
-      if (!draggingRef.current || !canvasRef.current) return;
-      const rect = canvasRef.current.getBoundingClientRect();
-      const dx = (me.clientX - draggingRef.current.startX) / (rect.width * zoom / 100);
-      const dy = (me.clientY - draggingRef.current.startY) / (rect.height * zoom / 100);
-      onNodeDrag(draggingRef.current.id, draggingRef.current.origX + dx, draggingRef.current.origY + dy);
+  // ── Node mouse-down ─────────────────────────────────────────────────────────
+  const handleNodeMouseDown = useCallback((
+    e: React.MouseEvent,
+    nodeId: string,
+    currentX: number,
+    currentY: number,
+  ) => {
+    e.preventDefault();
+    e.stopPropagation(); // Don't trigger canvas pan
+    const scale = zoom / 100;
+
+    // Node drag: movement in screen px → movement in % space
+    // % space spans 100 "units" across the full container width/height.
+    // 1 screen px = (100 / containerDim) / scale  % units.
+    dragState.current = {
+      type: "node",
+      nodeId,
+      startX: e.clientX,
+      startY: e.clientY,
+      origX: currentX,
+      origY: currentY,
     };
 
-    const onMouseUp = () => {
-      draggingRef.current = null;
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
+    const onMove = (me: MouseEvent) => {
+      if (!dragState.current || dragState.current.type !== "node") return;
+      const container = containerRef.current;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      // Convert screen-px delta → % delta (account for current zoom scale)
+      const pxPerPercW = (rect.width * scale) / 100;
+      const pxPerPercH = (rect.height * scale) / 100;
+      const dx = (me.clientX - dragState.current.startX) / pxPerPercW;
+      const dy = (me.clientY - dragState.current.startY) / pxPerPercH;
+      onNodeDrag(dragState.current.nodeId!, dragState.current.origX + dx, dragState.current.origY + dy);
     };
-
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", onMouseUp);
+    const onUp = () => {
+      dragState.current = null;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
   }, [zoom, onNodeDrag]);
+
+  // ── Canvas pan (background drag) ────────────────────────────────────────────
+  const handleCanvasMouseDown = useCallback((e: React.MouseEvent) => {
+    // Only left-button drag on the canvas background itself
+    if (e.button !== 0) return;
+    dragState.current = {
+      type: "pan",
+      startX: e.clientX,
+      startY: e.clientY,
+      origX: pan.x,
+      origY: pan.y,
+    };
+
+    const onMove = (me: MouseEvent) => {
+      if (!dragState.current || dragState.current.type !== "pan") return;
+      const dx = me.clientX - dragState.current.startX;
+      const dy = me.clientY - dragState.current.startY;
+      // Pan is applied after scaling, so no need to correct for zoom
+      onPanChange({ x: dragState.current.origX + dx, y: dragState.current.origY + dy });
+    };
+    const onUp = () => {
+      dragState.current = null;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }, [pan, onPanChange]);
+
+  // ── SVG curved edges ────────────────────────────────────────────────────────
+  const renderEdges = () => (
+    <svg
+      ref={svgRef}
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+      className="absolute inset-0 h-full w-full pointer-events-none"
+      aria-hidden="true"
+    >
+      <defs>
+        <linearGradient id="edge-grad" x1="0" x2="1">
+          <stop offset="0%" stopColor="oklch(0.82 0.17 195)" stopOpacity="0.6" />
+          <stop offset="100%" stopColor="oklch(0.65 0.24 295)" stopOpacity="0.6" />
+        </linearGradient>
+        <marker id="arrowhead" markerWidth="3" markerHeight="2" refX="2.8" refY="1" orient="auto" markerUnits="strokeWidth">
+          <polygon points="0 0, 3 1, 0 2" fill="oklch(0.82 0.17 195)" opacity="0.6" />
+        </marker>
+      </defs>
+      {edges.map((e, i) => {
+        const a = nodes.find((n) => n.id === e.from);
+        const b = nodes.find((n) => n.id === e.to);
+        if (!a || !b) return null;
+        const posA = getPos(a);
+        const posB = getPos(b);
+        const active = selection.edge === e;
+        const highlighted =
+          (lowerQ && (matchingIds.has(e.from) || matchingIds.has(e.to))) ||
+          (selection.node && (e.from === selection.node.id || e.to === selection.node.id));
+
+        // Compute cubic bezier control points for a gentle curve
+        const x1 = posA.x;
+        const y1 = posA.y;
+        const x2 = posB.x;
+        const y2 = posB.y;
+        const mx = (x1 + x2) / 2;
+        const my = (y1 + y2) / 2;
+        // Perpendicular offset for the control point (subtle arc)
+        const len = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2) || 1;
+        const ox = -(y2 - y1) / len * 6;
+        const oy = (x2 - x1) / len * 6;
+        const d = `M ${x1} ${y1} Q ${mx + ox} ${my + oy} ${x2} ${y2}`;
+
+        return (
+          <path
+            key={i}
+            d={d}
+            fill="none"
+            stroke={active || highlighted ? "oklch(0.82 0.17 195)" : "url(#edge-grad)"}
+            strokeWidth={active || highlighted ? 0.3 : 0.2}
+            strokeDasharray={active ? "0" : "2.5 2.5"}
+            opacity={lowerQ && !matchingIds.has(e.from) && !matchingIds.has(e.to) ? 0.15 : 0.55}
+            markerEnd="url(#arrowhead)"
+            className="pointer-events-auto cursor-pointer transition-opacity"
+            onClick={() => onSelect({ node: null, edge: e })}
+          />
+        );
+      })}
+    </svg>
+  );
 
   return (
     <div
-      ref={canvasRef}
-      className="absolute inset-0 overflow-hidden cursor-grab active:cursor-grabbing"
-      style={{ transform: `scale(${zoom / 100}) translate(${pan.x}px, ${pan.y}px)`, transformOrigin: "center" }}
+      ref={containerRef}
+      className="absolute inset-0 overflow-hidden cursor-grab active:cursor-grabbing select-none"
+      onMouseDown={handleCanvasMouseDown}
+      onWheel={handleWheel}
+      style={{ userSelect: "none" }}
     >
-      {/* Edges */}
-      <svg className="absolute inset-0 h-full w-full pointer-events-none" aria-hidden="true">
-        <defs>
-          <linearGradient id="edge-grad" x1="0" x2="1">
-            <stop offset="0%" stopColor="oklch(0.82 0.17 195)" stopOpacity="0.7" />
-            <stop offset="100%" stopColor="oklch(0.65 0.24 295)" stopOpacity="0.7" />
-          </linearGradient>
-        </defs>
-        {edges.map((e, i) => {
-          const a = nodes.find((n) => n.id === e.from);
-          const b = nodes.find((n) => n.id === e.to);
-          if (!a || !b) return null;
-          const posA = getPos(a);
-          const posB = getPos(b);
-          const active = selection.edge === e;
-          const highlighted =
-            (lowerQ && (matchingIds.has(e.from) || matchingIds.has(e.to))) ||
-            (selection.node && (e.from === selection.node.id || e.to === selection.node.id));
+      {/* Inner transform layer — scale around centre, then pan */}
+      <div
+        className="absolute inset-0"
+        style={{
+          transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom / 100})`,
+          transformOrigin: "center center",
+        }}
+      >
+        {renderEdges()}
+
+        {/* Nodes */}
+        {nodes.map((n) => {
+          const Icon = iconMap[n.type];
+          const size = n.size ?? 26;
+          const isSel = selection.node?.id === n.id;
+          const isMatch = lowerQ ? matchingIds.has(n.id) : true;
+          const pos = getPos(n);
+
           return (
-            <line
-              key={i}
-              x1={`${posA.x}%`} y1={`${posA.y}%`}
-              x2={`${posB.x}%`} y2={`${posB.y}%`}
-              stroke={active || highlighted ? "oklch(0.82 0.17 195)" : "url(#edge-grad)"}
-              strokeWidth={active || highlighted ? 2 : 1}
-              strokeDasharray={active ? "0" : "4 4"}
-              opacity={lowerQ && !matchingIds.has(e.from) && !matchingIds.has(e.to) ? 0.2 : 1}
-              className="pointer-events-auto cursor-pointer transition-opacity"
-              onClick={() => onSelect({ node: null, edge: e })}
-            />
+            <button
+              key={n.id}
+              className={cn(
+                "absolute -translate-x-1/2 -translate-y-1/2 group focus-visible:outline-none transition-opacity",
+                !isMatch && lowerQ && "opacity-20"
+              )}
+              style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
+              aria-label={`${n.type} ${n.label}`}
+              aria-pressed={isSel}
+              onMouseDown={(e) => handleNodeMouseDown(e, n.id, pos.x, pos.y)}
+              onClick={(e) => { e.stopPropagation(); onSelect({ node: n, edge: null }); }}
+            >
+              {n.primary && (
+                <div className="absolute inset-0 -m-4 rounded-full bg-primary/25 blur-xl" aria-hidden="true" />
+              )}
+              {isMatch && lowerQ && (
+                <div className="absolute inset-0 -m-2 rounded-full bg-warning/30 blur-md animate-pulse" aria-hidden="true" />
+              )}
+              <div
+                className={cn(
+                  "relative rounded-full border grid place-items-center transition-all",
+                  colorMap[n.type],
+                  isSel && "ring-2 ring-primary ring-offset-2 ring-offset-background scale-110",
+                  n.primary && "shadow-[0_0_30px_-4px_var(--primary)]",
+                )}
+                style={{ height: size, width: size }}
+                aria-hidden="true"
+              >
+                <Icon className="h-3.5 w-3.5" />
+              </div>
+              <div className="mt-1 text-[10px] font-mono text-muted-foreground whitespace-nowrap text-center opacity-80 group-hover:opacity-100 max-w-[120px] truncate">
+                {n.label}
+              </div>
+            </button>
           );
         })}
-      </svg>
-
-      {/* Nodes */}
-      {nodes.map((n) => {
-        const Icon = iconMap[n.type];
-        const size = n.size ?? 26;
-        const isSel = selection.node?.id === n.id;
-        const isMatch = lowerQ ? matchingIds.has(n.id) : true;
-        const pos = getPos(n);
-
-        return (
-          <button
-            key={n.id}
-            className={cn(
-              "absolute -translate-x-1/2 -translate-y-1/2 group focus-visible:outline-none transition-opacity",
-              !isMatch && lowerQ && "opacity-20"
-            )}
-            style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
-            aria-label={`${n.type} ${n.label}`}
-            aria-pressed={isSel}
-            onMouseDown={(e) => handleMouseDown(e, n.id, pos.x, pos.y)}
-            onClick={() => onSelect({ node: n, edge: null })}
-          >
-            {n.primary && <div className="absolute inset-0 -m-3 rounded-full bg-primary/30 blur-xl" aria-hidden="true" />}
-            {isMatch && lowerQ && (
-              <div className="absolute inset-0 -m-2 rounded-full bg-warning/30 blur-md animate-pulse" aria-hidden="true" />
-            )}
-            <div
-              className={cn(
-                "relative rounded-full border grid place-items-center transition-all",
-                colorMap[n.type],
-                isSel && "ring-2 ring-primary ring-offset-2 ring-offset-background scale-110",
-                n.primary && "shadow-[0_0_30px_-4px_var(--primary)]",
-              )}
-              style={{ height: size, width: size }}
-              aria-hidden="true"
-            >
-              <Icon className="h-3.5 w-3.5" />
-            </div>
-            <div className="mt-1 text-[10px] font-mono text-muted-foreground whitespace-nowrap text-center opacity-80 group-hover:opacity-100 max-w-[80px] truncate">
-              {n.label}
-            </div>
-          </button>
-        );
-      })}
+      </div>
     </div>
   );
 }
 
+// ─── Legend ───────────────────────────────────────────────────────────────────
+
 function GraphLegend() {
   return (
-    <div className="absolute bottom-3 left-3 glass rounded-xl p-3 text-xs">
+    <div className="absolute bottom-3 left-3 glass rounded-xl p-3 text-xs pointer-events-none">
       <div className="font-medium mb-2">Legend</div>
       <div className="grid grid-cols-2 gap-x-3 gap-y-1">
         {(Object.keys(iconMap) as GraphNodeType[]).map((t) => {
@@ -204,9 +320,14 @@ function GraphLegend() {
           );
         })}
       </div>
+      <div className="mt-2 text-[9px] text-muted-foreground/60 leading-tight">
+        Scroll to zoom · Drag canvas to pan<br />Drag node to reposition
+      </div>
     </div>
   );
 }
+
+// ─── Node / Edge detail panels ────────────────────────────────────────────────
 
 function NodeDetails({ node, edges, nodes }: { node: GraphNode; edges: GraphEdge[]; nodes: GraphNode[] }) {
   const Icon = iconMap[node.type];
@@ -265,7 +386,7 @@ function Graph() {
   const [selectedInvId, setSelectedInvId] = useState<string | undefined>(undefined);
   const resource = useGraph(selectedInvId);
   const [zoom, setZoom] = useState(100);
-  const [pan] = useState({ x: 0, y: 0 });
+  const [pan, setPan] = useState({ x: 0, y: 0 });
   const [selection, setSelection] = useState<Selection>({ node: null, edge: null });
   const [query, setQuery] = useState("");
   const [positions, setPositions] = useState<NodePositions>(new Map());
@@ -273,9 +394,13 @@ function Graph() {
   const handleNodeDrag = useCallback((id: string, x: number, y: number) => {
     setPositions((prev) => {
       const next = new Map(prev);
-      next.set(id, { x: Math.max(5, Math.min(95, x)), y: Math.max(5, Math.min(95, y)) });
+      next.set(id, { x: Math.max(3, Math.min(97, x)), y: Math.max(3, Math.min(97, y)) });
       return next;
     });
+  }, []);
+
+  const handleZoomChange = useCallback((newZoom: number) => {
+    setZoom(Math.round(Math.max(30, Math.min(250, newZoom))));
   }, []);
 
   // Reset positions when investigation changes
@@ -284,15 +409,18 @@ function Graph() {
     setPositions(new Map());
     setSelection({ node: null, edge: null });
     setQuery("");
+    setPan({ x: 0, y: 0 });
+    setZoom(100);
   };
 
   const fitToScreen = () => {
     setZoom(100);
+    setPan({ x: 0, y: 0 });
     setPositions(new Map());
   };
 
   return (
-    <AppShell title="Graph View" subtitle="Interactive identity graph — click nodes and edges to inspect">
+    <AppShell title="Graph View" subtitle="Interactive identity graph — scroll to zoom, drag to pan, click nodes & edges to inspect">
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-4">
         {/* Graph area */}
         <Card className="glass border-border/60 overflow-hidden">
@@ -333,17 +461,17 @@ function Graph() {
               />
             </div>
 
-            <Button variant="ghost" size="sm" className="gap-1 h-8">
-              <Layers className="h-3.5 w-3.5" aria-hidden="true" /> Layout
+            <Button variant="ghost" size="sm" className="gap-1 h-8" onClick={fitToScreen}>
+              <Layers className="h-3.5 w-3.5" aria-hidden="true" /> Fit
             </Button>
 
             {/* Zoom controls */}
             <div className="ml-auto flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setZoom((z) => Math.max(40, z - 10))} aria-label="Zoom out">
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleZoomChange(zoom - 15)} aria-label="Zoom out">
                 <ZoomOut className="h-3.5 w-3.5" aria-hidden="true" />
               </Button>
-              <span className="text-xs font-mono w-10 text-center text-muted-foreground">{zoom}%</span>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setZoom((z) => Math.min(200, z + 10))} aria-label="Zoom in">
+              <span className="text-xs font-mono w-10 text-center text-muted-foreground">{Math.round(zoom)}%</span>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleZoomChange(zoom + 15)} aria-label="Zoom in">
                 <ZoomIn className="h-3.5 w-3.5" aria-hidden="true" />
               </Button>
               <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Fit to screen" onClick={fitToScreen}>
@@ -382,6 +510,8 @@ function Graph() {
                       query={query}
                       onSelect={setSelection}
                       onNodeDrag={handleNodeDrag}
+                      onPanChange={setPan}
+                      onZoomChange={handleZoomChange}
                     />
                     <GraphLegend />
                   </>

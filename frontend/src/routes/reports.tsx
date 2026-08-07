@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -89,6 +89,7 @@ function ReportListItem({
             {report.investigationId} · {fmtDate(report.createdAt)}
           </div>
           <div className="mt-2 flex items-center gap-2 text-[10px]">
+            <ReportStatusIcon status={report.status} />
             <span className={cn("px-1.5 py-0.5 rounded-full font-medium", statusColor[report.status])}>
               {statusLabel[report.status]}
             </span>
@@ -106,21 +107,79 @@ function ReportListItem({
 function ReportPreview({
   report,
   investigation,
+  onStatusUpdate,
 }: {
   report: SessionReport;
   investigation?: Investigation;
+  onStatusUpdate: (reportId: string, status: SessionReport["status"]) => void;
 }) {
   const download = useDownloadReport();
+  const generate = useGenerateReport();
   const isReady = report.status === "ready";
+  const isFailed = report.status === "failed";
+  const isPending = report.status === "queued" || report.status === "generating";
 
+  // ── Polling: check status every 3s while queued/generating ─────────────────
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopPolling = useCallback(() => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+  }, []);
+
+  const pollStatus = useCallback(async () => {
+    if (!report.investigationId) return;
+    try {
+      // Re-generate (idempotent on backend) or call a status endpoint.
+      // Since our backend endpoint is POST-to-generate, we re-issue the
+      // generate call — if the PDF already exists the backend returns its
+      // current status. This is the safest path without a dedicated GET status.
+      const result = await generate.mutate(report.investigationId);
+      const newStatus: SessionReport["status"] =
+        result.status === "ready"
+          ? "ready"
+          : result.status === "failed"
+          ? "failed"
+          : result.status === "generating"
+          ? "generating"
+          : "queued";
+
+      onStatusUpdate(report.reportId, newStatus);
+
+      if (newStatus === "ready" || newStatus === "failed") {
+        stopPolling();
+      }
+    } catch {
+      // Don't stop polling on network errors — try again next interval
+    }
+  }, [report.investigationId, report.reportId, generate, onStatusUpdate, stopPolling]);
+
+  useEffect(() => {
+    if (isPending) {
+      // Start polling
+      pollingRef.current = setInterval(pollStatus, 3000);
+    } else {
+      stopPolling();
+    }
+    return stopPolling;
+  }, [isPending, pollStatus, stopPolling]);
+
+  // ── Download ────────────────────────────────────────────────────────────────
   const handleDownload = async () => {
     try {
-      const result = await download.mutate({ investigationId: report.investigationId, reportId: report.reportId });
+      const result = await download.mutate({
+        investigationId: report.investigationId,
+        reportId: report.reportId,
+      });
       if (result.url) {
         const a = document.createElement("a");
         a.href = result.url;
         a.download = result.filename;
+        document.body.appendChild(a);
         a.click();
+        document.body.removeChild(a);
         URL.revokeObjectURL(result.url);
       }
     } catch {
@@ -222,10 +281,17 @@ function ReportPreview({
               </>
             )}
 
-            {!isReady && (
+            {isPending && (
               <div className="border-t pt-4 text-center text-slate-400">
                 <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
-                <p>Report is being generated. Download will be available shortly.</p>
+                <p>Report is being generated — polling for status…</p>
+              </div>
+            )}
+
+            {isFailed && (
+              <div className="border-t pt-4 text-center text-red-400">
+                <XCircle className="h-5 w-5 mx-auto mb-2" />
+                <p>Report generation failed. Please try generating again.</p>
               </div>
             )}
 
@@ -244,22 +310,42 @@ function ReportPreview({
 function ReportsPage() {
   const invRes = useInvestigations();
   const generate = useGenerateReport();
-  const { reports, addReport } = useSessionReports();
+  const { reports, addReport, updateReport } = useSessionReports();
   const [selectedReport, setSelectedReport] = useState<SessionReport | null>(null);
   const [selectedInvId, setSelectedInvId] = useState<string>("");
 
   const investigations = invRes.data ?? [];
   const selectedInv = investigations.find((i) => i.id === selectedInvId);
 
+  // Keep selectedReport in sync when the same report's status is updated
+  const handleStatusUpdate = useCallback(
+    (reportId: string, status: SessionReport["status"]) => {
+      updateReport(reportId, { status });
+      setSelectedReport((prev) =>
+        prev?.reportId === reportId ? { ...prev, status } : prev
+      );
+    },
+    [updateReport]
+  );
+
   const handleGenerate = async () => {
     if (!selectedInvId || !selectedInv) return;
     try {
       const result = await generate.mutate(selectedInvId);
+      const mapped: SessionReport["status"] =
+        result.status === "ready"
+          ? "ready"
+          : result.status === "failed"
+          ? "failed"
+          : result.status === "generating"
+          ? "generating"
+          : "queued";
+
       const newReport: SessionReport = {
         reportId: result.reportId,
         investigationId: result.investigationId,
         investigationName: selectedInv.name,
-        status: result.status === "ready" ? "ready" : result.status === "failed" ? "failed" : "generating",
+        status: mapped,
         createdAt: result.createdAt,
       };
       addReport(newReport);
@@ -268,6 +354,11 @@ function ReportsPage() {
       // surfaced via generate.error
     }
   };
+
+  // Sync selectedReport with latest version from the list (for status updates)
+  const liveSelectedReport = selectedReport
+    ? (reports.find((r) => r.reportId === selectedReport.reportId) ?? selectedReport)
+    : null;
 
   return (
     <AppShell
@@ -340,7 +431,7 @@ function ReportsPage() {
                 <ReportListItem
                   key={r.reportId}
                   report={r}
-                  active={selectedReport?.reportId === r.reportId}
+                  active={liveSelectedReport?.reportId === r.reportId}
                   onSelect={setSelectedReport}
                 />
               ))}
@@ -349,10 +440,12 @@ function ReportsPage() {
         </div>
 
         {/* Right: preview */}
-        {selectedReport ? (
+        {liveSelectedReport ? (
           <ReportPreview
-            report={selectedReport}
-            investigation={investigations.find((i) => i.id === selectedReport.investigationId)}
+            key={liveSelectedReport.reportId}
+            report={liveSelectedReport}
+            investigation={investigations.find((i) => i.id === liveSelectedReport.investigationId)}
+            onStatusUpdate={handleStatusUpdate}
           />
         ) : (
           <Card className="glass border-border/60 min-h-[400px] grid place-items-center">
