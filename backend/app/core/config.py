@@ -49,9 +49,10 @@ class Settings(BaseSettings):
     # --- OTP ---
     otp_expire_minutes: int = 5
 
-    # --- Email (Resend) ---
-    resend_api_key: str = ""
-    resend_from_email: str = "onboarding@resend.dev"
+    # --- EmailJS ---
+    emailjs_service_id: str = ""
+    emailjs_template_id: str = ""
+    emailjs_public_key: str = ""
 
     @property
     def sqlalchemy_database_url(self) -> str:
