@@ -35,6 +35,7 @@ class EmailService:
         req = urllib.request.Request("https://api.resend.com/emails", method="POST")
         req.add_header("Authorization", f"Bearer {settings.resend_api_key}")
         req.add_header("Content-Type", "application/json")
+        req.add_header("User-Agent", "IntelWeave-Backend/1.0 (Integration/Resend)")
         
         try:
             with urllib.request.urlopen(req, data=json.dumps(payload).encode("utf-8"), timeout=10) as response:
