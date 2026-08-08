@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     emailjs_service_id: str = ""
     emailjs_template_id: str = ""
     emailjs_public_key: str = ""
+    emailjs_private_key: str = ""
 
     @property
     def sqlalchemy_database_url(self) -> str:

@@ -24,9 +24,12 @@ class EmailService:
             "service_id": settings.emailjs_service_id,
             "template_id": settings.emailjs_template_id,
             "user_id": settings.emailjs_public_key,
+            "accessToken": settings.emailjs_private_key,
             "template_params": {
                 "to_email": to_email,
-                "otp": otp
+                "otp": otp,
+                "passcode": otp,
+                "time": "15 minutes"
             }
         }
         
