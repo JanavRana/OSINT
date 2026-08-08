@@ -1,0 +1,61 @@
+# GitHub - Code hosting platform
+id: github
+display_name: GitHub
+category: developer
+homepage: https://github.com
+
+profile_url_template: "https://github.com/{username}"
+api_endpoint: "https://api.github.com/users/{username}"
+
+detection:
+  strategy: json_api
+  json_api:
+    success_field: "$.login"
+    not_found_status: 404
+
+network:
+  timeout_seconds: 6
+  retries: 2
+  backoff: exponential
+  base_delay_ms: 250
+
+rate_limit:
+  requests_per_minute: 30
+  scope: global
+
+auth:
+  login_required: false
+  captcha_risk: low
+  api_key_required: false
+
+confidence_rules:
+  base_reliability: 0.95
+  verification_method: api_confirmed
+  corroboration_fields:
+    - display_name
+    - avatar_url
+    - bio
+    - account_created
+    - location
+    - company
+
+parser:
+  type: json
+  fields:
+    display_name: "$.name"
+    avatar_url: "$.avatar_url"
+    bio: "$.bio"
+    account_created: "$.created_at"
+    location: "$.location"
+    company: "$.company"
+    public_repos: "$.public_repos"
+    followers: "$.followers"
+
+normalizer: username.normalizer.default
+enabled: true
+tags:
+  - developer
+  - code-hosting
+  - high-confidence
+  - api-based
+notes: "Official GitHub API with high reliability. No authentication required for public profiles."

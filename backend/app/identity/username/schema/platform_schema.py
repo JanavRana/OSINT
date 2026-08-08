@@ -250,8 +250,10 @@ class PlatformDefinition(BaseModel):
     @model_validator(mode='after')
     def validate_api_endpoint_placeholder(self):
         """Ensure api_endpoint contains {username} placeholder if present."""
-        if self.api_endpoint and '{username}' not in self.api_endpoint:
-            raise ValueError("api_endpoint must contain {username} placeholder")
+        # GraphQL endpoints pass username as variable, not in URL
+        if self.detection.strategy != DetectionStrategyType.GRAPHQL:
+            if self.api_endpoint and '{username}' not in self.api_endpoint:
+                raise ValueError("api_endpoint must contain {username} placeholder")
         
         return self
     

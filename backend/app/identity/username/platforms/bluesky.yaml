@@ -1,0 +1,53 @@
+# Bluesky - Decentralized social network
+id: bluesky
+display_name: Bluesky
+category: professional
+homepage: https://bsky.app
+
+profile_url_template: "https://bsky.app/profile/{username}"
+api_endpoint: "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor={username}"
+
+detection:
+  strategy: json_api
+  json_api:
+    success_field: "$.handle"
+    not_found_status: 400
+
+network:
+  timeout_seconds: 8
+  retries: 2
+  backoff: exponential
+  base_delay_ms: 300
+
+rate_limit:
+  requests_per_minute: 20
+  scope: global
+
+auth:
+  login_required: false
+  captcha_risk: low
+
+confidence_rules:
+  base_reliability: 0.87
+  verification_method: api_confirmed
+  corroboration_fields:
+    - display_name
+    - avatar_url
+    - bio
+
+parser:
+  type: json
+  fields:
+    display_name: "$.displayName"
+    avatar_url: "$.avatar"
+    bio: "$.description"
+    followers: "$.followersCount"
+
+normalizer: username.normalizer.default
+enabled: true
+tags:
+  - social
+  - decentralized
+  - high-confidence
+  - api-based
+notes: "Bluesky public API. Reliable for username verification."

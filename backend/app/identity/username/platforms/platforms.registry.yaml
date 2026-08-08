@@ -1,0 +1,59 @@
+# Platform Registry
+# Lists all platform definition files to be loaded
+#
+# To add a new platform:
+# 1. Create a YAML file in this directory following PlatformDefinition schema
+# 2. Add the filename to the platforms list below
+# 3. Platform will be automatically loaded and validated on startup
+
+platforms:
+  # Developer platforms
+  - github.yaml
+  - gitlab.yaml
+  - leetcode.yaml
+  - codeforces.yaml
+  - hackerrank.yaml
+  - codechef.yaml
+  - codepen.yaml
+  - npm.yaml
+  - pypi.yaml
+  - docker-hub.yaml
+  - kaggle.yaml
+  - sourceforge.yaml
+  
+  # Social platforms
+  - reddit.yaml
+  - x.yaml
+  - instagram.yaml
+  - tiktok.yaml
+  - youtube.yaml
+  - twitch.yaml
+  - pinterest.yaml
+  - medium.yaml
+  - devto.yaml
+  - soundcloud.yaml
+  - vimeo.yaml
+  - flickr.yaml
+  - tumblr.yaml
+  
+  # Professional platforms
+  - linkedin.yaml
+  - keybase.yaml
+  - mastodon.yaml
+  - bluesky.yaml
+  
+  # Creative platforms
+  - behance.yaml
+  - dribbble.yaml
+  
+  # Forum/Community platforms
+  - hackernews.yaml
+  - quora.yaml
+  - producthunt.yaml
+  
+  # Gaming platforms
+  - steam.yaml
+  - discord.yaml
+  
+  # Meta/other platforms
+  - facebook.yaml

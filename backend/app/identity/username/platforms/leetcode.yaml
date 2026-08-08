@@ -1,0 +1,61 @@
+# LeetCode - Coding practice platform
+id: leetcode
+display_name: LeetCode
+category: developer
+homepage: https://leetcode.com
+
+profile_url_template: "https://leetcode.com/{username}"
+api_endpoint: "https://leetcode.com/graphql"
+
+detection:
+  strategy: graphql
+  graphql:
+    query: |
+      query getUserProfile($username: String!) {
+        matchedUser(username: $username) {
+          username
+          profile {
+            realName
+            userAvatar
+            reputation
+          }
+        }
+      }
+    success_field: "$.matchedUser.username"
+
+network:
+  timeout_seconds: 8
+  retries: 2
+  backoff: exponential
+  base_delay_ms: 300
+
+rate_limit:
+  requests_per_minute: 15
+  scope: global
+
+auth:
+  login_required: false
+  captcha_risk: low
+
+confidence_rules:
+  base_reliability: 0.90
+  verification_method: graphql_confirmed
+  corroboration_fields:
+    - display_name
+    - avatar_url
+
+parser:
+  type: json
+  fields:
+    display_name: "$.matchedUser.profile.realName"
+    avatar_url: "$.matchedUser.profile.userAvatar"
+    reputation: "$.matchedUser.profile.reputation"
+
+normalizer: username.normalizer.default
+enabled: true
+tags:
+  - developer
+  - competitive-programming
+  - high-confidence
+  - graphql
+notes: "LeetCode uses GraphQL API. Reliable for username verification."

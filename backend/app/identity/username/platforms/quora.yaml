@@ -1,0 +1,44 @@
+# Quora - Question and answer platform
+id: quora
+display_name: Quora
+category: forum
+homepage: https://www.quora.com
+
+profile_url_template: "https://www.quora.com/profile/{username}"
+
+detection:
+  strategy: status_code
+  status_code:
+    success_codes: [200]
+    not_found_codes: [404]
+
+network:
+  timeout_seconds: 8
+  retries: 2
+  backoff: exponential
+  base_delay_ms: 300
+
+rate_limit:
+  requests_per_minute: 15
+  scope: global
+
+auth:
+  login_required: false
+  captcha_risk: medium
+
+confidence_rules:
+  base_reliability: 0.73
+  verification_method: html_scrape
+  corroboration_fields: []
+
+parser:
+  type: html
+  fields: {}
+
+normalizer: username.normalizer.default
+enabled: true
+tags:
+  - forum
+  - qa
+  - medium-confidence
+notes: "Quora doesn't have public API. Status code detection with moderate CAPTCHA risk."
