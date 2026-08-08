@@ -49,13 +49,11 @@ class Settings(BaseSettings):
     # --- OTP ---
     otp_expire_minutes: int = 5
 
-    # --- SMTP / Email ---
-    smtp_host: str = "localhost"
-    smtp_port: int = 587
-    smtp_username: str = ""
-    smtp_password: str = ""
-    smtp_from_email: str = "noreply@intelweave.com"
-    smtp_use_tls: bool = True
+    # --- EmailJS ---
+    emailjs_service_id: str = ""
+    emailjs_template_id: str = ""
+    emailjs_public_key: str = ""
+    emailjs_private_key: str = ""
 
     @property
     def sqlalchemy_database_url(self) -> str:

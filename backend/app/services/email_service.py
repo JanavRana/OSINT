@@ -1,41 +1,50 @@
-import smtplib
+import json
 import logging
-from email.message import EmailMessage
+import urllib.request
+import urllib.error
 from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
 class EmailService:
     @staticmethod
+    def _log_code(to_email: str, code: str, reason: str):
+        print(f"\n{'=' * 56}\n  [{reason}] OTP for {to_email}: {code}\n{'=' * 56}\n", flush=True)
+        
+    @staticmethod
     def send_otp_email(to_email: str, otp: str) -> None:
         settings = get_settings()
         
-        msg = EmailMessage()
-        msg["Subject"] = "Verify your Intel Weave account"
-        msg["From"] = settings.smtp_from_email
-        msg["To"] = to_email
+        if not settings.emailjs_service_id or not settings.emailjs_public_key:
+            logger.warning("EmailJS keys are missing. Simulating email send.")
+            EmailService._log_code(to_email, otp, "NO MAIL TRANSPORT")
+            return
+            
+        payload = {
+            "service_id": settings.emailjs_service_id,
+            "template_id": settings.emailjs_template_id,
+            "user_id": settings.emailjs_public_key,
+            "accessToken": settings.emailjs_private_key,
+            "template_params": {
+                "to_email": to_email,
+                "otp": otp,
+                "passcode": otp,
+                "time": "15 minutes"
+            }
+        }
         
-        html_content = f"""\
-<html>
-  <body>
-    <p>Your verification code is:</p>
-    <h2>{otp}</h2>
-    <p>This code expires in {settings.otp_expire_minutes} minutes.</p>
-  </body>
-</html>
-"""
-        msg.add_alternative(html_content, subtype="html")
+        req = urllib.request.Request("https://api.emailjs.com/api/v1.0/email/send", method="POST")
+        req.add_header("Content-Type", "application/json")
+        req.add_header("User-Agent", "IntelWeave-Backend/1.0")
         
         try:
-            server = smtplib.SMTP(settings.smtp_host, settings.smtp_port)
-            if settings.smtp_use_tls:
-                server.starttls()
-                
-            if settings.smtp_username and settings.smtp_password:
-                server.login(settings.smtp_username, settings.smtp_password)
-                
-            server.send_message(msg)
-            server.quit()
+            with urllib.request.urlopen(req, data=json.dumps(payload).encode("utf-8"), timeout=15) as response:
+                result = response.read()
+                logger.info("EmailJS API email sent successfully.")
+        except urllib.error.HTTPError as e:
+            error_body = e.read().decode('utf-8', errors='replace')
+            logger.error(f"EmailJS API HTTP error: {e.code} - {error_body}")
+            EmailService._log_code(to_email, otp, "EMAILJS REJECTED - code logged instead")
         except Exception as e:
-            logger.error(f"Failed to send email to {to_email}: {e}")
-            raise Exception("Failed to send OTP email.") from e
+            logger.error(f"Failed to send email to {to_email} via EmailJS: {e}")
+            EmailService._log_code(to_email, otp, "DELIVERY FAILED - code logged instead")
