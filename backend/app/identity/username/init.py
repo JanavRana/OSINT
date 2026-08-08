@@ -7,6 +7,7 @@ Loads platform definitions and registers them with the plugin registry on startu
 import logging
 from pathlib import Path
 
+from ..types import IdentifierType
 from ..plugin_runtime.registry import get_registry
 from .loader import register_username_platforms
 
@@ -48,10 +49,16 @@ def get_enabled_platforms() -> list[str]:
     """
     registry = get_registry()
     plugins = registry.filter_plugins(
-        identifier_type="username",
+        identifier_type=IdentifierType.USERNAME,
         enabled_only=True
     )
-    return [p.id for p in plugins]
+    if not plugins:
+        initialize_username_platforms()
+        plugins = registry.filter_plugins(
+            identifier_type=IdentifierType.USERNAME,
+            enabled_only=True
+        )
+    return plugins
 
 
 def get_platform_count() -> dict[str, int]:
@@ -62,9 +69,18 @@ def get_platform_count() -> dict[str, int]:
         Dict with 'total', 'enabled', 'disabled' counts
     """
     registry = get_registry()
-    all_plugins = registry.filter_plugins(identifier_type="username")
+    all_plugins = registry.filter_plugins(
+        identifier_type=IdentifierType.USERNAME,
+        enabled_only=False
+    )
+    if not all_plugins:
+        initialize_username_platforms()
+        all_plugins = registry.filter_plugins(
+            identifier_type=IdentifierType.USERNAME,
+            enabled_only=False
+        )
     enabled_plugins = registry.filter_plugins(
-        identifier_type="username",
+        identifier_type=IdentifierType.USERNAME,
         enabled_only=True
     )
     

@@ -7,7 +7,7 @@ Each platform is defined in a YAML file validated against these schemas.
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator, model_validator
 
 from ...types import BackoffStrategy, CaptchaRisk, PluginCategory, RateLimitScope, VerificationMethod
 
@@ -267,11 +267,11 @@ class PlatformDefinition(BaseModel):
             return self.api_endpoint.format(username=username)
         return None
     
-    class Config:
-        """Pydantic configuration."""
-        use_enum_values = False
-        validate_assignment = True
-        extra = 'forbid'  # Reject unknown fields in YAML
+    model_config = ConfigDict(
+        use_enum_values=False,
+        validate_assignment=True,
+        extra='forbid',  # Reject unknown fields in YAML
+    )
 
 
 class PlatformRegistry(BaseModel):
