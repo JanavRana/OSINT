@@ -1,6 +1,7 @@
-import smtplib
+import json
 import logging
-from email.message import EmailMessage
+import urllib.request
+import urllib.error
 from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -10,11 +11,10 @@ class EmailService:
     def send_otp_email(to_email: str, otp: str) -> None:
         settings = get_settings()
         
-        msg = EmailMessage()
-        msg["Subject"] = "Verify your Intel Weave account"
-        msg["From"] = settings.smtp_from_email
-        msg["To"] = to_email
-        
+        if not settings.resend_api_key:
+            logger.warning("RESEND_API_KEY is not set. Cannot send email.")
+            raise Exception("RESEND_API_KEY is missing.")
+            
         html_content = f"""\
 <html>
   <body>
@@ -24,18 +24,26 @@ class EmailService:
   </body>
 </html>
 """
-        msg.add_alternative(html_content, subtype="html")
+        
+        payload = {
+            "from": settings.resend_from_email,
+            "to": [to_email],
+            "subject": "Verify your Intel Weave account",
+            "html": html_content
+        }
+        
+        req = urllib.request.Request("https://api.resend.com/emails", method="POST")
+        req.add_header("Authorization", f"Bearer {settings.resend_api_key}")
+        req.add_header("Content-Type", "application/json")
         
         try:
-            server = smtplib.SMTP(settings.smtp_host, settings.smtp_port)
-            if settings.smtp_use_tls:
-                server.starttls()
-                
-            if settings.smtp_username and settings.smtp_password:
-                server.login(settings.smtp_username, settings.smtp_password)
-                
-            server.send_message(msg)
-            server.quit()
-        except Exception as e:
-            logger.error(f"Failed to send email to {to_email}: {e}")
-            raise Exception("Failed to send OTP email.") from e
+            with urllib.request.urlopen(req, data=json.dumps(payload).encode("utf-8"), timeout=10) as response:
+                result = response.read()
+                logger.info(f"Resend API email sent successfully: {result}")
+        except urllib.error.HTTPError as e:
+            error_body = e.read().decode('utf-8')
+            logger.error(f"Resend API HTTP error: {e.code} - {error_body}")
+            raise Exception(f"Failed to send OTP email: {error_body}") from e
+        except urllib.error.URLError as e:
+            logger.error(f"Failed to send email to {to_email} via Resend: {e}")
+            raise Exception("Failed to send OTP email via Resend.") from e

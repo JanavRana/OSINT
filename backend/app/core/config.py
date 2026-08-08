@@ -49,13 +49,9 @@ class Settings(BaseSettings):
     # --- OTP ---
     otp_expire_minutes: int = 5
 
-    # --- SMTP / Email ---
-    smtp_host: str = "localhost"
-    smtp_port: int = 587
-    smtp_username: str = ""
-    smtp_password: str = ""
-    smtp_from_email: str = "noreply@intelweave.com"
-    smtp_use_tls: bool = True
+    # --- Email (Resend) ---
+    resend_api_key: str = ""
+    resend_from_email: str = "onboarding@resend.dev"
 
     @property
     def sqlalchemy_database_url(self) -> str:
