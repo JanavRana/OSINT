@@ -316,6 +316,10 @@ def list_identifiers(
 
         meta: dict = f.fact_metadata or {}
 
+        # Skip graph relationship edge facts to prevent duplicating primary profile_data facts
+        if meta.get("graph_edge") is True or f.connector_name == "username_graph":
+            continue
+
         # For username / profile_data facts the stored `value` is a JSON blob.
         # Extract the clean username and profile_url from metadata instead.
         if f.fact_type in ("profile_data", "social_account", "username", "platform_account_found"):
