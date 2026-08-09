@@ -7,7 +7,7 @@ Each platform is defined in a YAML file validated against these schemas.
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator, model_validator
 
 from ...types import BackoffStrategy, CaptchaRisk, PluginCategory, RateLimitScope, VerificationMethod
 
@@ -250,8 +250,10 @@ class PlatformDefinition(BaseModel):
     @model_validator(mode='after')
     def validate_api_endpoint_placeholder(self):
         """Ensure api_endpoint contains {username} placeholder if present."""
-        if self.api_endpoint and '{username}' not in self.api_endpoint:
-            raise ValueError("api_endpoint must contain {username} placeholder")
+        # GraphQL endpoints pass username as variable, not in URL
+        if self.detection.strategy != DetectionStrategyType.GRAPHQL:
+            if self.api_endpoint and '{username}' not in self.api_endpoint:
+                raise ValueError("api_endpoint must contain {username} placeholder")
         
         return self
     
@@ -265,11 +267,11 @@ class PlatformDefinition(BaseModel):
             return self.api_endpoint.format(username=username)
         return None
     
-    class Config:
-        """Pydantic configuration."""
-        use_enum_values = False
-        validate_assignment = True
-        extra = 'forbid'  # Reject unknown fields in YAML
+    model_config = ConfigDict(
+        use_enum_values=False,
+        validate_assignment=True,
+        extra='forbid',  # Reject unknown fields in YAML
+    )
 
 
 class PlatformRegistry(BaseModel):

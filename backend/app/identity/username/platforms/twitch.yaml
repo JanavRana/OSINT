@@ -1,0 +1,46 @@
+# Twitch - Live streaming platform
+id: twitch
+display_name: Twitch
+category: social
+homepage: https://www.twitch.tv
+
+profile_url_template: "https://www.twitch.tv/{username}"
+
+detection:
+  strategy: status_code
+  status_code:
+    success_codes: [200]
+    not_found_codes: [404]
+
+network:
+  timeout_seconds: 8
+  retries: 2
+  backoff: exponential
+  base_delay_ms: 300
+
+rate_limit:
+  requests_per_minute: 20
+  scope: global
+
+auth:
+  login_required: false
+  captcha_risk: low
+  api_key_required: false
+
+confidence_rules:
+  base_reliability: 0.80
+  verification_method: html_scrape
+  corroboration_fields: []
+
+parser:
+  type: html
+  fields: {}
+
+normalizer: username.normalizer.default
+enabled: true
+tags:
+  - social
+  - streaming
+  - gaming
+  - medium-confidence
+notes: "Twitch API requires OAuth. Public profile detection via status code."

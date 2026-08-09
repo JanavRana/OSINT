@@ -21,6 +21,9 @@ from ..types import HealthStatus, IdentifierType
 from .detection.base import get_strategy_registry
 from .schema.platform_schema import PlatformDefinition
 
+# Import detection strategies to ensure they're registered
+from . import detection  # noqa: F401
+
 logger = logging.getLogger(__name__)
 
 

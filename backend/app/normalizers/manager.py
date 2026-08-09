@@ -18,11 +18,14 @@ in M9).
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from ..connectors.types import RawResponseEnvelope
 from .registry import normalizer_registry
 from .types import NormalizationError, NormalizationResult, NormalizedFact
+
+# Prefix used by the username dispatcher for all platform connectors
+_USERNAME_PLATFORM_PREFIX = "username_platform:"
 
 
 class NormalizationManager:
@@ -66,16 +69,45 @@ class NormalizationManager:
         if not envelope.succeeded:
             return None
         
+        connector_name = envelope.connector_name
+        
+        # --- Prefix-based lookup for username platform connectors ---
+        # Connector names like "username_platform:github" are routed to the
+        # UsernamePlatformNormalizer without requiring individual registrations.
+        if connector_name.startswith(_USERNAME_PLATFORM_PREFIX):
+            normalizer_cls = self._get_username_platform_normalizer()
+            if normalizer_cls is None:
+                return None
+            normalizer = normalizer_cls()
+            return normalizer.run(envelope.raw_payload, raw_reference_id)
+        
         # Check if a normalizer exists for this connector
-        if not self.registry.has_normalizer(envelope.connector_name):
+        if not self.registry.has_normalizer(connector_name):
             return None
         
         # Get and instantiate the normalizer
-        normalizer_cls = self.registry.get_normalizer(envelope.connector_name)
+        normalizer_cls = self.registry.get_normalizer(connector_name)
         normalizer = normalizer_cls()
         
         # Run normalization
         return normalizer.run(envelope.raw_payload, raw_reference_id)
+    
+    def _get_username_platform_normalizer(self):
+        """
+        Lazily import and return the UsernamePlatformNormalizer class.
+        
+        Lazy import avoids circular dependencies and keeps startup fast.
+        Returns None if the adapter is unavailable (e.g., missing import).
+        """
+        try:
+            from app.identity.username.normalizer_adapter import UsernamePlatformNormalizer
+            return UsernamePlatformNormalizer
+        except ImportError as e:
+            import logging
+            logging.getLogger(__name__).warning(
+                f"UsernamePlatformNormalizer not available: {e}"
+            )
+            return None
     
     def normalize_batch(
         self,

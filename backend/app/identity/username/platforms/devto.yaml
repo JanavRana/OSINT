@@ -1,0 +1,55 @@
+# Dev.to - Developer community platform
+id: devto
+display_name: Dev.to
+category: developer
+homepage: https://dev.to
+
+profile_url_template: "https://dev.to/{username}"
+api_endpoint: "https://dev.to/api/users/by_username?url={username}"
+
+detection:
+  strategy: json_api
+  json_api:
+    success_field: "$.username"
+    not_found_status: 404
+
+network:
+  timeout_seconds: 6
+  retries: 2
+  backoff: exponential
+  base_delay_ms: 250
+
+rate_limit:
+  requests_per_minute: 25
+  scope: global
+
+auth:
+  login_required: false
+  captcha_risk: low
+
+confidence_rules:
+  base_reliability: 0.90
+  verification_method: api_confirmed
+  corroboration_fields:
+    - display_name
+    - avatar_url
+    - bio
+
+parser:
+  type: json
+  fields:
+    display_name: "$.name"
+    avatar_url: "$.profile_image"
+    bio: "$.summary"
+    website: "$.website_url"
+    location: "$.location"
+
+normalizer: username.normalizer.default
+enabled: true
+tags:
+  - developer
+  - blogging
+  - community
+  - high-confidence
+  - api-based
+notes: "Dev.to has a public API with good documentation. Reliable for username checks."

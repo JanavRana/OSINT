@@ -1,0 +1,55 @@
+# Reddit - Social news and discussion platform
+id: reddit
+display_name: Reddit
+category: social
+homepage: https://reddit.com
+
+profile_url_template: "https://www.reddit.com/user/{username}/about.json"
+api_endpoint: "https://www.reddit.com/user/{username}/about.json"
+
+detection:
+  strategy: json_api
+  json_api:
+    success_field: "$.data.name"
+    not_found_status: 404
+    error_field: "$.error"
+
+network:
+  timeout_seconds: 8
+  retries: 2
+  backoff: exponential
+  base_delay_ms: 300
+
+rate_limit:
+  requests_per_minute: 20
+  scope: global
+
+auth:
+  login_required: false
+  captcha_risk: medium
+
+confidence_rules:
+  base_reliability: 0.88
+  verification_method: api_confirmed
+  corroboration_fields:
+    - display_name
+    - avatar_url
+    - account_created
+
+parser:
+  type: json
+  fields:
+    display_name: "$.data.name"
+    avatar_url: "$.data.icon_img"
+    account_created: "$.data.created_utc"
+    karma: "$.data.total_karma"
+    is_verified: "$.data.verified"
+
+normalizer: username.normalizer.default
+enabled: true
+tags:
+  - social
+  - forum
+  - high-confidence
+  - api-based
+notes: "Reddit JSON API is publicly accessible. Returns detailed user data."

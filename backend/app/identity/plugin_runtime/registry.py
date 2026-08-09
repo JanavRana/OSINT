@@ -245,9 +245,19 @@ class PluginRegistry:
         
         # Apply filters progressively
         if identifier_type:
+            if isinstance(identifier_type, str):
+                try:
+                    identifier_type = IdentifierType(identifier_type)
+                except ValueError:
+                    pass
             result &= self._by_identifier_type.get(identifier_type, set())
         
         if category:
+            if isinstance(category, str):
+                try:
+                    category = PluginCategory(category)
+                except ValueError:
+                    pass
             result &= self._by_category.get(category, set())
         
         if tags:

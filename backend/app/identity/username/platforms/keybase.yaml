@@ -1,0 +1,54 @@
+# Keybase - Secure messaging and file-sharing platform
+id: keybase
+display_name: Keybase
+category: professional
+homepage: https://keybase.io
+
+profile_url_template: "https://keybase.io/{username}"
+api_endpoint: "https://keybase.io/_/api/1.0/user/lookup.json?username={username}"
+
+detection:
+  strategy: json_api
+  json_api:
+    success_field: "$.them[0].id"
+    not_found_status: 404
+
+network:
+  timeout_seconds: 6
+  retries: 2
+  backoff: exponential
+  base_delay_ms: 250
+
+rate_limit:
+  requests_per_minute: 25
+  scope: global
+
+auth:
+  login_required: false
+  captcha_risk: low
+
+confidence_rules:
+  base_reliability: 0.93
+  verification_method: api_confirmed
+  corroboration_fields:
+    - display_name
+    - avatar_url
+    - bio
+
+parser:
+  type: json
+  fields:
+    display_name: "$.them[0].profile.full_name"
+    avatar_url: "$.them[0].pictures.primary.url"
+    bio: "$.them[0].profile.bio"
+    location: "$.them[0].profile.location"
+
+normalizer: username.normalizer.default
+enabled: true
+tags:
+  - professional
+  - security
+  - cryptography
+  - high-confidence
+  - api-based
+notes: "Keybase has public API with identity verification proofs. High reliability."

@@ -86,6 +86,15 @@ async def startup():
             time.sleep(2)
     else:
         raise RuntimeError("Failed to connect to PostgreSQL after 30 attempts")
+    
+    # Initialize username OSINT platforms (loads 38 YAML definitions into plugin registry)
+    try:
+        from app.identity.username.init import initialize_username_platforms
+        count = initialize_username_platforms()
+        print(f"✓ Username OSINT platforms loaded: {count} platforms registered")
+    except Exception as e:
+        print(f"⚠ Warning: Failed to initialize username platforms: {e}")
+        # Non-blocking — server starts but username investigations will return empty results
 
 @app.get("/")
 async def root():

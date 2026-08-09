@@ -1,0 +1,45 @@
+# Kaggle - Data science competition platform
+id: kaggle
+display_name: Kaggle
+category: developer
+homepage: https://www.kaggle.com
+
+profile_url_template: "https://www.kaggle.com/{username}"
+
+detection:
+  strategy: status_code
+  status_code:
+    success_codes: [200]
+    not_found_codes: [404]
+
+network:
+  timeout_seconds: 8
+  retries: 2
+  backoff: exponential
+  base_delay_ms: 300
+
+rate_limit:
+  requests_per_minute: 15
+  scope: global
+
+auth:
+  login_required: false
+  captcha_risk: low
+
+confidence_rules:
+  base_reliability: 0.80
+  verification_method: html_scrape
+  corroboration_fields: []
+
+parser:
+  type: html
+  fields: {}
+
+normalizer: username.normalizer.default
+enabled: true
+tags:
+  - developer
+  - data-science
+  - machine-learning
+  - medium-confidence
+notes: "Kaggle API requires authentication. Public profile via status code."

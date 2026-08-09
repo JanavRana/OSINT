@@ -379,7 +379,8 @@ class GraphQLStrategy(DetectionStrategy):
             raise ValueError("graphql configuration missing")
         
         # Build GraphQL query
-        query = config.query.format(username=username)
+        # Don't use .format() as GraphQL queries have braces
+        query = config.query
         variables = dict(config.variables)
         variables['username'] = username
         

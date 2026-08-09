@@ -1,0 +1,50 @@
+# Hacker News - Technology news and discussion
+id: hackernews
+display_name: Hacker News
+category: forum
+homepage: https://news.ycombinator.com
+
+profile_url_template: "https://news.ycombinator.com/user?id={username}"
+api_endpoint: "https://hacker-news.firebaseio.com/v0/user/{username}.json"
+
+detection:
+  strategy: json_api
+  json_api:
+    success_field: "$.id"
+    not_found_status: 404
+
+network:
+  timeout_seconds: 6
+  retries: 2
+  backoff: exponential
+  base_delay_ms: 250
+
+rate_limit:
+  requests_per_minute: 30
+  scope: global
+
+auth:
+  login_required: false
+  captcha_risk: low
+
+confidence_rules:
+  base_reliability: 0.92
+  verification_method: api_confirmed
+  corroboration_fields:
+    - account_created
+
+parser:
+  type: json
+  fields:
+    account_created: "$.created"
+    karma: "$.karma"
+    about: "$.about"
+
+normalizer: username.normalizer.default
+enabled: true
+tags:
+  - forum
+  - tech-community
+  - high-confidence
+  - api-based
+notes: "Hacker News Firebase API is public and reliable."
