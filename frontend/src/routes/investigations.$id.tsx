@@ -9,7 +9,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Mail, Globe, User, Wallet, Share2, Phone, Server,
   Network, Clock, FileText, ArrowLeft, Play, RefreshCw, AlertTriangle,
-  CheckCircle2, XCircle, Loader2, RotateCcw,
+  CheckCircle2, XCircle, Loader2, RotateCcw, ExternalLink,
 } from "lucide-react";
 import { AsyncBoundary, EmptyState } from "@/components/states";
 import { ConfidenceBar } from "@/components/confidence-bar";
@@ -55,6 +55,9 @@ function IdentifierTable({ items }: { items: Identifier[] }) {
   if (items.length === 0) {
     return <EmptyState title="No identifiers enriched yet." description="Run connectors to gather identifiers." />;
   }
+
+  const hasProfileLinks = items.some((i) => i.profileUrl);
+
   return (
     <table className="w-full text-sm">
       <thead>
@@ -64,11 +67,40 @@ function IdentifierTable({ items }: { items: Identifier[] }) {
           <th scope="col" className="px-5 py-3 font-medium">Confidence</th>
           <th scope="col" className="px-5 py-3 font-medium">Sources</th>
           <th scope="col" className="px-5 py-3 font-medium">First seen</th>
+          {hasProfileLinks && (
+            <th scope="col" className="px-5 py-3 font-medium">Profile</th>
+          )}
         </tr>
       </thead>
       <tbody>
         {items.map((i) => {
           const Icon = typeIcon[i.type];
+
+          // For username identifiers, display platform name instead of generic "username"
+          const displayType = i.type === "username" && i.platformDisplayName
+            ? i.platformDisplayName
+            : i.type;
+
+          // Build the value cell — domain identifiers become clickable links.
+          let valueCell = (
+            <span className="font-mono text-xs break-all">{i.value}</span>
+          );
+          if (i.type === "domain") {
+            const href = i.value.startsWith("http") ? i.value : `https://${i.value}`;
+            valueCell = (
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                id={`domain-link-${i.id}`}
+                className="font-mono text-xs break-all text-accent hover:underline inline-flex items-center gap-1"
+              >
+                {i.value}
+                <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />
+              </a>
+            );
+          }
+
           return (
             <tr key={i.id} className="border-b border-border/40 hover:bg-white/[0.02]">
               <td className="px-5 py-3">
@@ -76,15 +108,33 @@ function IdentifierTable({ items }: { items: Identifier[] }) {
                   <div className="h-7 w-7 rounded-md bg-accent/10 text-accent grid place-items-center" aria-hidden="true">
                     <Icon className="h-3.5 w-3.5" />
                   </div>
-                  <span className="text-xs capitalize text-muted-foreground">{i.type}</span>
+                  <span className="text-xs capitalize text-muted-foreground">{displayType}</span>
                 </div>
               </td>
-              <td className="px-5 py-3 font-mono text-xs break-all">{i.value}</td>
+              <td className="px-5 py-3">{valueCell}</td>
               <td className="px-5 py-3 w-56">
                 <ConfidenceBar value={i.confidence} ariaLabel={`Confidence for ${i.value}`} />
               </td>
               <td className="px-5 py-3 text-xs">{i.sources}</td>
               <td className="px-5 py-3 text-xs text-muted-foreground">{i.firstSeen}</td>
+              {hasProfileLinks && (
+                <td className="px-5 py-3">
+                  {i.profileUrl ? (
+                    <a
+                      href={i.profileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      id={`view-profile-${i.id}`}
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-accent hover:text-accent/80 transition-colors px-2.5 py-1 rounded-md bg-accent/10 hover:bg-accent/20"
+                    >
+                      <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                      View Profile
+                    </a>
+                  ) : (
+                    <span className="text-xs text-muted-foreground/40">—</span>
+                  )}
+                </td>
+              )}
             </tr>
           );
         })}

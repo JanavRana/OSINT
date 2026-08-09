@@ -45,6 +45,12 @@ export interface Identifier {
   confidence: number;
   sources: number;
   firstSeen: string;
+  /** Public profile URL for username identifiers, when available. */
+  profileUrl?: string;
+  /** Platform identifier (e.g., 'github', 'reddit') for username results. */
+  platform?: string;
+  /** Human-readable platform name (e.g., 'GitHub', 'Reddit') for username results. */
+  platformDisplayName?: string;
 }
 
 export interface Connector {

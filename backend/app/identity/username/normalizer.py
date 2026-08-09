@@ -28,13 +28,16 @@ def normalize_username_result(
     """
     Normalize a username platform check result into a NormalizedFact.
     
+    Only creates facts for confirmed accounts (exists=True).
+    Not-found (exists=False) and unknown results are not persisted as identifiers.
+    
     Args:
         raw_result: Raw result from platform execution
         investigation_id: UUID of the investigation
         definition: Optional PlatformDefinition for additional context
         
     Returns:
-        NormalizedFact instance, or None if normalization failed
+        NormalizedFact instance for confirmed accounts, or None otherwise
     """
     # Ensure payload is a DetectionOutcome
     if not isinstance(raw_result.payload, DetectionOutcome):
@@ -52,16 +55,28 @@ def normalize_username_result(
         )
         return None
     
+    # IMPORTANT: Only create identifiers for confirmed accounts
+    # Don't persist not-found or unknown results as identifiers
+    if outcome.exists is not True:
+        logger.debug(
+            f"Skipping identifier creation for {raw_result.plugin_id}/{raw_result.identifier_value}: "
+            f"exists={outcome.exists}"
+        )
+        return None
+    
+    # Build profile URL only for confirmed accounts
+    profile_url = _build_profile_url(
+        raw_result.plugin_id,
+        raw_result.identifier_value,
+        definition
+    )
+    
     # Build fact payload
     fact_payload = {
         "platform": raw_result.plugin_id,
         "username": raw_result.identifier_value,
         "exists": outcome.exists,
-        "profile_url": _build_profile_url(
-            raw_result.plugin_id,
-            raw_result.identifier_value,
-            definition
-        ),
+        "profile_url": profile_url,
         "http_status": outcome.http_status,
         "evidence_fields": outcome.evidence_fields,
         "checked_at": raw_result.timestamp.isoformat(),
@@ -89,13 +104,8 @@ def normalize_username_result(
         raw_result
     )
     
-    # Determine fact type based on existence
-    if outcome.exists is True:
-        fact_type = "platform_account_found"
-    elif outcome.exists is False:
-        fact_type = "platform_account_not_found"
-    else:
-        fact_type = "platform_account_unknown"
+    # Fact type for confirmed account
+    fact_type = "platform_account_found"
     
     # Create normalized fact
     normalized_fact = NormalizedFact(
