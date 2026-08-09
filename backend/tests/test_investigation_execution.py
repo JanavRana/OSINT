@@ -126,7 +126,7 @@ async def test_execute_investigation_success(
     service = InvestigationService(db_session)
     
     # Create investigation
-    investigation = service.create_investigation(name="Test Investigation")
+    investigation, _ = service.create_investigation(name="Test Investigation")
     assert investigation.status == InvestigationStatus.CREATED
     
     identifier = Identifier(value="example.com", type=IdentifierType.DOMAIN)
@@ -177,7 +177,7 @@ async def test_execute_investigation_connector_failure_does_not_stop_pipeline(
 ):
     """Test that connector failures don't stop the pipeline."""
     service = InvestigationService(db_session)
-    investigation = service.create_investigation(name="Test Investigation")
+    investigation, _ = service.create_investigation(name="Test Investigation")
     identifier = Identifier(value="example.com", type=IdentifierType.DOMAIN)
     
     with patch(
@@ -211,7 +211,7 @@ async def test_execute_investigation_normalizer_failure_does_not_stop_pipeline(
 ):
     """Test that normalizer failures don't stop the pipeline."""
     service = InvestigationService(db_session)
-    investigation = service.create_investigation(name="Test Investigation")
+    investigation, _ = service.create_investigation(name="Test Investigation")
     identifier = Identifier(value="example.com", type=IdentifierType.DOMAIN)
     
     # Mock with one normalizer raising exception
@@ -277,7 +277,7 @@ async def test_execute_investigation_persists_connector_results(
     )
     
     service = InvestigationService(db_session)
-    investigation = service.create_investigation(name="Test Investigation")
+    investigation, _ = service.create_investigation(name="Test Investigation")
     identifier = Identifier(value="example.com", type=IdentifierType.DOMAIN)
     
     with patch(
@@ -309,7 +309,7 @@ async def test_execute_investigation_persists_normalized_facts(
 ):
     """Test that normalized facts are persisted."""
     service = InvestigationService(db_session)
-    investigation = service.create_investigation(name="Test Investigation")
+    investigation, _ = service.create_investigation(name="Test Investigation")
     identifier = Identifier(value="example.com", type=IdentifierType.DOMAIN)
     
     with patch(

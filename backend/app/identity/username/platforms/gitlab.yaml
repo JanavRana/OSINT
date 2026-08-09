@@ -1,0 +1,55 @@
+# GitLab - DevOps platform
+id: gitlab
+display_name: GitLab
+category: developer
+homepage: https://gitlab.com
+
+profile_url_template: "https://gitlab.com/{username}"
+api_endpoint: "https://gitlab.com/api/v4/users?username={username}"
+
+detection:
+  strategy: json_api
+  json_api:
+    success_field: "$[0].username"
+    not_found_status: 404
+
+network:
+  timeout_seconds: 6
+  retries: 2
+  backoff: exponential
+  base_delay_ms: 250
+
+rate_limit:
+  requests_per_minute: 30
+  scope: global
+
+auth:
+  login_required: false
+  captcha_risk: low
+
+confidence_rules:
+  base_reliability: 0.92
+  verification_method: api_confirmed
+  corroboration_fields:
+    - display_name
+    - avatar_url
+    - bio
+    - location
+
+parser:
+  type: json
+  fields:
+    display_name: "$[0].name"
+    avatar_url: "$[0].avatar_url"
+    bio: "$[0].bio"
+    location: "$[0].location"
+    website: "$[0].website_url"
+
+normalizer: username.normalizer.default
+enabled: true
+tags:
+  - developer
+  - devops
+  - high-confidence
+  - api-based
+notes: "GitLab API returns array of users. High reliability."

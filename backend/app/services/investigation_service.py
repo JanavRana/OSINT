@@ -14,7 +14,7 @@ from typing import List
 
 from sqlalchemy.orm import Session
 
-from app.connectors.types import Identifier, RawResponseEnvelope
+from app.connectors.types import Identifier, IdentifierType, RawResponseEnvelope
 from app.models.investigation import Investigation, InvestigationStatus
 from app.models.normalized_fact import NormalizedFact
 from app.models.seed_identifier import SeedIdentifier
@@ -172,12 +172,20 @@ class InvestigationService:
         logger.info(f"Investigation {investigation_id} status updated to RUNNING")
         
         try:
-            # Execute connectors and persist results
-            raw_responses = await self._connector_service.execute_connectors(
-                investigation_id=investigation_id,
-                identifier=identifier,
-                db=self._db
-            )
+            # --- Route by identifier type ---
+            if identifier.type == IdentifierType.USERNAME:
+                # Username investigations use the identity framework dispatcher
+                raw_responses = await self._run_username_osint(
+                    investigation_id=investigation_id,
+                    username=identifier.value,
+                )
+            else:
+                # Domain/email/phone/IP use the classic connector framework
+                raw_responses = await self._connector_service.execute_connectors(
+                    investigation_id=investigation_id,
+                    identifier=identifier,
+                    db=self._db
+                )
             
             executed_count = len(raw_responses)
             successful_count = sum(1 for r in raw_responses if r.succeeded)
@@ -193,12 +201,13 @@ class InvestigationService:
             
             logger.info(f"Normalization complete: {len(normalization_results)} results")
             
-            # Persist normalized facts
+            # Persist normalized facts (with deduplication)
             facts_persisted = 0
+            skipped_duplicates = 0
             for norm_result in normalization_results:
                 for fact in norm_result.facts:
                     try:
-                        self._fact_repo.create(
+                        created = self._fact_repo.create_if_not_exists(
                             investigation_id=investigation_id,
                             connector_name=fact.source_connector,
                             fact_type=fact.fact_type.value,
@@ -207,7 +216,10 @@ class InvestigationService:
                             fact_metadata=fact.metadata,
                             occurred_at=fact.occurred_at or datetime.now(timezone.utc),
                         )
-                        facts_persisted += 1
+                        if created is not None:
+                            facts_persisted += 1
+                        else:
+                            skipped_duplicates += 1
                     except Exception as e:
                         logger.error(
                             f"Failed to persist fact from {fact.source_connector}: {e}",
@@ -215,7 +227,17 @@ class InvestigationService:
                         )
                         # Continue processing other facts
             
+            if skipped_duplicates:
+                logger.info(f"Skipped {skipped_duplicates} duplicate facts")
             logger.info(f"Persisted {facts_persisted} normalized facts")
+
+            # --- Create graph relationships for username facts (non-blocking) ---
+            if identifier.type == IdentifierType.USERNAME and facts_persisted > 0:
+                await self._create_username_graph_relationships(
+                    investigation_id=investigation_id,
+                    username=identifier.value,
+                    normalization_results=normalization_results,
+                )
             
             # Update investigation status to COMPLETED
             investigation.status = InvestigationStatus.COMPLETED
@@ -268,3 +290,107 @@ class InvestigationService:
                 finished_at=finished_at,
                 raw_responses=[],
             )
+
+    async def _run_username_osint(
+        self,
+        investigation_id: uuid.UUID,
+        username: str,
+    ) -> List[RawResponseEnvelope]:
+        """
+        Run username OSINT via the identity framework dispatcher.
+
+        Routes username investigations to the 38 YAML platform definitions
+        instead of the classic connector framework (which has no USERNAME
+        connectors registered).
+
+        Args:
+            investigation_id: Investigation ID
+            username: Username to investigate
+
+        Returns:
+            List of RawResponseEnvelope from all platform checks
+        """
+        try:
+            from app.identity.username.dispatcher import dispatch_username_osint
+            envelopes = await dispatch_username_osint(
+                username=username,
+                investigation_id=investigation_id,
+            )
+            logger.info(
+                f"Username OSINT returned {len(envelopes)} envelopes "
+                f"for {username!r}"
+            )
+            return envelopes
+        except Exception as e:
+            logger.error(
+                f"Username OSINT dispatcher failed for {username!r}: {e}",
+                exc_info=True,
+            )
+            return []
+
+    async def _create_username_graph_relationships(
+        self,
+        investigation_id: uuid.UUID,
+        username: str,
+        normalization_results: list,
+    ) -> None:
+        """
+        Create graph relationships for discovered username platform accounts.
+
+        Creates FOUND_ON relationship facts stored in normalized_facts so they
+        appear in GET /identifiers and the graph endpoint without requiring Neo4j.
+
+        Falls back gracefully on any error — this is non-blocking.
+        """
+        try:
+            from app.normalizers.types import FactType
+            found_platforms = []
+            for norm_result in normalization_results:
+                for fact in norm_result.facts:
+                    if fact.fact_type == FactType.PROFILE_DATA:
+                        meta = fact.metadata or {}
+                        if meta.get("exists") is True:
+                            found_platforms.append({
+                                "platform_id": meta.get("platform_id", ""),
+                                "platform_display_name": meta.get("platform_display_name", ""),
+                                "profile_url": meta.get("profile_url", ""),
+                                "confidence": fact.confidence,
+                            })
+
+            if not found_platforms:
+                return
+
+            logger.info(
+                f"Creating graph relationship facts for {username!r}: "
+                f"{len(found_platforms)} platforms found"
+            )
+
+            for platform_info in found_platforms:
+                try:
+                    self._fact_repo.create_if_not_exists(
+                        investigation_id=investigation_id,
+                        connector_name="username_graph",
+                        fact_type="social_account",
+                        value=f"{username}@{platform_info['platform_id']}",
+                        confidence=platform_info["confidence"],
+                        fact_metadata={
+                            "username": username,
+                            "platform": platform_info["platform_id"],
+                            "platform_display_name": platform_info["platform_display_name"],
+                            "profile_url": platform_info["profile_url"],
+                            "relationship": "FOUND_ON",
+                            "graph_edge": True,
+                        },
+                        occurred_at=datetime.now(timezone.utc),
+                    )
+                except Exception as e:
+                    logger.warning(
+                        f"Could not create graph fact for "
+                        f"{username}@{platform_info['platform_id']}: {e}"
+                    )
+
+        except Exception as e:
+            logger.warning(
+                f"Graph relationship creation failed (non-blocking): {e}",
+                exc_info=True,
+            )

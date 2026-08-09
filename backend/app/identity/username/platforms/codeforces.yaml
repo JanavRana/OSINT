@@ -1,0 +1,54 @@
+# Codeforces - Competitive programming platform
+id: codeforces
+display_name: Codeforces
+category: developer
+homepage: https://codeforces.com
+
+profile_url_template: "https://codeforces.com/profile/{username}"
+api_endpoint: "https://codeforces.com/api/user.info?handles={username}"
+
+detection:
+  strategy: json_api
+  json_api:
+    success_field: "$.result[0].handle"
+    not_found_status: 400
+
+network:
+  timeout_seconds: 8
+  retries: 2
+  backoff: exponential
+  base_delay_ms: 300
+
+rate_limit:
+  requests_per_minute: 20
+  scope: global
+
+auth:
+  login_required: false
+  captcha_risk: low
+
+confidence_rules:
+  base_reliability: 0.88
+  verification_method: api_confirmed
+  corroboration_fields:
+    - display_name
+    - avatar_url
+    - country
+
+parser:
+  type: json
+  fields:
+    display_name: "$.result[0].firstName"
+    avatar_url: "$.result[0].avatar"
+    country: "$.result[0].country"
+    rating: "$.result[0].rating"
+    rank: "$.result[0].rank"
+
+normalizer: username.normalizer.default
+enabled: true
+tags:
+  - developer
+  - competitive-programming
+  - high-confidence
+  - api-based
+notes: "Codeforces API is well-documented and reliable."
