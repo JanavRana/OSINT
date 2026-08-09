@@ -76,8 +76,8 @@ function IdentifierTable({ items }: { items: Identifier[] }) {
         {items.map((i) => {
           const Icon = typeIcon[i.type];
 
-          // For username identifiers, display platform name instead of generic "username"
-          const displayType = i.type === "username" && i.platformDisplayName
+          // For username/social identifiers, display platform name instead of generic label
+          const displayType = (i.type === "username" || i.type === "social") && i.platformDisplayName
             ? i.platformDisplayName
             : i.type;
 
@@ -121,7 +121,7 @@ function IdentifierTable({ items }: { items: Identifier[] }) {
                 <td className="px-5 py-3">
                   {i.profileUrl ? (
                     <a
-                      href={i.profileUrl}
+                      href={i.profileUrl.startsWith("http") ? i.profileUrl : `https://${i.profileUrl}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       id={`view-profile-${i.id}`}
