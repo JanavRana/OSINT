@@ -126,6 +126,15 @@ class IdentifierRead(BaseModel):
     confidence: float
     sources: int
     first_seen: str
+    profile_url: str | None = None
+    platform: str | None = Field(
+        None,
+        description="Platform name for username identifiers (e.g., 'github', 'reddit').",
+    )
+    platform_display_name: str | None = Field(
+        None,
+        description="Human-readable platform name (e.g., 'GitHub', 'Reddit').",
+    )
 
 
 class IdentifierListResponse(BaseModel):

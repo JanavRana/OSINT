@@ -290,36 +290,63 @@ def list_identifiers(
     fact_repo = NormalizedFactRepository(db)
     facts = fact_repo.list_by_investigation(investigation_id)
 
-    # Map fact_type to frontend identifier types
-    fact_type_to_identifier = {
+    # Only fact types that represent real identifiers are surfaced.
+    # WHOIS metadata (registrar, nameserver, expiration, org, location, etc.)
+    # is intentionally excluded — it should not appear as domain identifiers.
+    IDENTIFIER_FACT_TYPES: dict[str, str] = {
         "email": "email",
         "domain": "domain",
-        "domain_registration": "domain",
         "phone": "phone",
         "username": "username",
         "wallet_address": "wallet",
         "social_account": "social",
         "contact_info": "email",
-        "organization": "domain",
-        "location": "domain",
-        "certificate": "domain",
-        "archive_snapshot": "domain",
         "profile_data": "username",
-        "image_hash": "domain",
-        "generic": "domain",
+        "platform_account_found": "username",  # Username OSINT confirmed accounts
     }
 
-    items = [
-        IdentifierRead(
-            id=str(f.id),
-            type=fact_type_to_identifier.get(f.fact_type, "domain"),
-            value=str(f.value),
-            confidence=f.confidence,
-            sources=1,
-            first_seen=f.created_at.isoformat() if f.created_at else "",
+    items: list[IdentifierRead] = []
+    for f in facts:
+        identifier_type = IDENTIFIER_FACT_TYPES.get(f.fact_type)
+        if identifier_type is None:
+            # Registrar, nameserver, expiration, org, location, certificate,
+            # archive_snapshot, image_hash, generic, domain_registration, etc.
+            # are contextual metadata, not standalone identifiers — skip them.
+            continue
+
+        meta: dict = f.fact_metadata or {}
+
+        # For username / profile_data facts the stored `value` is a JSON blob.
+        # Extract the clean username and profile_url from metadata instead.
+        if f.fact_type in ("profile_data", "social_account", "username", "platform_account_found"):
+            display_value = meta.get("username") or str(f.value)
+            profile_url: str | None = meta.get("profile_url") or None
+            platform: str | None = meta.get("platform") or None
+            platform_display_name: str | None = meta.get("platform_display_name") or None
+            
+            # Skip not-found results - they shouldn't become identifiers
+            exists = meta.get("exists")
+            if exists is False:
+                continue
+        else:
+            display_value = str(f.value)
+            profile_url = None
+            platform = None
+            platform_display_name = None
+
+        items.append(
+            IdentifierRead(
+                id=str(f.id),
+                type=identifier_type,
+                value=display_value,
+                confidence=f.confidence,
+                sources=1,
+                first_seen=f.created_at.isoformat() if f.created_at else "",
+                profile_url=profile_url,
+                platform=platform,
+                platform_display_name=platform_display_name,
+            )
         )
-        for f in facts
-    ]
 
     return IdentifierListResponse(items=items, count=len(items))
 
