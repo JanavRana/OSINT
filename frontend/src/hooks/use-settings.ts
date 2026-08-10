@@ -46,9 +46,17 @@ const NOTIF_DEFAULT: NotificationPrefs = {
 
 export interface ThemeSettings {
   preset: string; // preset name
+  mode: "light" | "dark"; // theme mode
+  primaryColor?: string; // CSS color value for primary
+  accentColor?: string; // CSS color value for accent
 }
 
-const THEME_DEFAULT: ThemeSettings = { preset: "Cyan · Violet" };
+const THEME_DEFAULT: ThemeSettings = { 
+  preset: "Cyan · Violet",
+  mode: "dark",
+  primaryColor: "oklch(0.82 0.17 195)",
+  accentColor: "oklch(0.65 0.24 295)",
+};
 
 // ─── Connector Prefs ────────────────────────────────────────────────────────
 
@@ -110,13 +118,46 @@ export function useThemeSettings() {
     readStorage("axiom_theme", THEME_DEFAULT)
   );
 
-  const setPreset = useCallback((preset: string) => {
-    const next = { preset };
+  // Apply theme to document on mount and when theme changes
+  useEffect(() => {
+    const root = document.documentElement;
+    
+    // Apply mode
+    if (theme.mode === "light") {
+      root.classList.add("light");
+      root.classList.remove("dark");
+    } else {
+      root.classList.add("dark");
+      root.classList.remove("light");
+    }
+
+    // Apply color variables if they exist
+    if (theme.primaryColor) {
+      root.style.setProperty("--primary", theme.primaryColor);
+      root.style.setProperty("--sidebar-primary", theme.primaryColor);
+      root.style.setProperty("--ring", theme.primaryColor);
+      root.style.setProperty("--sidebar-ring", theme.primaryColor);
+      root.style.setProperty("--cyan", theme.primaryColor);
+    }
+    if (theme.accentColor) {
+      root.style.setProperty("--accent", theme.accentColor);
+      root.style.setProperty("--violet", theme.accentColor);
+    }
+  }, [theme]);
+
+  const setPreset = useCallback((preset: string, primaryColor: string, accentColor: string) => {
+    const next = { ...theme, preset, primaryColor, accentColor };
     writeStorage("axiom_theme", next);
     setThemeState(next);
-  }, []);
+  }, [theme]);
 
-  return { theme, setPreset };
+  const setMode = useCallback((mode: "light" | "dark") => {
+    const next = { ...theme, mode };
+    writeStorage("axiom_theme", next);
+    setThemeState(next);
+  }, [theme]);
+
+  return { theme, setPreset, mode: theme.mode, setMode };
 }
 
 export function useConnectorPrefs() {

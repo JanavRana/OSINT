@@ -7,6 +7,7 @@ import { AsyncBoundary } from "@/components/states";
 import { ConfidenceBar, formatConfidencePercent } from "@/components/confidence-bar";
 import { MetricPill } from "@/components/field";
 import { useIdentityProfile } from "@/hooks/use-osint-data";
+import { getUser } from "@/lib/auth";
 import type { IdentitySection, IdentitySectionKey } from "@/types/domain";
 
 export const Route = createFileRoute("/identity")({
@@ -69,6 +70,7 @@ function SectionCard({ section }: { section: IdentitySection }) {
 
 function Identity() {
   const resource = useIdentityProfile();
+  const user = getUser();
 
   return (
     <AppShell
@@ -89,14 +91,20 @@ function Identity() {
                       {profile.initials}
                     </div>
                   </div>
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <div className="text-xs uppercase tracking-widest text-muted-foreground">Subject</div>
                     <div className="text-xl font-display font-semibold">{profile.displayName}</div>
+                    {user?.email && (
+                      <div className="text-xs text-muted-foreground font-mono mt-0.5 flex items-center gap-2">
+                        <Mail className="h-3 w-3" aria-hidden="true" />
+                        {user.email}
+                      </div>
+                    )}
                     <div className="text-xs text-muted-foreground font-mono mt-0.5">
                       {profile.subjectId} · linked to {profile.linkedInvestigation}
                     </div>
                   </div>
-                  <div className="ml-auto flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <MetricPill label="Total identifiers" value={String(profile.totalIdentifiers)} />
                     <MetricPill label="Sources" value={String(profile.totalSources)} />
                     <MetricPill label="Overall confidence" value={`${formatConfidencePercent(profile.overallConfidence)}%`} tone="success" />

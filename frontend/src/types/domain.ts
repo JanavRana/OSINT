@@ -148,6 +148,10 @@ export interface GraphNode {
   y: number;
   size?: number;
   primary?: boolean;
+  /** Platform identifier for username nodes (e.g., 'github', 'reddit') */
+  platform?: string;
+  /** Human-readable platform name for username nodes (e.g., 'GitHub', 'Reddit') */
+  platformDisplayName?: string;
 }
 
 export interface GraphEdge {
