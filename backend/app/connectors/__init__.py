@@ -54,6 +54,7 @@ from .rdap import RdapConnector  # noqa: F401
 from .dns import DnsConnector  # noqa: F401
 from .reverse_dns import ReverseDnsConnector  # noqa: F401
 from .ssl_certificate import SslCertificateConnector  # noqa: F401
+from .phone import PhoneConnector  # noqa: F401
 
 __all__ = [
     "BaseConnector",
@@ -72,4 +73,5 @@ __all__ = [
     "DnsConnector",
     "ReverseDnsConnector",
     "SslCertificateConnector",
+    "PhoneConnector",
 ]

@@ -31,6 +31,7 @@ from .rdap import RdapNormalizer  # noqa: F401
 from .dns import DnsNormalizer  # noqa: F401
 from .reverse_dns import ReverseDnsNormalizer  # noqa: F401
 from .ssl_certificate import SslCertificateNormalizer  # noqa: F401
+from .phone import PhoneNormalizer  # noqa: F401
 
 __all__ = [
     "BaseNormalizer",
@@ -47,4 +48,5 @@ __all__ = [
     "DnsNormalizer",
     "ReverseDnsNormalizer",
     "SslCertificateNormalizer",
+    "PhoneNormalizer",
 ]
