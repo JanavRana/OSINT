@@ -3,18 +3,14 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
-  useProfileSettings,
   useNotificationPrefs,
   useThemeSettings,
-  type ProfileSettings,
 } from "@/hooks/use-settings";
-import { Palette, User, Bell, Save, Check, Monitor, Sun, Moon } from "lucide-react";
+import { getUser } from "@/lib/auth";
+import { Palette, User, Bell, Check, Sun, Moon, Mail } from "lucide-react";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({ meta: [{ title: "Settings — AXIOM OSINT" }] }),
@@ -28,84 +24,64 @@ const themePresets: ReadonlyArray<{ name: string; gradient: string; primary: str
   { name: "Rose", gradient: "from-pink-400 to-fuchsia-500", primary: "oklch(0.76 0.21 340)", accent: "oklch(0.65 0.28 320)" },
 ];
 
-const notifKeys: { label: string; sub: string; key: keyof ReturnType<typeof useNotificationPrefs>["prefs"] }[] = [
-  { label: "Critical alerts", sub: "Instant desktop + email", key: "criticalAlerts" },
-  { label: "Connector failures", sub: "Email digest", key: "connectorFailures" },
-  { label: "Investigation updates", sub: "In-app only", key: "investigationUpdates" },
-  { label: "Weekly intel digest", sub: "Every Monday 09:00", key: "weeklyDigest" },
-];
+// ─── Profile section ──────────────────────────────────────────────────────────
 
-// ─── Profile tab ──────────────────────────────────────────────────────────────
-
-function ProfileTab() {
-  const { profile, saveProfile } = useProfileSettings();
-  const [local, setLocal] = useState<ProfileSettings>({ ...profile });
-  const [saved, setSaved] = useState(false);
-
-  const handleSave = () => {
-    // Auto-derive initials from full name
-    const initials = local.fullName
-      .split(" ")
-      .map((n) => n[0])
-      .slice(0, 2)
-      .join("")
-      .toUpperCase();
-    saveProfile({ ...local, initials });
-    setSaved(true);
-    toast.success("Profile saved", { description: "Your profile settings have been updated." });
-    setTimeout(() => setSaved(false), 2000);
-  };
-
-  const fields: { label: string; key: keyof ProfileSettings; type?: string }[] = [
-    { label: "Full name", key: "fullName" },
-    { label: "Role", key: "role" },
-    { label: "Email", key: "email", type: "email" },
-    { label: "Clearance", key: "clearance" },
-  ];
+function ProfileSection() {
+  const user = getUser();
 
   return (
-    <Card className="glass p-6 border-border/60 max-w-2xl">
-      <h3 className="font-display text-lg font-semibold">Profile</h3>
-      <p className="text-sm text-muted-foreground mt-1">
-        Your profile is persisted locally. It sets your display name in the UI.
+    <Card className="glass p-6 border-border/60">
+      <div className="flex items-center gap-2 mb-4">
+        <User className="h-4 w-4 text-primary" aria-hidden="true" />
+        <h3 className="font-display text-lg font-semibold">Profile</h3>
+      </div>
+      <p className="text-sm text-muted-foreground mb-4">
+        Your authenticated account information.
       </p>
-      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-        {fields.map(({ label, key, type }) => {
-          const id = `profile-${key}`;
-          return (
-            <div key={key}>
-              <Label htmlFor={id}>{label}</Label>
-              <Input
-                id={id}
-                type={type ?? "text"}
-                value={local[key]}
-                onChange={(e) => setLocal((prev) => ({ ...prev, [key]: e.target.value }))}
-                className="mt-1.5 bg-surface/60"
-              />
+      
+      {user ? (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 rounded-lg bg-surface/60 border border-border/60">
+            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-accent grid place-items-center text-sm font-display font-bold text-primary-foreground">
+              {user.email[0].toUpperCase()}
             </div>
-          );
-        })}
-      </div>
-      <div className="mt-6 flex justify-end">
-        <Button
-          className="gap-2 bg-gradient-to-r from-primary to-accent text-primary-foreground"
-          onClick={handleSave}
-        >
-          {saved ? (
-            <Check className="h-4 w-4" aria-hidden="true" />
-          ) : (
-            <Save className="h-4 w-4" aria-hidden="true" />
-          )}
-          {saved ? "Saved!" : "Save"}
-        </Button>
-      </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <Mail className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+                <span className="text-sm font-mono">{user.email}</span>
+              </div>
+              {user.fullName && (
+                <div className="text-xs text-muted-foreground mt-1">{user.fullName}</div>
+              )}
+            </div>
+            {user.isVerified && (
+              <Check className="h-4 w-4 text-success" aria-label="Verified" />
+            )}
+          </div>
+          
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <div className="p-3 rounded-lg bg-surface/60 border border-border/60">
+              <div className="text-muted-foreground">Account ID</div>
+              <div className="font-mono mt-1 truncate">{user.id}</div>
+            </div>
+            <div className="p-3 rounded-lg bg-surface/60 border border-border/60">
+              <div className="text-muted-foreground">Created</div>
+              <div className="font-mono mt-1">{new Date(user.createdAt).toLocaleDateString()}</div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="p-4 rounded-lg bg-surface/60 border border-border/60 text-sm text-muted-foreground">
+          No user data available. Please log in.
+        </div>
+      )}
     </Card>
   );
 }
 
-// ─── Theme tab ────────────────────────────────────────────────────────────────
+// ─── Appearance section ───────────────────────────────────────────────────────
 
-function ThemeTab() {
+function AppearanceSection() {
   const { theme, setPreset, mode, setMode } = useThemeSettings();
 
   const handleSelectPreset = (name: string) => {
@@ -122,12 +98,17 @@ function ThemeTab() {
   };
 
   return (
-    <Card className="glass p-6 border-border/60 max-w-2xl">
-      <h3 className="font-display text-lg font-semibold">Appearance</h3>
-      <p className="text-sm text-muted-foreground">Customize theme mode and accent colors.</p>
+    <Card className="glass p-6 border-border/60">
+      <div className="flex items-center gap-2 mb-4">
+        <Palette className="h-4 w-4 text-primary" aria-hidden="true" />
+        <h3 className="font-display text-lg font-semibold">Appearance</h3>
+      </div>
+      <p className="text-sm text-muted-foreground mb-5">
+        Customize theme mode and accent colors.
+      </p>
       
       {/* Theme mode selector */}
-      <div className="mt-5">
+      <div className="mb-5">
         <Label className="text-sm font-medium">Theme Mode</Label>
         <div className="mt-2 grid grid-cols-2 gap-3">
           <button
@@ -152,7 +133,7 @@ function ThemeTab() {
       </div>
 
       {/* Accent color presets */}
-      <div className="mt-5">
+      <div>
         <Label className="text-sm font-medium">Accent Color</Label>
         <div className="mt-2 grid grid-cols-4 gap-3">
           {themePresets.map(({ name, gradient }) => {
@@ -181,36 +162,49 @@ function ThemeTab() {
   );
 }
 
-// ─── Notifications tab ────────────────────────────────────────────────────────
+// ─── Notifications section ────────────────────────────────────────────────────
 
-function NotificationsTab() {
+function NotificationsSection() {
   const { prefs, toggle } = useNotificationPrefs();
+  const [notificationsEnabled, setNotificationsEnabled] = useState(prefs.investigationUpdates);
 
-  const handleToggle = (key: keyof typeof prefs) => {
-    toggle(key);
-    toast.info("Notification preference updated");
+  const handleToggle = () => {
+    const newState = !notificationsEnabled;
+    setNotificationsEnabled(newState);
+    
+    // Update the actual preference
+    if (prefs.investigationUpdates !== newState) {
+      toggle("investigationUpdates");
+    }
+    
+    toast.info(
+      newState ? "Notifications enabled" : "Notifications disabled",
+      { description: newState ? "You'll receive investigation status updates" : "Notifications are now silent" }
+    );
   };
 
   return (
-    <Card className="glass p-6 border-border/60 max-w-2xl">
-      <h3 className="font-display text-lg font-semibold">Notifications</h3>
-      <p className="text-sm text-muted-foreground mt-1">
-        Preferences are saved locally. Investigation status changes are polled every 30 seconds.
+    <Card className="glass p-6 border-border/60">
+      <div className="flex items-center gap-2 mb-4">
+        <Bell className="h-4 w-4 text-primary" aria-hidden="true" />
+        <h3 className="font-display text-lg font-semibold">Notifications</h3>
+      </div>
+      <p className="text-sm text-muted-foreground mb-4">
+        Control investigation status notifications.
       </p>
-      <div className="mt-4 space-y-3">
-        {notifKeys.map(({ label, sub, key }) => (
-          <div key={key} className="flex items-center gap-3 p-3 rounded-lg bg-surface/60 border border-border/60">
-            <div className="flex-1">
-              <div className="text-sm font-medium">{label}</div>
-              <div className="text-xs text-muted-foreground">{sub}</div>
-            </div>
-            <Switch
-              checked={prefs[key]}
-              onCheckedChange={() => handleToggle(key)}
-              aria-label={label}
-            />
+      
+      <div className="flex items-center justify-between p-4 rounded-lg bg-surface/60 border border-border/60">
+        <div className="flex-1">
+          <div className="text-sm font-medium">Investigation Updates</div>
+          <div className="text-xs text-muted-foreground mt-1">
+            Receive notifications when investigations complete or fail
           </div>
-        ))}
+        </div>
+        <Switch
+          checked={notificationsEnabled}
+          onCheckedChange={handleToggle}
+          aria-label="Toggle notifications"
+        />
       </div>
     </Card>
   );
@@ -220,26 +214,15 @@ function NotificationsTab() {
 
 function Settings() {
   return (
-    <AppShell title="Settings" subtitle="Manage profile, appearance, and notifications">
-      <Tabs defaultValue="profile">
-        <TabsList className="bg-surface/60 border border-border/60">
-          <TabsTrigger value="profile"><User className="h-3.5 w-3.5 mr-1.5" aria-hidden="true" /> Profile</TabsTrigger>
-          <TabsTrigger value="theme"><Palette className="h-3.5 w-3.5 mr-1.5" aria-hidden="true" /> Theme</TabsTrigger>
-          <TabsTrigger value="notifications"><Bell className="h-3.5 w-3.5 mr-1.5" aria-hidden="true" /> Notifications</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="profile">
-          <ProfileTab />
-        </TabsContent>
-
-        <TabsContent value="theme">
-          <ThemeTab />
-        </TabsContent>
-
-        <TabsContent value="notifications">
-          <NotificationsTab />
-        </TabsContent>
-      </Tabs>
+    <AppShell 
+      title="Settings" 
+      subtitle="Manage your profile, appearance, and notification preferences"
+    >
+      <div className="max-w-4xl space-y-6">
+        <ProfileSection />
+        <AppearanceSection />
+        <NotificationsSection />
+      </div>
     </AppShell>
   );
 }

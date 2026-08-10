@@ -75,7 +75,7 @@ function Identity() {
   return (
     <AppShell
       title="Unified Identity Profile"
-      subtitle="Aggregated view of every observed identifier for the primary target"
+      subtitle="Aggregated view of discovered identifiers from investigations"
     >
       <AsyncBoundary resource={resource}>
         {(profile) => (
@@ -88,12 +88,14 @@ function Identity() {
                   <div className="relative">
                     <div className="absolute inset-0 rounded-full blur-lg opacity-70 bg-gradient-to-br from-primary to-accent" aria-hidden="true" />
                     <div className="relative h-16 w-16 rounded-full bg-gradient-to-br from-primary to-accent grid place-items-center text-2xl font-display font-bold text-primary-foreground">
-                      {profile.initials}
+                      {user?.email ? user.email[0].toUpperCase() : profile.initials}
                     </div>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-xs uppercase tracking-widest text-muted-foreground">Subject</div>
-                    <div className="text-xl font-display font-semibold">{profile.displayName}</div>
+                    <div className="text-xl font-display font-semibold">
+                      {user?.fullName || profile.displayName}
+                    </div>
                     {user?.email && (
                       <div className="text-xs text-muted-foreground font-mono mt-0.5 flex items-center gap-2">
                         <Mail className="h-3 w-3" aria-hidden="true" />
@@ -101,7 +103,7 @@ function Identity() {
                       </div>
                     )}
                     <div className="text-xs text-muted-foreground font-mono mt-0.5">
-                      {profile.subjectId} · linked to {profile.linkedInvestigation}
+                      {user?.id || profile.subjectId} · {profile.linkedInvestigation}
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -120,21 +122,23 @@ function Identity() {
             </div>
 
             {/* Evidence */}
-            <Card className="glass p-5 border-border/60 mt-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Shield className="h-4 w-4 text-primary" aria-hidden="true" />
-                <h3 className="font-display font-semibold">Evidence Chain</h3>
-              </div>
-              <div className="space-y-2 text-xs">
-                {profile.evidence.map((e, i) => (
-                  <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-white/[0.03] border border-border/40">
-                    <span className="text-[10px] uppercase tracking-widest text-muted-foreground w-32 shrink-0">{e.src}</span>
-                    <span className="flex-1 min-w-0">{e.finding}</span>
-                    <span className="text-[10px] font-mono text-primary">conf {e.conf}%</span>
-                  </div>
-                ))}
-              </div>
-            </Card>
+            {profile.evidence.length > 0 && (
+              <Card className="glass p-5 border-border/60 mt-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Shield className="h-4 w-4 text-primary" aria-hidden="true" />
+                  <h3 className="font-display font-semibold">Evidence Chain</h3>
+                </div>
+                <div className="space-y-2 text-xs">
+                  {profile.evidence.map((e, i) => (
+                    <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-white/[0.03] border border-border/40">
+                      <span className="text-[10px] uppercase tracking-widest text-muted-foreground w-32 shrink-0">{e.src}</span>
+                      <span className="flex-1 min-w-0">{e.finding}</span>
+                      <span className="text-[10px] font-mono text-primary">conf {e.conf}%</span>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
           </>
         )}
       </AsyncBoundary>
