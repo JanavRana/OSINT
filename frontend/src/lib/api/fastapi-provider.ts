@@ -217,6 +217,8 @@ class FastAPIDataProvider implements DataProvider {
         y: 50,
         size: 36,
         primary: true,
+        platform: primaryId.platform,
+        platformDisplayName: primaryId.platformDisplayName,
       };
 
       // Group secondaries by type to keep same-type nodes adjacent on ring
@@ -248,6 +250,8 @@ class FastAPIDataProvider implements DataProvider {
             y: Math.round(50 + radius * Math.sin(angle - Math.PI / 2)),
             size: 24,
             primary: false,
+            platform: id.platform,
+            platformDisplayName: id.platformDisplayName,
           };
         });
 

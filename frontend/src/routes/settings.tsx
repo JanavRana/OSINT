@@ -3,268 +3,209 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { StatusBadge } from "@/components/badges";
-import { AsyncBoundary } from "@/components/states";
-import { useConnectors } from "@/hooks/use-osint-data";
 import {
-  useProfileSettings,
   useNotificationPrefs,
   useThemeSettings,
-  useConnectorPrefs,
-  type ProfileSettings,
 } from "@/hooks/use-settings";
-import { Key, Palette, User, Bell, Save, Eye, EyeOff, Plus, Check } from "lucide-react";
+import { getUser } from "@/lib/auth";
+import { Palette, User, Bell, Check, Sun, Moon, Mail } from "lucide-react";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({ meta: [{ title: "Settings — AXIOM OSINT" }] }),
   component: Settings,
 });
 
-// ─── Fake API keys (placeholder until backend provides them) ─────────────────
-
-interface ApiKeyEntry {
-  name: string;
-  key: string;
-  created: string;
-  used: string;
-}
-
-const apiKeys: ApiKeyEntry[] = [
-  { name: "Production", key: "axm_live_9f2a3b4c5d6e7f8a9b0c1d2e", created: "2026-04-11", used: "2 min ago" },
-  { name: "CI Pipeline", key: "axm_live_1a2b3c4d5e6f7g8h9i0j1k2l", created: "2026-05-02", used: "3 hours ago" },
+const themePresets: ReadonlyArray<{ name: string; gradient: string; primary: string; accent: string }> = [
+  { name: "Cyan · Violet", gradient: "from-primary to-accent", primary: "oklch(0.82 0.17 195)", accent: "oklch(0.65 0.24 295)" },
+  { name: "Ember", gradient: "from-orange-400 to-red-500", primary: "oklch(0.78 0.20 45)", accent: "oklch(0.65 0.26 25)" },
+  { name: "Emerald", gradient: "from-emerald-400 to-teal-500", primary: "oklch(0.78 0.17 155)", accent: "oklch(0.65 0.18 185)" },
+  { name: "Rose", gradient: "from-pink-400 to-fuchsia-500", primary: "oklch(0.76 0.21 340)", accent: "oklch(0.65 0.28 320)" },
 ];
 
-const themePresets: ReadonlyArray<{ name: string; gradient: string }> = [
-  { name: "Cyan · Violet", gradient: "from-primary to-accent" },
-  { name: "Ember", gradient: "from-orange-400 to-red-500" },
-  { name: "Emerald", gradient: "from-emerald-400 to-teal-500" },
-  { name: "Rose", gradient: "from-pink-400 to-fuchsia-500" },
-];
+// ─── Profile section ──────────────────────────────────────────────────────────
 
-const notifKeys: { label: string; sub: string; key: keyof ReturnType<typeof useNotificationPrefs>["prefs"] }[] = [
-  { label: "Critical alerts", sub: "Instant desktop + email", key: "criticalAlerts" },
-  { label: "Connector failures", sub: "Email digest", key: "connectorFailures" },
-  { label: "Investigation updates", sub: "In-app only", key: "investigationUpdates" },
-  { label: "Weekly intel digest", sub: "Every Monday 09:00", key: "weeklyDigest" },
-];
-
-// ─── API key row ──────────────────────────────────────────────────────────────
-
-function ApiKeyRow({ entry }: { entry: ApiKeyEntry }) {
-  const [show, setShow] = useState(false);
-  return (
-    <div className="flex items-center gap-3 p-4 rounded-xl bg-surface/60 border border-border/60">
-      <div className="min-w-0 flex-1">
-        <div className="font-medium text-sm">{entry.name}</div>
-        <div className="mt-1 flex items-center gap-2">
-          <code className="font-mono text-xs text-muted-foreground">
-            {show ? entry.key : entry.key.slice(0, 12) + "•".repeat(16)}
-          </code>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
-            onClick={() => setShow((s) => !s)}
-            aria-label={show ? "Hide API key" : "Show API key"}
-            aria-pressed={show}
-          >
-            {show ? <EyeOff className="h-3 w-3" aria-hidden="true" /> : <Eye className="h-3 w-3" aria-hidden="true" />}
-          </Button>
-        </div>
-      </div>
-      <div className="text-xs text-muted-foreground text-right">
-        <div>Created {entry.created}</div>
-        <div>Last used {entry.used}</div>
-      </div>
-      <Button variant="ghost" size="sm" className="text-destructive">Revoke</Button>
-    </div>
-  );
-}
-
-// ─── Profile tab ──────────────────────────────────────────────────────────────
-
-function ProfileTab() {
-  const { profile, saveProfile } = useProfileSettings();
-  const [local, setLocal] = useState<ProfileSettings>({ ...profile });
-  const [saved, setSaved] = useState(false);
-
-  const handleSave = () => {
-    // Auto-derive initials from full name
-    const initials = local.fullName
-      .split(" ")
-      .map((n) => n[0])
-      .slice(0, 2)
-      .join("")
-      .toUpperCase();
-    saveProfile({ ...local, initials });
-    setSaved(true);
-    toast.success("Profile saved", { description: "Your profile settings have been updated." });
-    setTimeout(() => setSaved(false), 2000);
-  };
-
-  const fields: { label: string; key: keyof ProfileSettings; type?: string }[] = [
-    { label: "Full name", key: "fullName" },
-    { label: "Role", key: "role" },
-    { label: "Email", key: "email", type: "email" },
-    { label: "Clearance", key: "clearance" },
-  ];
-
-  return (
-    <Card className="glass p-6 border-border/60 max-w-2xl">
-      <h3 className="font-display text-lg font-semibold">Profile</h3>
-      <p className="text-sm text-muted-foreground mt-1">
-        Your profile is persisted locally. It sets your display name in the UI.
-      </p>
-      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-        {fields.map(({ label, key, type }) => {
-          const id = `profile-${key}`;
-          return (
-            <div key={key}>
-              <Label htmlFor={id}>{label}</Label>
-              <Input
-                id={id}
-                type={type ?? "text"}
-                value={local[key]}
-                onChange={(e) => setLocal((prev) => ({ ...prev, [key]: e.target.value }))}
-                className="mt-1.5 bg-surface/60"
-              />
-            </div>
-          );
-        })}
-      </div>
-      <div className="mt-6 flex justify-end">
-        <Button
-          className="gap-2 bg-gradient-to-r from-primary to-accent text-primary-foreground"
-          onClick={handleSave}
-        >
-          {saved ? (
-            <Check className="h-4 w-4" aria-hidden="true" />
-          ) : (
-            <Save className="h-4 w-4" aria-hidden="true" />
-          )}
-          {saved ? "Saved!" : "Save"}
-        </Button>
-      </div>
-    </Card>
-  );
-}
-
-// ─── Theme tab ────────────────────────────────────────────────────────────────
-
-function ThemeTab() {
-  const { theme, setPreset } = useThemeSettings();
-
-  const handleSelect = (name: string) => {
-    setPreset(name);
-    toast.success("Theme updated", { description: `Switched to ${name} preset.` });
-  };
-
-  return (
-    <Card className="glass p-6 border-border/60 max-w-2xl">
-      <h3 className="font-display text-lg font-semibold">Appearance</h3>
-      <p className="text-sm text-muted-foreground">Cinematic obsidian by default. Accent color drives glow and highlights.</p>
-      <div className="mt-5 grid grid-cols-4 gap-3">
-        {themePresets.map(({ name, gradient }) => {
-          const active = theme.preset === name;
-          return (
-            <button
-              key={name}
-              className={`rounded-xl p-3 border ${active ? "border-primary ring-2 ring-primary/40" : "border-border/60"} bg-surface/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 transition-all`}
-              aria-pressed={active}
-              onClick={() => handleSelect(name)}
-            >
-              <div className={`h-16 rounded-lg bg-gradient-to-br ${gradient} relative`} aria-hidden="true">
-                {active && (
-                  <div className="absolute top-1 right-1 h-5 w-5 rounded-full bg-white/90 grid place-items-center">
-                    <Check className="h-3 w-3 text-foreground" />
-                  </div>
-                )}
-              </div>
-              <div className="mt-2 text-xs">{name}</div>
-            </button>
-          );
-        })}
-      </div>
-    </Card>
-  );
-}
-
-// ─── Notifications tab ────────────────────────────────────────────────────────
-
-function NotificationsTab() {
-  const { prefs, toggle } = useNotificationPrefs();
-
-  const handleToggle = (key: keyof typeof prefs) => {
-    toggle(key);
-    toast.info("Notification preference updated");
-  };
-
-  return (
-    <Card className="glass p-6 border-border/60 max-w-2xl">
-      <h3 className="font-display text-lg font-semibold">Notifications</h3>
-      <p className="text-sm text-muted-foreground mt-1">
-        Preferences are saved locally. Investigation status changes are polled every 30 seconds.
-      </p>
-      <div className="mt-4 space-y-3">
-        {notifKeys.map(({ label, sub, key }) => (
-          <div key={key} className="flex items-center gap-3 p-3 rounded-lg bg-surface/60 border border-border/60">
-            <div className="flex-1">
-              <div className="text-sm font-medium">{label}</div>
-              <div className="text-xs text-muted-foreground">{sub}</div>
-            </div>
-            <Switch
-              checked={prefs[key]}
-              onCheckedChange={() => handleToggle(key)}
-              aria-label={label}
-            />
-          </div>
-        ))}
-      </div>
-    </Card>
-  );
-}
-
-// ─── Connectors tab ──────────────────────────────────────────────────────────
-
-function ConnectorsTab() {
-  const connectorsRes = useConnectors();
-  const { isEnabled, setConnectorEnabled } = useConnectorPrefs();
+function ProfileSection() {
+  const user = getUser();
 
   return (
     <Card className="glass p-6 border-border/60">
-      <h3 className="font-display text-lg font-semibold">Connectors</h3>
-      <p className="text-sm text-muted-foreground">Enable, configure, and rate-limit third-party intelligence sources.</p>
-      <AsyncBoundary resource={connectorsRes}>
-        {(list) => (
-          <div className="mt-4 divide-y divide-border/60">
-            {list.slice(0, 10).map((c) => (
-              <div key={c.id} className="py-3 flex items-center gap-4">
-                <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary grid place-items-center font-display font-bold text-xs" aria-hidden="true">
-                  {c.name.slice(0, 2).toUpperCase()}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="font-medium text-sm">{c.name}</div>
-                  <div className="text-xs text-muted-foreground">{c.category}</div>
-                </div>
-                <StatusBadge status={c.status} />
-                <Switch
-                  checked={isEnabled(c.id)}
-                  onCheckedChange={(enabled) => {
-                    setConnectorEnabled(c.id, enabled);
-                    toast.info(`${c.name} ${enabled ? "enabled" : "disabled"}`);
-                  }}
-                  aria-label={`Enable ${c.name}`}
-                />
+      <div className="flex items-center gap-2 mb-4">
+        <User className="h-4 w-4 text-primary" aria-hidden="true" />
+        <h3 className="font-display text-lg font-semibold">Profile</h3>
+      </div>
+      <p className="text-sm text-muted-foreground mb-4">
+        Your authenticated account information.
+      </p>
+      
+      {user ? (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 rounded-lg bg-surface/60 border border-border/60">
+            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-accent grid place-items-center text-sm font-display font-bold text-primary-foreground">
+              {user.email[0].toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <Mail className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+                <span className="text-sm font-mono">{user.email}</span>
               </div>
-            ))}
+              {user.fullName && (
+                <div className="text-xs text-muted-foreground mt-1">{user.fullName}</div>
+              )}
+            </div>
+            {user.isVerified && (
+              <Check className="h-4 w-4 text-success" aria-label="Verified" />
+            )}
           </div>
-        )}
-      </AsyncBoundary>
+          
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <div className="p-3 rounded-lg bg-surface/60 border border-border/60">
+              <div className="text-muted-foreground">Account ID</div>
+              <div className="font-mono mt-1 truncate">{user.id}</div>
+            </div>
+            <div className="p-3 rounded-lg bg-surface/60 border border-border/60">
+              <div className="text-muted-foreground">Created</div>
+              <div className="font-mono mt-1">{new Date(user.createdAt).toLocaleDateString()}</div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="p-4 rounded-lg bg-surface/60 border border-border/60 text-sm text-muted-foreground">
+          No user data available. Please log in.
+        </div>
+      )}
+    </Card>
+  );
+}
+
+// ─── Appearance section ───────────────────────────────────────────────────────
+
+function AppearanceSection() {
+  const { theme, setPreset, mode, setMode } = useThemeSettings();
+
+  const handleSelectPreset = (name: string) => {
+    const preset = themePresets.find((p) => p.name === name);
+    if (preset) {
+      setPreset(name, preset.primary, preset.accent);
+      toast.success("Theme updated", { description: `Switched to ${name} preset.` });
+    }
+  };
+
+  const handleModeChange = (newMode: "light" | "dark") => {
+    setMode(newMode);
+    toast.success("Theme mode updated", { description: `Switched to ${newMode} mode.` });
+  };
+
+  return (
+    <Card className="glass p-6 border-border/60">
+      <div className="flex items-center gap-2 mb-4">
+        <Palette className="h-4 w-4 text-primary" aria-hidden="true" />
+        <h3 className="font-display text-lg font-semibold">Appearance</h3>
+      </div>
+      <p className="text-sm text-muted-foreground mb-5">
+        Customize theme mode and accent colors.
+      </p>
+      
+      {/* Theme mode selector */}
+      <div className="mb-5">
+        <Label className="text-sm font-medium">Theme Mode</Label>
+        <div className="mt-2 grid grid-cols-2 gap-3">
+          <button
+            className={`rounded-xl p-4 border ${mode === "dark" ? "border-primary ring-2 ring-primary/40" : "border-border/60"} bg-surface/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 transition-all flex items-center justify-center gap-2`}
+            aria-pressed={mode === "dark"}
+            onClick={() => handleModeChange("dark")}
+          >
+            <Moon className="h-4 w-4" aria-hidden="true" />
+            <span className="text-sm font-medium">Dark</span>
+            {mode === "dark" && <Check className="h-4 w-4 ml-auto text-primary" />}
+          </button>
+          <button
+            className={`rounded-xl p-4 border ${mode === "light" ? "border-primary ring-2 ring-primary/40" : "border-border/60"} bg-surface/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 transition-all flex items-center justify-center gap-2`}
+            aria-pressed={mode === "light"}
+            onClick={() => handleModeChange("light")}
+          >
+            <Sun className="h-4 w-4" aria-hidden="true" />
+            <span className="text-sm font-medium">Light</span>
+            {mode === "light" && <Check className="h-4 w-4 ml-auto text-primary" />}
+          </button>
+        </div>
+      </div>
+
+      {/* Accent color presets */}
+      <div>
+        <Label className="text-sm font-medium">Accent Color</Label>
+        <div className="mt-2 grid grid-cols-4 gap-3">
+          {themePresets.map(({ name, gradient }) => {
+            const active = theme.preset === name;
+            return (
+              <button
+                key={name}
+                className={`rounded-xl p-3 border ${active ? "border-primary ring-2 ring-primary/40" : "border-border/60"} bg-surface/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 transition-all`}
+                aria-pressed={active}
+                onClick={() => handleSelectPreset(name)}
+              >
+                <div className={`h-16 rounded-lg bg-gradient-to-br ${gradient} relative`} aria-hidden="true">
+                  {active && (
+                    <div className="absolute top-1 right-1 h-5 w-5 rounded-full bg-white/90 grid place-items-center">
+                      <Check className="h-3 w-3 text-foreground" />
+                    </div>
+                  )}
+                </div>
+                <div className="mt-2 text-xs">{name}</div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// ─── Notifications section ────────────────────────────────────────────────────
+
+function NotificationsSection() {
+  const { prefs, toggle } = useNotificationPrefs();
+  const [notificationsEnabled, setNotificationsEnabled] = useState(prefs.investigationUpdates);
+
+  const handleToggle = () => {
+    const newState = !notificationsEnabled;
+    setNotificationsEnabled(newState);
+    
+    // Update the actual preference
+    if (prefs.investigationUpdates !== newState) {
+      toggle("investigationUpdates");
+    }
+    
+    toast.info(
+      newState ? "Notifications enabled" : "Notifications disabled",
+      { description: newState ? "You'll receive investigation status updates" : "Notifications are now silent" }
+    );
+  };
+
+  return (
+    <Card className="glass p-6 border-border/60">
+      <div className="flex items-center gap-2 mb-4">
+        <Bell className="h-4 w-4 text-primary" aria-hidden="true" />
+        <h3 className="font-display text-lg font-semibold">Notifications</h3>
+      </div>
+      <p className="text-sm text-muted-foreground mb-4">
+        Control investigation status notifications.
+      </p>
+      
+      <div className="flex items-center justify-between p-4 rounded-lg bg-surface/60 border border-border/60">
+        <div className="flex-1">
+          <div className="text-sm font-medium">Investigation Updates</div>
+          <div className="text-xs text-muted-foreground mt-1">
+            Receive notifications when investigations complete or fail
+          </div>
+        </div>
+        <Switch
+          checked={notificationsEnabled}
+          onCheckedChange={handleToggle}
+          aria-label="Toggle notifications"
+        />
+      </div>
     </Card>
   );
 }
@@ -273,49 +214,15 @@ function ConnectorsTab() {
 
 function Settings() {
   return (
-    <AppShell title="Settings" subtitle="Manage keys, connectors, profile, and appearance">
-      <Tabs defaultValue="keys">
-        <TabsList className="bg-surface/60 border border-border/60">
-          <TabsTrigger value="keys"><Key className="h-3.5 w-3.5 mr-1.5" aria-hidden="true" /> API Keys</TabsTrigger>
-          <TabsTrigger value="connectors">Connectors</TabsTrigger>
-          <TabsTrigger value="profile"><User className="h-3.5 w-3.5 mr-1.5" aria-hidden="true" /> Profile</TabsTrigger>
-          <TabsTrigger value="theme"><Palette className="h-3.5 w-3.5 mr-1.5" aria-hidden="true" /> Theme</TabsTrigger>
-          <TabsTrigger value="notifications"><Bell className="h-3.5 w-3.5 mr-1.5" aria-hidden="true" /> Notifications</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="keys">
-          <Card className="glass p-6 border-border/60">
-            <div className="flex items-start justify-between">
-              <div>
-                <h3 className="font-display text-lg font-semibold">API Keys</h3>
-                <p className="text-sm text-muted-foreground">Personal access tokens for the AXIOM REST API.</p>
-              </div>
-              <Button className="gap-2 bg-gradient-to-r from-primary to-accent text-primary-foreground">
-                <Plus className="h-4 w-4" aria-hidden="true" /> New key
-              </Button>
-            </div>
-            <div className="mt-5 space-y-3">
-              {apiKeys.map((k) => <ApiKeyRow key={k.key} entry={k} />)}
-            </div>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="connectors">
-          <ConnectorsTab />
-        </TabsContent>
-
-        <TabsContent value="profile">
-          <ProfileTab />
-        </TabsContent>
-
-        <TabsContent value="theme">
-          <ThemeTab />
-        </TabsContent>
-
-        <TabsContent value="notifications">
-          <NotificationsTab />
-        </TabsContent>
-      </Tabs>
+    <AppShell 
+      title="Settings" 
+      subtitle="Manage your profile, appearance, and notification preferences"
+    >
+      <div className="max-w-4xl space-y-6">
+        <ProfileSection />
+        <AppearanceSection />
+        <NotificationsSection />
+      </div>
     </AppShell>
   );
 }

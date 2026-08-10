@@ -3,11 +3,13 @@
  *
  * Polls listInvestigations() every 30 s, diffs against the previous snapshot,
  * and surfaces status changes as in-app notifications + sonner toasts.
+ * Respects user notification preferences from settings.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { getDataProvider } from "@/lib/api/data-provider";
+import { useNotificationPrefs } from "./use-settings";
 import type { Investigation } from "@/types/domain";
 
 export type NotifSeverity = "info" | "success" | "warning" | "critical";
@@ -59,20 +61,32 @@ export function useNotifications() {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const snapshotRef = useRef<Map<string, Investigation["status"]>>(new Map());
   const initializedRef = useRef(false);
+  const { prefs } = useNotificationPrefs();
 
   const addNotification = useCallback((notif: AppNotification) => {
+    // Check if investigation updates are enabled
+    if (!prefs.investigationUpdates) {
+      return; // Don't add notification if disabled
+    }
+
     setNotifications((prev) => [notif, ...prev].slice(0, MAX_NOTIFS));
 
-    // Toast with appropriate styling
-    const toastFn =
-      notif.severity === "critical"
-        ? toast.error
-        : notif.severity === "success"
-        ? toast.success
-        : toast.info;
+    // Toast with appropriate styling based on severity and preferences
+    const shouldShowToast = 
+      (notif.severity === "critical" && prefs.criticalAlerts) ||
+      (notif.severity !== "critical" && prefs.investigationUpdates);
 
-    toastFn(notif.title, { description: notif.message });
-  }, []);
+    if (shouldShowToast) {
+      const toastFn =
+        notif.severity === "critical"
+          ? toast.error
+          : notif.severity === "success"
+          ? toast.success
+          : toast.info;
+
+      toastFn(notif.title, { description: notif.message });
+    }
+  }, [prefs]);
 
   const poll = useCallback(async () => {
     try {

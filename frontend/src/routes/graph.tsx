@@ -259,6 +259,11 @@ function GraphCanvas({
           const isMatch = lowerQ ? matchingIds.has(n.id) : true;
           const pos = getPos(n);
 
+          // For username nodes, show platform display name if available, otherwise show the username
+          const displayLabel = n.type === "user" && n.platformDisplayName 
+            ? n.platformDisplayName 
+            : n.label;
+
           return (
             <button
               key={n.id}
@@ -267,7 +272,7 @@ function GraphCanvas({
                 !isMatch && lowerQ && "opacity-20"
               )}
               style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
-              aria-label={`${n.type} ${n.label}`}
+              aria-label={`${n.type} ${displayLabel}`}
               aria-pressed={isSel}
               onMouseDown={(e) => handleNodeMouseDown(e, n.id, pos.x, pos.y)}
               onClick={(e) => { e.stopPropagation(); onSelect({ node: n, edge: null }); }}
@@ -291,7 +296,7 @@ function GraphCanvas({
                 <Icon className="h-3.5 w-3.5" />
               </div>
               <div className="mt-1 text-[10px] font-mono text-muted-foreground whitespace-nowrap text-center opacity-80 group-hover:opacity-100 max-w-[120px] truncate">
-                {n.label}
+                {displayLabel}
               </div>
             </button>
           );
