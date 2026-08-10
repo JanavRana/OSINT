@@ -80,11 +80,9 @@ class TestUsernameNormalizer:
         
         fact = normalize_username_result(raw_result, investigation_id)
         
-        assert fact is not None
-        assert fact.fact_type == "platform_account_not_found"
-        assert fact.fact_payload["exists"] is False
-        # High confidence for explicit 404
-        assert fact.confidence.value >= 0.8
+        # Should NOT create a fact for exists=False
+        # Not-found results should not become identifiers
+        assert fact is None
     
     def test_normalize_unknown_detection(self):
         """Test normalizing an unknown detection."""
@@ -109,11 +107,9 @@ class TestUsernameNormalizer:
         
         fact = normalize_username_result(raw_result, investigation_id)
         
-        assert fact is not None
-        assert fact.fact_type == "platform_account_unknown"
-        assert fact.fact_payload["exists"] == "unknown"
-        # Lower confidence for unknown results
-        assert fact.confidence.value < 0.7
+        # Should NOT create a fact for exists="unknown"
+        # Unknown results should not become identifiers
+        assert fact is None
     
     def test_skip_failed_results(self):
         """Test that failed results are not normalized."""
@@ -229,6 +225,7 @@ class TestUsernameNormalizer:
         
         raw_results = []
         for i, platform in enumerate(["github", "gitlab", "reddit"]):
+            # First two found, third not found
             outcome = DetectionOutcome(
                 exists=True if i < 2 else False,
                 http_status=200 if i < 2 else 404,
@@ -247,9 +244,17 @@ class TestUsernameNormalizer:
         
         facts = batch_normalize_username_results(raw_results, investigation_id)
         
-        assert len(facts) == 3
+        # Should only create facts for the two confirmed accounts
+        # Reddit (not found) should be filtered out
+        assert len(facts) == 2
         assert all(f.investigation_id == investigation_id for f in facts)
         assert all(f.identifier_value == "testuser" for f in facts)
+        assert all(f.fact_type == "platform_account_found" for f in facts)
+        
+        platforms = [f.fact_payload["platform"] for f in facts]
+        assert "github" in platforms
+        assert "gitlab" in platforms
+        assert "reddit" not in platforms
 
 
 if __name__ == "__main__":

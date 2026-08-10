@@ -152,7 +152,16 @@ class AuthService:
         """
         email = email.lower().strip()
         user = self._repo.get_by_email(email)
-        if not user or not verify_password(password, user.hashed_password):
+        
+        if not user:
+            logger.warning(f"Login failed: No user found for email '{email}'")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect email or password.",
+            )
+            
+        if not verify_password(password, user.hashed_password):
+            logger.warning(f"Login failed: Password mismatch for email '{email}'")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect email or password.",

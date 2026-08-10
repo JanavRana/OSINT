@@ -115,6 +115,9 @@ class FastAPIDataProvider implements DataProvider {
           confidence: number;
           sources: number;
           first_seen: string;
+          profile_url?: string | null;
+          platform?: string | null;
+          platform_display_name?: string | null;
         }>;
         count: number;
       }>(`/api/v1/investigations/investigations/${investigationId}/identifiers`);

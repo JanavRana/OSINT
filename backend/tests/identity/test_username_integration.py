@@ -151,8 +151,8 @@ class TestPlatformRobustness:
 class TestFalsePositiveProtection:
     """Test false positive protection mechanisms."""
     
-    def test_explicit_not_found_high_confidence(self):
-        """Test that explicit 404s have high confidence."""
+    def test_explicit_not_found_no_identifier(self):
+        """Test that explicit 404s don't create identifiers."""
         from app.identity.plugin_base import DetectionOutcome, RawResult
         from app.identity.types import IdentifierType
         from app.identity.username.normalizer import normalize_username_result
@@ -178,11 +178,11 @@ class TestFalsePositiveProtection:
         
         fact = normalize_username_result(raw_result, investigation_id)
         
-        # Explicit 404 should have high confidence
-        assert fact.confidence.value >= 0.8
+        # Explicit 404 should NOT create an identifier
+        assert fact is None
     
-    def test_ambiguous_results_lower_confidence(self):
-        """Test that ambiguous results have lower confidence."""
+    def test_ambiguous_results_no_identifier(self):
+        """Test that ambiguous results don't create identifiers."""
         from app.identity.plugin_base import DetectionOutcome, RawResult
         from app.identity.types import IdentifierType
         from app.identity.username.normalizer import normalize_username_result
@@ -208,8 +208,8 @@ class TestFalsePositiveProtection:
         
         fact = normalize_username_result(raw_result, investigation_id)
         
-        # Ambiguous/unknown results should have lower confidence
-        assert fact.confidence.value < 0.7
+        # Ambiguous/unknown results should NOT create an identifier
+        assert fact is None
 
 
 if __name__ == "__main__":

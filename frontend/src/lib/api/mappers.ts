@@ -399,6 +399,9 @@ interface BackendIdentifierRead {
   confidence: number;
   sources: number;
   first_seen: string;
+  profile_url?: string | null;
+  platform?: string | null;
+  platform_display_name?: string | null;
 }
 
 interface BackendIdentifierListResponse {
@@ -447,6 +450,9 @@ export function mapIdentifierList(
     confidence: item.confidence,
     sources: item.sources,
     firstSeen: item.first_seen,
+    profileUrl: item.profile_url ?? undefined,
+    platform: item.platform ?? undefined,
+    platformDisplayName: item.platform_display_name ?? undefined,
   }));
 }
 
