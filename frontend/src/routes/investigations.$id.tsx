@@ -76,10 +76,8 @@ function IdentifierTable({ items }: { items: Identifier[] }) {
         {items.map((i) => {
           const Icon = typeIcon[i.type];
 
-          // For username/social identifiers, display platform name instead of generic label
-          const displayType = (i.type === "username" || i.type === "social") && i.platformDisplayName
-            ? i.platformDisplayName
-            : i.type;
+          // Display platform / metadata label if available, otherwise default to identifier type name
+          const displayType = i.platformDisplayName || i.type;
 
           // Build the value cell — domain identifiers become clickable links.
           let valueCell = (

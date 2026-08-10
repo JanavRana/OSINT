@@ -16,3 +16,4 @@ passlib[bcrypt]==1.7.4
 python-multipart==0.0.9
 bcrypt==3.2.2
 pytest-asyncio==0.24.0
+phonenumbers==8.13.50

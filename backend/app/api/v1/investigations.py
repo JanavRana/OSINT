@@ -307,14 +307,49 @@ def list_identifiers(
 
     items: list[IdentifierRead] = []
     for f in facts:
+        meta: dict = f.fact_metadata or {}
+
+        # Handle Phone OSINT facts specially so carrier, region, line_type, timezone are exposed
+        if f.connector_name == "phone":
+            identifier_type = "phone"
+            display_value = str(f.value)
+            profile_url = None
+            platform = "phone"
+
+            if f.fact_type == "phone":
+                platform_display_name = "Phone Number"
+            elif f.fact_type == "location":
+                platform_display_name = "Country / Region"
+            elif f.fact_type == "contact_info" or meta.get("field") == "carrier":
+                platform_display_name = "Carrier (Inferred)"
+            elif meta.get("field") == "line_type":
+                platform_display_name = "Line Type"
+            elif meta.get("field") == "timezone":
+                platform_display_name = "Timezone"
+            else:
+                platform_display_name = "Phone Metadata"
+
+            items.append(
+                IdentifierRead(
+                    id=str(f.id),
+                    type=identifier_type,
+                    value=display_value,
+                    confidence=f.confidence,
+                    sources=1,
+                    first_seen=f.created_at.isoformat() if f.created_at else "",
+                    profile_url=profile_url,
+                    platform=platform,
+                    platform_display_name=platform_display_name,
+                )
+            )
+            continue
+
         identifier_type = IDENTIFIER_FACT_TYPES.get(f.fact_type)
         if identifier_type is None:
             # Registrar, nameserver, expiration, org, location, certificate,
             # archive_snapshot, image_hash, generic, domain_registration, etc.
             # are contextual metadata, not standalone identifiers — skip them.
             continue
-
-        meta: dict = f.fact_metadata or {}
 
         # Skip graph relationship edge facts to prevent duplicating primary profile_data facts
         if meta.get("graph_edge") is True or f.connector_name == "username_graph":
@@ -392,6 +427,7 @@ def list_connectors(
         "wayback": "Web Archives",
         "github": "Code & Social",
         "gravatar": "Profile Lookup",
+        "phone": "Phone Intelligence",
     }
 
     items = [
