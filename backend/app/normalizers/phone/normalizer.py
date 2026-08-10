@@ -163,16 +163,18 @@ class PhoneNormalizer(BaseNormalizer):
         )
 
     def _build_location_fact(self, payload: Dict[str, Any]) -> Optional[NormalizedFact]:
-        """Build a LOCATION fact from the number's region."""
+        """Build a LOCATION fact from the number's region/state."""
         region = payload.get("region")
         country_code = payload.get("country_code")
-        if not region and not country_code:
+        state_region = payload.get("state_region")
+
+        if not region and not country_code and not state_region:
             return None
         # "001" is phonenumbers' sentinel for non-geographic numbers (e.g. satellite)
         if region == "001":
             return None
 
-        location_value = region or str(country_code)
+        location_value = state_region or region or str(country_code)
         return NormalizedFact(
             fact_type=FactType.LOCATION,
             value=location_value,
@@ -181,8 +183,9 @@ class PhoneNormalizer(BaseNormalizer):
             metadata={
                 "field": "region",
                 "region": region,
+                "state_region": state_region,
                 "country_code": country_code,
-                "derived_from": "number_prefix",
+                "derived_from": "indian_numbering_plan" if country_code == 91 else "number_prefix",
             },
         )
 
