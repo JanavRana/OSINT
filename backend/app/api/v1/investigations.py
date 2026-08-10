@@ -344,6 +344,43 @@ def list_identifiers(
             )
             continue
 
+        # Handle Truecaller facts specially so caller name, email, location are exposed cleanly
+        if f.connector_name == "truecaller":
+            display_value = str(f.value)
+            profile_url = None
+            platform = "truecaller"
+
+            if f.fact_type == "profile_data":
+                identifier_type = "username"
+                platform_display_name = "Truecaller Name"
+            elif f.fact_type == "email":
+                identifier_type = "email"
+                platform_display_name = "Truecaller Email"
+            elif f.fact_type == "location":
+                identifier_type = "phone"
+                platform_display_name = "Truecaller Location"
+            elif f.fact_type == "contact_info":
+                identifier_type = "phone"
+                platform_display_name = "Truecaller Carrier"
+            else:
+                identifier_type = "phone"
+                platform_display_name = "Truecaller Info"
+
+            items.append(
+                IdentifierRead(
+                    id=str(f.id),
+                    type=identifier_type,
+                    value=display_value,
+                    confidence=f.confidence,
+                    sources=1,
+                    first_seen=f.created_at.isoformat() if f.created_at else "",
+                    profile_url=profile_url,
+                    platform=platform,
+                    platform_display_name=platform_display_name,
+                )
+            )
+            continue
+
         identifier_type = IDENTIFIER_FACT_TYPES.get(f.fact_type)
         if identifier_type is None:
             # Registrar, nameserver, expiration, org, location, certificate,
@@ -428,6 +465,7 @@ def list_connectors(
         "github": "Code & Social",
         "gravatar": "Profile Lookup",
         "phone": "Phone Intelligence",
+        "truecaller": "Caller Intelligence",
     }
 
     items = [
