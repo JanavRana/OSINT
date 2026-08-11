@@ -26,10 +26,31 @@ function New() {
   const [name, setName] = useState("");
   const [severity, setSeverity] = useState<Severity>("high");
   const [seedType, setSeedType] = useState<IdentifierType>("email");
+  const [isSeedTypeManuallySet, setIsSeedTypeManuallySet] = useState(false);
   const [seeds, setSeeds] = useState("");
   const [notes, setNotes] = useState("");
 
   const canSubmit = name.trim().length > 0 && seeds.trim().length > 0 && !create.isPending;
+
+  const detectIdentifierType = (target: string): IdentifierType => {
+    const cleaned = target.trim();
+    if (!cleaned) return "domain";
+    if (cleaned.includes("@")) return "email";
+    if (
+      cleaned.startsWith("0x") ||
+      cleaned.length === 42 ||
+      /^1[1-9A-HJ-NP-Za-km-z]{25,34}$/.test(cleaned) ||
+      /^3[1-9A-HJ-NP-Za-km-z]{25,34}$/.test(cleaned) ||
+      /^bc1[a-zA-Z0-9]{25,87}$/i.test(cleaned) ||
+      /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(cleaned)
+    ) {
+      return "wallet";
+    }
+    if (cleaned.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) return "ip";
+    if (cleaned.match(/^\+?\d+$/)) return "phone";
+    if (cleaned.startsWith("@")) return "username";
+    return "domain";
+  };
 
   async function handleLaunch() {
     const seedIdentifiers = seeds
@@ -37,12 +58,16 @@ function New() {
       .map((s) => s.trim())
       .filter(Boolean);
     if (!name.trim() || seedIdentifiers.length === 0) return;
+    
+    // Auto-detect seed type if user hasn't explicitly changed the default dropdown selection
+    const finalSeedType = isSeedTypeManuallySet ? seedType : detectIdentifierType(seedIdentifiers[0]);
+    
     try {
       const created = await create.mutate({
         name: name.trim(),
         target: seedIdentifiers[0],
         severity,
-        seedType,
+        seedType: finalSeedType,
         seedIdentifiers,
         notes: notes.trim() || undefined,
       });
@@ -83,7 +108,7 @@ function New() {
             </div>
             <div>
               <Label>Seed identifier type</Label>
-              <Select value={seedType} onValueChange={(v) => setSeedType(v as IdentifierType)}>
+              <Select value={seedType} onValueChange={(v) => { setSeedType(v as IdentifierType); setIsSeedTypeManuallySet(true); }}>
                 <SelectTrigger className="mt-1.5 bg-surface/60"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="email">Email</SelectItem>

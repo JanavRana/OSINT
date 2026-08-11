@@ -56,6 +56,8 @@ from .reverse_dns import ReverseDnsConnector  # noqa: F401
 from .ssl_certificate import SslCertificateConnector  # noqa: F401
 from .phone import PhoneConnector  # noqa: F401
 from .bitcoin import BitcoinConnector  # noqa: F401
+from .ethereum import EthereumConnector  # noqa: F401
+from .solana import SolanaConnector  # noqa: F401
 
 __all__ = [
     "BaseConnector",
@@ -76,4 +78,6 @@ __all__ = [
     "SslCertificateConnector",
     "PhoneConnector",
     "BitcoinConnector",
+    "EthereumConnector",
+    "SolanaConnector",
 ]

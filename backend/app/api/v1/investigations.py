@@ -344,6 +344,61 @@ def list_identifiers(
             )
             continue
 
+        # Handle Crypto Wallet OSINT facts specially (Bitcoin, Ethereum, Solana)
+        if f.connector_name in ("bitcoin", "ethereum", "solana"):
+            identifier_type = "wallet"
+            display_value = str(f.value)
+            wallet_addr = meta.get("wallet_address") or f.value
+            chain = meta.get("blockchain", f.connector_name)
+            
+            if chain == "ethereum":
+                profile_url = f"https://etherscan.io/address/{wallet_addr}" if wallet_addr else None
+                platform = "ethereum"
+                chain_title = "Ethereum"
+            elif chain == "solana":
+                profile_url = f"https://solscan.io/account/{wallet_addr}" if wallet_addr else None
+                platform = "solana"
+                chain_title = "Solana"
+            else:
+                profile_url = f"https://blockstream.info/address/{wallet_addr}" if wallet_addr else None
+                platform = "bitcoin"
+                chain_title = "Bitcoin"
+
+            data_type = meta.get("data_type")
+            if f.fact_type == "wallet_address":
+                addr_type = meta.get("address_type") or "address"
+                platform_display_name = f"{chain_title} Wallet ({addr_type})"
+            elif data_type == "balance":
+                platform_display_name = f"Confirmed Balance ({chain_title})"
+            elif data_type == "transaction_count":
+                platform_display_name = f"Transaction Count ({chain_title})"
+            elif data_type == "totals":
+                platform_display_name = "Total Received / Sent"
+            elif data_type == "timestamp":
+                act = meta.get("activity_type", "activity").replace("_", " ").title()
+                platform_display_name = f"{chain_title} Activity ({act})"
+            elif data_type == "utxo":
+                platform_display_name = "UTXO Data"
+            elif data_type == "transaction":
+                continue
+            else:
+                platform_display_name = f"{chain_title} Blockchain Data"
+
+            items.append(
+                IdentifierRead(
+                    id=str(f.id),
+                    type=identifier_type,
+                    value=display_value,
+                    confidence=f.confidence,
+                    sources=1,
+                    first_seen=f.created_at.isoformat() if f.created_at else "",
+                    profile_url=profile_url,
+                    platform=platform,
+                    platform_display_name=platform_display_name,
+                )
+            )
+            continue
+
         identifier_type = IDENTIFIER_FACT_TYPES.get(f.fact_type)
         if identifier_type is None:
             # Registrar, nameserver, expiration, org, location, certificate,

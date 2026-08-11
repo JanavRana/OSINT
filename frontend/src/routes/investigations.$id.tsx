@@ -66,7 +66,6 @@ function IdentifierTable({ items }: { items: Identifier[] }) {
           <th scope="col" className="px-5 py-3 font-medium">Value</th>
           <th scope="col" className="px-5 py-3 font-medium">Confidence</th>
           <th scope="col" className="px-5 py-3 font-medium">Sources</th>
-          <th scope="col" className="px-5 py-3 font-medium">First seen</th>
           {hasProfileLinks && (
             <th scope="col" className="px-5 py-3 font-medium">Profile</th>
           )}
@@ -114,7 +113,6 @@ function IdentifierTable({ items }: { items: Identifier[] }) {
                 <ConfidenceBar value={i.confidence} ariaLabel={`Confidence for ${i.value}`} />
               </td>
               <td className="px-5 py-3 text-xs">{i.sources}</td>
-              <td className="px-5 py-3 text-xs text-muted-foreground">{i.firstSeen}</td>
               {hasProfileLinks && (
                 <td className="px-5 py-3">
                   {i.profileUrl ? (
@@ -258,11 +256,21 @@ function Detail() {
 
   const deriveIdentifierType = (target: string): IdentifierType => {
     if (!target) return "domain";
-    if (target.includes("@")) return "email";
-    if (target.startsWith("0x") || target.length === 42) return "wallet";
-    if (target.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) return "ip";
-    if (target.match(/^\+?\d+$/)) return "phone";
-    if (target.startsWith("@")) return "username";
+    const cleaned = target.trim();
+    if (cleaned.includes("@")) return "email";
+    if (
+      cleaned.startsWith("0x") ||
+      cleaned.length === 42 ||
+      /^1[1-9A-HJ-NP-Za-km-z]{25,34}$/.test(cleaned) ||
+      /^3[1-9A-HJ-NP-Za-km-z]{25,34}$/.test(cleaned) ||
+      /^bc1[a-zA-Z0-9]{25,87}$/i.test(cleaned) ||
+      /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(cleaned)
+    ) {
+      return "wallet";
+    }
+    if (cleaned.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) return "ip";
+    if (cleaned.match(/^\+?\d+$/)) return "phone";
+    if (cleaned.startsWith("@")) return "username";
     return "domain";
   };
 
