@@ -384,6 +384,21 @@ def list_identifiers(
                 continue
             else:
                 platform_display_name = f"{chain_title} Blockchain Data"
+
+            items.append(
+                IdentifierRead(
+                    id=str(f.id),
+                    type=identifier_type,
+                    value=display_value,
+                    confidence=f.confidence,
+                    sources=1,
+                    first_seen=f.created_at.isoformat() if f.created_at else "",
+                    profile_url=profile_url,
+                    platform=platform,
+                    platform_display_name=platform_display_name,
+                )
+            )
+            continue
         # Handle Truecaller facts specially so caller name, email, location are exposed cleanly
         if f.connector_name == "truecaller":
             display_value = str(f.value)
