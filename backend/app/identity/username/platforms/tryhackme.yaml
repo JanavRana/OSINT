@@ -1,0 +1,47 @@
+# TryHackMe - Cyber security training platform
+id: tryhackme
+display_name: TryHackMe
+category: developer
+homepage: https://tryhackme.com
+
+profile_url_template: "https://tryhackme.com/p/{username}"
+api_endpoint: "https://tryhackme.com/api/user/exist/{username}"
+
+detection:
+  strategy: json_api
+  json_api:
+    success_field: "$.success"
+    not_found_status: 404
+
+network:
+  timeout_seconds: 6
+  retries: 2
+  backoff: exponential
+  base_delay_ms: 250
+
+rate_limit:
+  requests_per_minute: 40
+  scope: global
+
+auth:
+  login_required: false
+  captcha_risk: low
+
+confidence_rules:
+  base_reliability: 0.95
+  verification_method: api_confirmed
+  corroboration_fields: []
+
+parser:
+  type: json
+  fields:
+    success: "$.success"
+
+normalizer: username.normalizer.default
+enabled: true
+tags:
+  - cybersecurity
+  - ctf
+  - developer
+  - api-based
+notes: "TryHackMe public user existence API."

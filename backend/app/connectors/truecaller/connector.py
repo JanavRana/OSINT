@@ -29,6 +29,9 @@ from ..registry import registry
 from ..types import Identifier, IdentifierType
 
 
+from app.core.config import get_settings
+
+
 @registry.register
 class TruecallerConnector(BaseConnector):
     """
@@ -52,8 +55,17 @@ class TruecallerConnector(BaseConnector):
         Returns:
             JSON-serializable dict containing Truecaller search response or error info.
         """
-        api_key = os.getenv("TRUECALLER_RAPIDAPI_KEY") or os.getenv("RAPIDAPI_KEY")
-        api_host = os.getenv("TRUECALLER_RAPIDAPI_HOST", "truecaller-data2.p.rapidapi.com")
+        settings = get_settings()
+        api_key = (
+            os.getenv("TRUECALLER_RAPIDAPI_KEY")
+            or os.getenv("RAPIDAPI_KEY")
+            or settings.truecaller_rapidapi_key
+        )
+        api_host = (
+            os.getenv("TRUECALLER_RAPIDAPI_HOST")
+            or settings.truecaller_rapidapi_host
+            or "truecaller-data2.p.rapidapi.com"
+        )
 
         raw_input = identifier.value.strip()
         # Clean digits for Truecaller API (remove +, spaces, dashes)

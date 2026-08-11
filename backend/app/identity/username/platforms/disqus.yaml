@@ -1,0 +1,50 @@
+# Disqus - Discussion and commenting platform
+id: disqus
+display_name: Disqus
+category: forum
+homepage: https://disqus.com
+
+profile_url_template: "https://disqus.com/by/{username}/"
+api_endpoint: "https://disqus.com/api/3.0/users/details.json?username={username}"
+
+detection:
+  strategy: json_api
+  json_api:
+    success_field: "$.response.id"
+    not_found_status: 404
+
+network:
+  timeout_seconds: 6
+  retries: 2
+  backoff: exponential
+  base_delay_ms: 250
+
+rate_limit:
+  requests_per_minute: 40
+  scope: global
+
+auth:
+  login_required: false
+  captcha_risk: low
+
+confidence_rules:
+  base_reliability: 0.92
+  verification_method: api_confirmed
+  corroboration_fields:
+    - display_name
+    - avatar_url
+
+parser:
+  type: json
+  fields:
+    display_name: "$.response.name"
+    avatar_url: "$.response.avatar.permalink"
+    about: "$.response.about"
+
+normalizer: username.normalizer.default
+enabled: true
+tags:
+  - forum
+  - comments
+  - api-based
+notes: "Disqus public user API endpoint."

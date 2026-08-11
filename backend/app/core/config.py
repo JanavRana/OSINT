@@ -53,7 +53,9 @@ class Settings(BaseSettings):
     emailjs_service_id: str = ""
     emailjs_template_id: str = ""
     emailjs_public_key: str = ""
-    emailjs_private_key: str = ""
+    # --- Truecaller RapidAPI ---
+    truecaller_rapidapi_key: str = ""
+    truecaller_rapidapi_host: str = "truecaller-data2.p.rapidapi.com"
 
     @property
     def sqlalchemy_database_url(self) -> str:
