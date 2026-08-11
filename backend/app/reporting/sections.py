@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import base64
 import io
-import math
+import hashlib
 from datetime import datetime
 from typing import Any, Dict, List
 
@@ -25,7 +25,6 @@ from reportlab.platypus import (
     Table,
     TableStyle,
 )
-from reportlab.graphics.shapes import Drawing, Rect, Circle, String, Line
 
 
 class BaseSection:
@@ -54,15 +53,15 @@ class BaseSection:
                 fontSize=13,
                 leading=16,
                 textColor=colors.HexColor('#0f172a'),
-                spaceBefore=14,
-                spaceAfter=8,
+                spaceBefore=12,
+                spaceAfter=6,
             ))
 
         if 'SubHeading' not in self.styles:
             self.styles.add(ParagraphStyle(
                 name='SubHeading',
                 fontName='Helvetica',
-                fontSize=9.5,
+                fontSize=9,
                 leading=12,
                 textColor=colors.HexColor('#64748b'),
                 spaceAfter=6,
@@ -117,6 +116,16 @@ class BaseSection:
                 textColor=colors.HexColor('#0f172a'),
                 alignment=TA_LEFT,
             ))
+
+        if 'BodyTextCustom' not in self.styles:
+            self.styles.add(ParagraphStyle(
+                name='BodyTextCustom',
+                fontName='Helvetica',
+                fontSize=8.5,
+                leading=12,
+                textColor=colors.HexColor('#334155'),
+                alignment=TA_LEFT,
+            ))
     
     def build(self, data: Dict[str, Any]) -> List:
         """Build section content. Override in subclasses."""
@@ -125,7 +134,7 @@ class BaseSection:
 
 class CoverPage(BaseSection):
     """
-    Page 1: Executive Summary Card + Centered Dynamic Relationship Graph.
+    Page 1: Full-Page Executive Summary & OSINT Investigation Dossier.
     """
     
     def build(self, data: Dict[str, Any]) -> List:
@@ -133,18 +142,25 @@ class CoverPage(BaseSection):
         
         investigation = data.get('investigation', {})
         stats = data.get('statistics', {})
+        connectors = data.get('connectors', [])
         facts = data.get('facts', [])
         
         case_name = investigation.get('name', 'Untitled Investigation')
+        inv_id = investigation.get('id', 'N/A')
         target = investigation.get('seed_value', 'N/A')
-        seed_type = str(investigation.get('seed_type', 'N/A')).upper()
+        category_str = investigation.get('category', 'Target Identifier')
+        investigator_str = investigation.get('investigator', 'Lead OSINT Investigator')
         status_str = str(investigation.get('status', 'ACTIVE')).upper()
         created_at = investigation.get('created_at', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
         
         avg_conf = stats.get('average_confidence', 0.0)
         avg_conf_pct = f"{int(round(avg_conf * 100))}%" if isinstance(avg_conf, (int, float)) else "N/A"
         
-        # ── 1. Center-Aligned Header Banner (INTEL WEAVE EVIDENCE REPORT) ──────
+        # Hash signature for dossier validation
+        raw_hash_seed = f"{inv_id}:{target}:{created_at}"
+        hash_digest = hashlib.sha256(raw_hash_seed.encode('utf-8')).hexdigest()[:16].upper()
+        
+        # ── 1. Center-Aligned Main Header Banner ──────────────────────────────
         banner_content = [
             [
                 Paragraph("<b>INTEL WEAVE EVIDENCE REPORT</b>", self.styles['ReportHeaderCenter'])
@@ -160,22 +176,31 @@ class CoverPage(BaseSection):
         story.append(banner_table)
         story.append(Spacer(1, 0.15 * inch))
         
-        # ── 2. Investigation Details Card ─────────────────────────────────────
+        # ── 2. Investigation Case Metadata Table (Left-oriented content) ─────
         details_data = [
             [
                 Paragraph(f"<b>Case Name:</b> {case_name}", self.styles['TableCell']),
-                Paragraph(f"<b>Status:</b> <font color='#0284c7'><b>{status_str}</b></font>", self.styles['TableCell'])
+                Paragraph(f"<b>Category:</b> <font color='#0284c7'><b>{category_str}</b></font>", self.styles['TableCell'])
             ],
             [
-                Paragraph(f"<b>Target Seed:</b> <font face='Courier'>{target}</font> ({seed_type})", self.styles['TableCell']),
-                Paragraph(f"<b>Created:</b> {created_at}", self.styles['TableCell'])
+                Paragraph(f"<b>Investigation ID:</b> <font face='Courier'>{inv_id[:18]}..</font>", self.styles['TableCellMono']),
+                Paragraph(f"<b>Status:</b> <font color='#10b981'><b>{status_str}</b></font>", self.styles['TableCell'])
+            ],
+            [
+                Paragraph(f"<b>Target Seed:</b> <font face='Courier'>{target}</font>", self.styles['TableCellMono']),
+                Paragraph(f"<b>Lead Investigator:</b> {investigator_str}", self.styles['TableCell'])
+            ],
+            [
+                Paragraph(f"<b>Generated Date:</b> {created_at}", self.styles['TableCell']),
+                Paragraph("<b>Classification:</b> TLP:AMBER · CONFIDENTIAL", self.styles['TableCell'])
             ]
         ]
-        details_table = Table(details_data, colWidths=[4.5 * inch, 2.2 * inch])
+        details_table = Table(details_data, colWidths=[4.3 * inch, 2.4 * inch])
         details_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f8fafc')),
             ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#cbd5e1')),
-            ('PADDING', (0, 0), (-1, -1), 7),
+            ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e2e8f0')),
+            ('PADDING', (0, 0), (-1, -1), 6),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ]))
         story.append(details_table)
@@ -207,89 +232,105 @@ class CoverPage(BaseSection):
         story.append(metrics_table)
         story.append(Spacer(1, 0.15 * inch))
         
-        # ── 4. Centered Dynamic Relationship Graph Section ────────────────────
-        story.append(Paragraph("Relationship Graph Visualization", self.styles['SectionHeading']))
-        story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#e2e8f0'), spaceAfter=8))
+        # ── 4. Executive Assessment & Case Findings Summary Box ────────────────
+        story.append(Paragraph("Executive Assessment & OSINT Findings", self.styles['SectionHeading']))
+        story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#e2e8f0'), spaceAfter=6))
         
-        graph_b64 = data.get('graph_image_base64')
-        if graph_b64 and isinstance(graph_b64, str):
-            try:
-                if graph_b64.startswith("data:image"):
-                    graph_b64 = graph_b64.split(",", 1)[1]
-                img_data = base64.b64decode(graph_b64)
-                img_stream = io.BytesIO(img_data)
-                img_flowable = Image(img_stream, width=6.5 * inch, height=3.2 * inch)
-                
-                # Wrap in centered container table
-                center_table = Table([[img_flowable]], colWidths=[6.7 * inch])
-                center_table.setStyle(TableStyle([('ALIGN', (0, 0), (-1, -1), 'CENTER')]))
-                story.append(center_table)
-            except Exception:
-                story.append(self._build_dynamic_vector_graph(target, facts))
-        else:
-            story.append(self._build_dynamic_vector_graph(target, facts))
+        assessment_p1 = (
+            f"This intelligence dossier documents OSINT correlation conducted for investigation "
+            f"<b>{case_name}</b> targeting <b>{category_str}</b> identifier <font face='Courier'><b>{target}</b></font>. "
+            f"The Intel Weave platform executed <b>{stats.get('total_connectors', 0)} OSINT connectors</b>, yielding "
+            f"<b>{stats.get('total_facts', 0)} normalized facts</b> with an aggregate verification confidence of <b>{avg_conf_pct}</b>."
+        )
+        assessment_p2 = (
+            f"Extracted intelligence encompasses technical metadata, active platform records, and historical activity timestamps. "
+            f"All findings have been normalized and recorded into the persistent investigation ledger by <b>{investigator_str}</b>."
+        )
+        
+        assessment_data = [
+            [Paragraph(assessment_p1, self.styles['BodyTextCustom'])],
+            [Paragraph(assessment_p2, self.styles['BodyTextCustom'])],
+        ]
+        assessment_table = Table(assessment_data, colWidths=[6.7 * inch])
+        assessment_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f8fafc')),
+            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#e2e8f0')),
+            ('PADDING', (0, 0), (-1, -1), 7),
+        ]))
+        story.append(assessment_table)
+        story.append(Spacer(1, 0.15 * inch))
+        
+        # ── 5. Connector Intelligence Summary Table ───────────────────────────
+        story.append(Paragraph("OSINT Connector Coverage Summary", self.styles['SectionHeading']))
+        story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#e2e8f0'), spaceAfter=6))
+        
+        cov_data = [
+            [
+                Paragraph("<b>Connector Name</b>", self.styles['TableHead']),
+                Paragraph("<b>Execution Status</b>", self.styles['TableHead']),
+                Paragraph("<b>Duration</b>", self.styles['TableHead']),
+                Paragraph("<b>Timestamp</b>", self.styles['TableHead']),
+            ]
+        ]
+        
+        for c in connectors[:4]:  # Show top connectors summary on Page 1
+            st_str = str(c.get('status', 'N/A')).upper()
+            st_color = "#10b981" if st_str == "SUCCESS" else "#ef4444" if st_str == "FAILED" else "#f59e0b"
+            cov_data.append([
+                Paragraph(f"<b>{c.get('name', 'N/A')}</b>", self.styles['TableCell']),
+                Paragraph(f"<font color='{st_color}'><b>{st_str}</b></font>", self.styles['TableCell']),
+                Paragraph(str(c.get('duration', 'N/A')), self.styles['TableCell']),
+                Paragraph(str(c.get('started_at', 'N/A')), self.styles['TableCellMono']),
+            ])
             
+        if len(connectors) == 0:
+            cov_data.append([
+                Paragraph("Automated connector execution recorded.", self.styles['TableCell']),
+                Paragraph("READY", self.styles['TableCell']),
+                Paragraph("< 1.0s", self.styles['TableCell']),
+                Paragraph("N/A", self.styles['TableCellMono']),
+            ])
+
+        cov_table = Table(cov_data, colWidths=[2.2 * inch, 1.5 * inch, 1.3 * inch, 1.7 * inch])
+        cov_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0f172a')),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8fafc')]),
+            ('PADDING', (0, 0), (-1, -1), 4.5),
+        ]))
+        story.append(cov_table)
+        story.append(Spacer(1, 0.15 * inch))
+        
+        # ── 6. Investigator Attestation & Verification Footer Card ─────────────
+        sign_data = [
+            [
+                Paragraph(f"<b>Investigator Signature:</b> ___________________________", self.styles['TableCell']),
+                Paragraph(f"<b>Verification Hash:</b> <font face='Courier'>SHA256-{hash_digest}</font>", self.styles['TableCellMono'])
+            ]
+        ]
+        sign_table = Table(sign_data, colWidths=[4.2 * inch, 2.5 * inch])
+        sign_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f1f5f9')),
+            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#cbd5e1')),
+            ('PADDING', (0, 0), (-1, -1), 6),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ]))
+        story.append(sign_table)
+        
         story.append(PageBreak())
         return story
-
-    def _build_dynamic_vector_graph(self, target: str, facts: List[Dict[str, Any]]) -> Table:
-        """Dynamically build a centered vector graph tailored to this specific investigation's facts."""
-        width = 460
-        height = 220
-        d = Drawing(width, height)
-        d.add(Rect(0, 0, width, height, fillColor=colors.HexColor("#0f172a"), rx=8, ry=8))
-        
-        cx, cy = 230, 110
-        # Center Seed Node
-        d.add(Circle(cx, cy, 28, fillColor=colors.HexColor("#0284c7"), strokeColor=colors.HexColor("#38bdf8"), strokeWidth=2))
-        d.add(String(cx, cy - 3, "TARGET SEED", fontName="Helvetica-Bold", fontSize=6.5, fillColor=colors.white, textAnchor="middle"))
-        
-        # Pick top unique fact items for dynamic node placement
-        fact_nodes = []
-        palette = ["#10b981", "#f59e0b", "#6366f1", "#ec4899", "#14b8a6", "#8b5cf6"]
-        
-        for idx, f in enumerate(facts[:6]):
-            f_type = str(f.get('type', 'FACT')).replace('_', ' ').upper()
-            f_val = str(f.get('value', ''))
-            label = f_type if len(f_type) <= 12 else f_type[:10] + '..'
-            fact_nodes.append((label, f_val, palette[idx % len(palette)]))
-            
-        if not fact_nodes:
-            fact_nodes = [
-                ("IDENTIFIER", "Seed Address", "#10b981"),
-                ("CONNECTORS", "Active Execution", "#f59e0b"),
-            ]
-
-        num_nodes = len(fact_nodes)
-        radius = 85
-        
-        for i, (label, val, color) in enumerate(fact_nodes):
-            angle = (2 * math.pi / num_nodes) * i
-            nx = cx + radius * math.cos(angle)
-            ny = cy + radius * math.sin(angle)
-            
-            d.add(Line(cx, cy, nx, ny, strokeColor=colors.HexColor("#334155"), strokeWidth=1.5))
-            d.add(Circle(nx, ny, 20, fillColor=colors.HexColor(color), strokeColor=colors.white, strokeWidth=1.5))
-            d.add(String(nx, ny - 3, label[:10], fontName="Helvetica-Bold", fontSize=5.5, fillColor=colors.white, textAnchor="middle"))
-
-        d.add(String(cx, 12, f"Target: {target[:32]}", fontName="Courier", fontSize=7.5, fillColor=colors.HexColor("#94a3b8"), textAnchor="middle"))
-        
-        # Center in Table container
-        wrapper = Table([[d]], colWidths=[6.7 * inch])
-        wrapper.setStyle(TableStyle([('ALIGN', (0, 0), (-1, -1), 'CENTER')]))
-        return wrapper
 
 
 class IdentifiersSection(BaseSection):
     """
-    Extracted Identifiers & Evidence Table (Flows naturally on continuous pages).
+    Extracted Identifiers & Evidence Table (Left-oriented table, flows naturally).
     """
     
     def build(self, data: Dict[str, Any]) -> List:
         story = []
         
-        story.append(Paragraph("Extracted Identifiers & Data", self.styles['SectionHeading']))
-        story.append(Paragraph("Comprehensive inventory of normalized intelligence facts.", self.styles['SubHeading']))
+        story.append(Paragraph("Extracted Identifiers & Evidence", self.styles['SectionHeading']))
+        story.append(Paragraph("Inventory of normalized facts extracted across active connectors.", self.styles['SubHeading']))
         story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#e2e8f0'), spaceAfter=8))
         
         facts = data.get('facts', [])
@@ -339,13 +380,12 @@ class IdentifiersSection(BaseSection):
         
         story.append(id_table)
         story.append(Spacer(1, 0.2 * inch))
-        # No PageBreak here - continuous flow!
         return story
 
 
 class ConnectorSection(BaseSection):
     """
-    Connector Execution Summary Log (Flows naturally on continuous pages).
+    Connector Execution Summary Log (Left-oriented table, flows naturally).
     """
     
     def build(self, data: Dict[str, Any]) -> List:
@@ -389,18 +429,17 @@ class ConnectorSection(BaseSection):
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
             ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8fafc')]),
-            ('PADDING', (0, 0), (-1, -1), 5),
+            ('PADDING', (0, 0), (-1, -1), 4.5),
         ]))
         
         story.append(c_table)
         story.append(Spacer(1, 0.2 * inch))
-        # No PageBreak here - continuous flow!
         return story
 
 
 class TimelineSection(BaseSection):
     """
-    Chronological Event Timeline (Flows naturally on continuous pages).
+    Chronological Event Timeline (Left-oriented table, flows naturally).
     """
     
     def build(self, data: Dict[str, Any]) -> List:

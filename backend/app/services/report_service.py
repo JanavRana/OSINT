@@ -147,6 +147,24 @@ class ReportService:
                 "error": err,
             })
 
+        # Category mapping for seed identifier
+        raw_seed_type = getattr(seed, 'type', 'N/A') if seed else "N/A"
+        category_map = {
+            "wallet": "Cryptocurrency Wallet",
+            "email": "Email Address",
+            "phone": "Phone Number",
+            "domain": "Domain Name",
+            "ip": "IP Address / Infrastructure",
+            "username": "Social Account / Username",
+        }
+        category_display = category_map.get(str(raw_seed_type).lower(), str(raw_seed_type).replace('_', ' ').title())
+
+        # Investigator credit info
+        user_obj = getattr(investigation, 'user', None)
+        investigator_name = "Lead OSINT Investigator"
+        if user_obj:
+            investigator_name = getattr(user_obj, 'full_name', None) or getattr(user_obj, 'email', None) or "Lead OSINT Investigator"
+
         return {
             "investigation": {
                 "id": str(investigation.id),
@@ -155,7 +173,9 @@ class ReportService:
                 "created_at": investigation.created_at.strftime("%Y-%m-%d %H:%M:%S") if investigation.created_at else "N/A",
                 "updated_at": investigation.updated_at.strftime("%Y-%m-%d %H:%M:%S") if investigation.updated_at else "N/A",
                 "seed_value": seed.value if seed else "N/A",
-                "seed_type": getattr(seed, 'type', 'N/A') if seed else "N/A",
+                "seed_type": raw_seed_type,
+                "category": category_display,
+                "investigator": investigator_name,
             },
             "statistics": {
                 "total_connectors": len(connectors_raw),
