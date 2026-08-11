@@ -342,14 +342,16 @@ class FastAPIDataProvider implements DataProvider {
     return mapExecutionResult(response.data);
   }
 
-  async generateReport(investigationId: string): Promise<GeneratedReport> {
+  async generateReport(investigationId: string, graphImage?: string): Promise<GeneratedReport> {
     const response = await apiClient.post<{
       id: string;
       investigation_id: string;
       status: "pending" | "generating" | "completed" | "failed";
       file_size: number;
       generated_at: string;
-    }>(`/api/v1/investigations/investigations/${investigationId}/report`);
+    }>(`/api/v1/investigations/investigations/${investigationId}/report`, {
+      graph_image: graphImage || undefined,
+    });
     return mapGeneratedReport(response.data);
   }
 

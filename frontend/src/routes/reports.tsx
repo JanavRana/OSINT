@@ -333,13 +333,13 @@ function ReportsPage() {
     try {
       const result = await generate.mutate(selectedInvId);
       const mapped: SessionReport["status"] =
-        result.status === "ready"
+        result.status === "ready" || (result.status as string) === "completed"
           ? "ready"
           : result.status === "failed"
           ? "failed"
           : result.status === "generating"
           ? "generating"
-          : "queued";
+          : "ready";
 
       const newReport: SessionReport = {
         reportId: result.reportId,

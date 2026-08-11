@@ -54,7 +54,7 @@ export interface DataProvider {
     investigationId: string,
     identifier: { value: string; type: IdentifierType },
   ): Promise<ExecutionResult>;
-  generateReport(investigationId: string): Promise<GeneratedReport>;
+  generateReport(investigationId: string, graphImage?: string): Promise<GeneratedReport>;
   downloadReport(investigationId: string, reportId?: string): Promise<ReportDownload>;
 
   // Auth

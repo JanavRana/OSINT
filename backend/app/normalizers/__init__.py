@@ -32,6 +32,9 @@ from .dns import DnsNormalizer  # noqa: F401
 from .reverse_dns import ReverseDnsNormalizer  # noqa: F401
 from .ssl_certificate import SslCertificateNormalizer  # noqa: F401
 from .phone import PhoneNormalizer  # noqa: F401
+from .bitcoin import BitcoinNormalizer  # noqa: F401
+from .ethereum import EthereumNormalizer  # noqa: F401
+from .solana import SolanaNormalizer  # noqa: F401
 from .truecaller import TruecallerNormalizer  # noqa: F401
 
 __all__ = [
@@ -50,5 +53,8 @@ __all__ = [
     "ReverseDnsNormalizer",
     "SslCertificateNormalizer",
     "PhoneNormalizer",
+    "BitcoinNormalizer",
+    "EthereumNormalizer",
+    "SolanaNormalizer",
     "TruecallerNormalizer",
 ]
