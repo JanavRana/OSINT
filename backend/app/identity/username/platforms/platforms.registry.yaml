@@ -20,6 +20,9 @@ platforms:
   - docker-hub.yaml
   - kaggle.yaml
   - sourceforge.yaml
+  - tryhackme.yaml
+  - hackthebox.yaml
+  - replit.yaml
   
   # Social platforms
   - reddit.yaml
@@ -35,6 +38,10 @@ platforms:
   - vimeo.yaml
   - flickr.yaml
   - tumblr.yaml
+  - spotify.yaml
+  - linktree.yaml
+  - letterboxd.yaml
+  - telegram.yaml
   
   # Professional platforms
   - linkedin.yaml
@@ -45,15 +52,27 @@ platforms:
   # Creative platforms
   - behance.yaml
   - dribbble.yaml
+  - patreon.yaml
+  - substack.yaml
+  - buymeacoffee.yaml
+  - bandcamp.yaml
+  - artstation.yaml
   
   # Forum/Community platforms
   - hackernews.yaml
   - quora.yaml
   - producthunt.yaml
+  - disqus.yaml
   
   # Gaming platforms
   - steam.yaml
   - discord.yaml
+  - chess.yaml
+  - lichess.yaml
+  - roblox.yaml
   
   # Meta/other platforms
   - facebook.yaml
+  - duolingo.yaml
+  - gravatar.yaml
+

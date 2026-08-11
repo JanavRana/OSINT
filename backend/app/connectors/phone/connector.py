@@ -200,7 +200,7 @@ _INDIAN_MOBILE_STATES: Dict[str, str] = {
     "9727": "Gujarat", "9426": "Gujarat", "8141": "Gujarat", "9099": "Gujarat",
     "7600": "Gujarat", "9925": "Gujarat", "9824": "Gujarat", "9978": "Gujarat",
     "9427": "Gujarat", "9723": "Gujarat", "9724": "Gujarat", "9725": "Gujarat",
-    "9726": "Gujarat", "8866": "Gujarat", "9510": "Gujarat", "9512": "Gujarat",
+    "9726": "Gujarat", "8866": "Gujarat", "8849": "Gujarat", "9510": "Gujarat", "9512": "Gujarat",
     "7016": "Gujarat", "7041": "Gujarat", "7043": "Gujarat", "7046": "Gujarat",
     "7048": "Gujarat", "7069": "Gujarat", "7096": "Gujarat", "7201": "Gujarat",
     "7202": "Gujarat", "7203": "Gujarat", "7359": "Gujarat", "7383": "Gujarat",
@@ -322,10 +322,10 @@ _INDIAN_MOBILE_STATES: Dict[str, str] = {
     # ── Karnataka ────────────────────────────────────────────────────────
     "9844": "Karnataka", "9845": "Karnataka", "9880": "Karnataka", "9900": "Karnataka",
     "9945": "Karnataka", "9980": "Karnataka", "9448": "Karnataka", "7019": "Karnataka",
+    "9741": "Karnataka",
 
     # ── Kerala ───────────────────────────────────────────────────────────
-    "9846": "Kerala", "9847": "Kerala", "9895": "Kerala", "9946": "Kerala",
-    "9947": "Kerala", "9995": "Kerala", "9447": "Kerala", "7012": "Kerala",
+    "9846": "Kerala", "9847": "Kerala", "9995": "Kerala", "9447": "Kerala", "7012": "Kerala",
 
     # ── Kolkata ──────────────────────────────────────────────────────────
     "9830": "Kolkata", "9831": "Kolkata", "9836": "Kolkata", "9903": "Kolkata",
@@ -335,7 +335,7 @@ _INDIAN_MOBILE_STATES: Dict[str, str] = {
     "9848": "Andhra Pradesh & Telangana", "9849": "Andhra Pradesh & Telangana",
     "9866": "Andhra Pradesh & Telangana", "9948": "Andhra Pradesh & Telangana",
     "9949": "Andhra Pradesh & Telangana", "9440": "Andhra Pradesh & Telangana",
-    "7013": "Andhra Pradesh & Telangana",
+    "7013": "Andhra Pradesh & Telangana", "9553": "Andhra Pradesh & Telangana",
 
     # ── Madhya Pradesh & Chhattisgarh ────────────────────────────────────
     "9826": "Madhya Pradesh & Chhattisgarh", "9827": "Madhya Pradesh & Chhattisgarh",
@@ -356,6 +356,7 @@ _INDIAN_MOBILE_STATES: Dict[str, str] = {
 
     # ── Rajasthan ────────────────────────────────────────────────────────
     "9829": "Rajasthan", "9828": "Rajasthan", "9928": "Rajasthan", "9414": "Rajasthan",
+    "8107": "Rajasthan",
 
     # ── Punjab ───────────────────────────────────────────────────────────
     "9814": "Punjab", "9815": "Punjab", "9872": "Punjab", "9914": "Punjab",

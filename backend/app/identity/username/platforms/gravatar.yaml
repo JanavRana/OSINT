@@ -1,0 +1,52 @@
+# Gravatar - Globally Recognized Avatar
+id: gravatar
+display_name: Gravatar
+category: other
+homepage: https://gravatar.com
+
+profile_url_template: "https://gravatar.com/{username}"
+api_endpoint: "https://en.gravatar.com/{username}.json"
+
+detection:
+  strategy: json_api
+  json_api:
+    success_field: "$.entry[0].hash"
+    not_found_status: 404
+
+network:
+  timeout_seconds: 6
+  retries: 2
+  backoff: exponential
+  base_delay_ms: 250
+
+rate_limit:
+  requests_per_minute: 60
+  scope: global
+
+auth:
+  login_required: false
+  captcha_risk: low
+
+confidence_rules:
+  base_reliability: 0.95
+  verification_method: api_confirmed
+  corroboration_fields:
+    - display_name
+    - avatar_url
+    - location
+
+parser:
+  type: json
+  fields:
+    display_name: "$.entry[0].displayName"
+    avatar_url: "$.entry[0].thumbnailUrl"
+    location: "$.entry[0].currentLocation"
+
+normalizer: username.normalizer.default
+enabled: true
+tags:
+  - avatar
+  - profile
+  - high-confidence
+  - api-based
+notes: "Public Gravatar JSON profile API."
