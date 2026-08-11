@@ -99,7 +99,7 @@ export function AppShell({ children, title, subtitle, actions }: {
             </div>
           </div>
           <div className="flex flex-col leading-tight">
-            <span className="font-display font-bold tracking-tight">AXIOM</span>
+            <span className="font-display font-bold tracking-tight">Intel Weave</span>
             <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">OSINT Intel</span>
           </div>
         </div>
