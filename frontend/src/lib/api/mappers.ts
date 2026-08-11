@@ -192,6 +192,7 @@ export function mapBackendIdentifierType(
     case "username":      return "username";
     case "wallet_address": return "wallet";
     case "phone":         return "phone";
+    case "ip":            return "ip";
     case "image":         return "domain"; // no frontend image type
     default:              return "domain";
   }
@@ -208,8 +209,8 @@ export function mapFrontendIdentifierType(frontendType: IdentifierType): string 
     case "username": return "username";
     case "wallet":   return "wallet_address";
     case "phone":    return "phone";
+    case "ip":       return "ip";
     case "social":   return "username"; // closest backend equivalent
-    case "ip":       return "domain";   // no ip type in backend yet
     default:         return "domain";
   }
 }

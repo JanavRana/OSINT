@@ -47,6 +47,8 @@ function New() {
       return "wallet";
     }
     if (cleaned.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) return "ip";
+    // IPv6: contains colons and hex digits (also handles compressed forms like ::1)
+    if (cleaned.includes(":") && /^[0-9a-fA-F:]+$/.test(cleaned) && cleaned.includes(":")) return "ip";
     if (cleaned.match(/^\+?\d+$/)) return "phone";
     if (cleaned.startsWith("@")) return "username";
     return "domain";
