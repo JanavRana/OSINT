@@ -35,6 +35,8 @@ class IdentifierType(str, enum.Enum):
     IP = "ip"
     WALLET_ADDRESS = "wallet_address"
     IMAGE = "image"
+    MAC = "mac"
+
 
 
 @dataclass(frozen=True)

@@ -37,6 +37,7 @@ from .ethereum import EthereumNormalizer  # noqa: F401
 from .solana import SolanaNormalizer  # noqa: F401
 from .truecaller import TruecallerNormalizer  # noqa: F401
 from .ip import IpGeolocationNormalizer  # noqa: F401
+from .mac import MacNormalizer  # noqa: F401
 
 __all__ = [
     "BaseNormalizer",
@@ -59,4 +60,5 @@ __all__ = [
     "SolanaNormalizer",
     "TruecallerNormalizer",
     "IpGeolocationNormalizer",
+    "MacNormalizer",
 ]

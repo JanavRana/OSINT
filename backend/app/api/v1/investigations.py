@@ -505,6 +505,47 @@ def list_identifiers(
             )
             continue
 
+        # Handle mac_osint facts: expose Hardware Vendor, Wi-Fi Location, SSID
+        if f.connector_name == "mac_osint":
+            display_value = str(f.value)
+            profile_url = None
+            platform = "mac_osint"
+            field = meta.get("field", "")
+
+            if field == "mac_address":
+                platform_display_name = "MAC Address"
+                identifier_type = "mac"
+            elif field == "hardware_vendor":
+                platform_display_name = "Hardware Vendor / Manufacturer"
+                identifier_type = "mac"
+            elif field == "wifi_location":
+                platform_display_name = "Wi-Fi Location (Wigle BSSID)"
+                identifier_type = "mac"
+            elif field == "wifi_ssid":
+                platform_display_name = "Wi-Fi Network Name (SSID)"
+                identifier_type = "mac"
+            elif field == "wifi_security":
+                platform_display_name = "Wi-Fi Security Protocol"
+                identifier_type = "mac"
+            else:
+                platform_display_name = "MAC Hardware Data"
+                identifier_type = "mac"
+
+            items.append(
+                IdentifierRead(
+                    id=str(f.id),
+                    type=identifier_type,
+                    value=display_value,
+                    confidence=f.confidence,
+                    sources=1,
+                    first_seen=f.created_at.isoformat() if f.created_at else "",
+                    profile_url=profile_url,
+                    platform=platform,
+                    platform_display_name=platform_display_name,
+                )
+            )
+            continue
+
         identifier_type = IDENTIFIER_FACT_TYPES.get(f.fact_type)
         if identifier_type is None:
             # Registrar, nameserver, expiration, org, location, certificate,
@@ -592,6 +633,7 @@ def list_connectors(
         "truecaller": "Caller Intelligence",
         "ip_geolocation": "IP Intelligence",
         "reverse_dns": "IP Intelligence",
+        "mac_osint": "Hardware & Wireless",
     }
 
     items = [
