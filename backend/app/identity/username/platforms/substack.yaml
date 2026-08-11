@@ -1,0 +1,44 @@
+# Substack - Publishing and newsletter platform
+id: substack
+display_name: Substack
+category: creative
+homepage: https://substack.com
+
+profile_url_template: "https://{username}.substack.com"
+
+detection:
+  strategy: status_code
+  status_code:
+    success_codes: [200]
+    not_found_codes: [404]
+
+network:
+  timeout_seconds: 6
+  retries: 2
+  backoff: exponential
+  base_delay_ms: 250
+
+rate_limit:
+  requests_per_minute: 30
+  scope: global
+
+auth:
+  login_required: false
+  captcha_risk: low
+
+confidence_rules:
+  base_reliability: 0.90
+  verification_method: html_scrape
+  corroboration_fields: []
+
+parser:
+  type: html
+  fields: {}
+
+normalizer: username.normalizer.default
+enabled: true
+tags:
+  - blogging
+  - newsletter
+  - creative
+notes: "Substack custom user publication subdomain."

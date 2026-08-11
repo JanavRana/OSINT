@@ -384,6 +384,27 @@ def list_identifiers(
                 continue
             else:
                 platform_display_name = f"{chain_title} Blockchain Data"
+        # Handle Truecaller facts specially so caller name, email, location are exposed cleanly
+        if f.connector_name == "truecaller":
+            display_value = str(f.value)
+            profile_url = None
+            platform = "truecaller"
+
+            if f.fact_type == "profile_data":
+                identifier_type = "username"
+                platform_display_name = "Truecaller Name"
+            elif f.fact_type == "email":
+                identifier_type = "email"
+                platform_display_name = "Truecaller Email"
+            elif f.fact_type == "location":
+                identifier_type = "phone"
+                platform_display_name = "Truecaller Location"
+            elif f.fact_type == "contact_info":
+                identifier_type = "phone"
+                platform_display_name = "Truecaller Carrier"
+            else:
+                identifier_type = "phone"
+                platform_display_name = "Truecaller Info"
 
             items.append(
                 IdentifierRead(
@@ -484,6 +505,7 @@ def list_connectors(
         "github": "Code & Social",
         "gravatar": "Profile Lookup",
         "phone": "Phone Intelligence",
+        "truecaller": "Caller Intelligence",
     }
 
     items = [

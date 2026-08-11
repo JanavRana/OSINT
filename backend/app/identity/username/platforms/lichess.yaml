@@ -1,0 +1,51 @@
+# Lichess - Free open-source chess platform
+id: lichess
+display_name: Lichess
+category: gaming
+homepage: https://lichess.org
+
+profile_url_template: "https://lichess.org/@/{username}"
+api_endpoint: "https://lichess.org/api/user/{username}"
+
+detection:
+  strategy: json_api
+  json_api:
+    success_field: "$.id"
+    not_found_status: 404
+
+network:
+  timeout_seconds: 6
+  retries: 2
+  backoff: exponential
+  base_delay_ms: 250
+
+rate_limit:
+  requests_per_minute: 60
+  scope: global
+
+auth:
+  login_required: false
+  captcha_risk: low
+
+confidence_rules:
+  base_reliability: 0.95
+  verification_method: api_confirmed
+  corroboration_fields:
+    - display_name
+    - bio
+
+parser:
+  type: json
+  fields:
+    display_name: "$.username"
+    bio: "$.profile.bio"
+    title: "$.title"
+
+normalizer: username.normalizer.default
+enabled: true
+tags:
+  - gaming
+  - chess
+  - open-source
+  - api-based
+notes: "Official Lichess public API."

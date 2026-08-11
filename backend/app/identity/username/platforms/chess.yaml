@@ -1,0 +1,52 @@
+# Chess.com - Online chess platform
+id: chess
+display_name: Chess.com
+category: gaming
+homepage: https://www.chess.com
+
+profile_url_template: "https://www.chess.com/member/{username}"
+api_endpoint: "https://api.chess.com/pub/player/{username}"
+
+detection:
+  strategy: json_api
+  json_api:
+    success_field: "$.username"
+    not_found_status: 404
+
+network:
+  timeout_seconds: 6
+  retries: 2
+  backoff: exponential
+  base_delay_ms: 250
+
+rate_limit:
+  requests_per_minute: 60
+  scope: global
+
+auth:
+  login_required: false
+  captcha_risk: low
+
+confidence_rules:
+  base_reliability: 0.95
+  verification_method: api_confirmed
+  corroboration_fields:
+    - display_name
+    - avatar_url
+
+parser:
+  type: json
+  fields:
+    display_name: "$.username"
+    avatar_url: "$.avatar"
+    title: "$.title"
+    status: "$.status"
+
+normalizer: username.normalizer.default
+enabled: true
+tags:
+  - gaming
+  - chess
+  - high-confidence
+  - api-based
+notes: "Official Chess.com public API endpoint."
