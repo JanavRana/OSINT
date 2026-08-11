@@ -59,6 +59,8 @@ from .bitcoin import BitcoinConnector  # noqa: F401
 from .ethereum import EthereumConnector  # noqa: F401
 from .solana import SolanaConnector  # noqa: F401
 from .truecaller import TruecallerConnector  # noqa: F401
+from .ip import IpGeolocationConnector  # noqa: F401
+from .mac import MacOsintConnector  # noqa: F401
 
 __all__ = [
     "BaseConnector",
@@ -82,4 +84,6 @@ __all__ = [
     "EthereumConnector",
     "SolanaConnector",
     "TruecallerConnector",
+    "IpGeolocationConnector",
+    "MacOsintConnector",
 ]

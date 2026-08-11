@@ -384,6 +384,21 @@ def list_identifiers(
                 continue
             else:
                 platform_display_name = f"{chain_title} Blockchain Data"
+
+            items.append(
+                IdentifierRead(
+                    id=str(f.id),
+                    type=identifier_type,
+                    value=display_value,
+                    confidence=f.confidence,
+                    sources=1,
+                    first_seen=f.created_at.isoformat() if f.created_at else "",
+                    profile_url=profile_url,
+                    platform=platform,
+                    platform_display_name=platform_display_name,
+                )
+            )
+            continue
         # Handle Truecaller facts specially so caller name, email, location are exposed cleanly
         if f.connector_name == "truecaller":
             display_value = str(f.value)
@@ -405,6 +420,116 @@ def list_identifiers(
             else:
                 identifier_type = "phone"
                 platform_display_name = "Truecaller Info"
+
+            items.append(
+                IdentifierRead(
+                    id=str(f.id),
+                    type=identifier_type,
+                    value=display_value,
+                    confidence=f.confidence,
+                    sources=1,
+                    first_seen=f.created_at.isoformat() if f.created_at else "",
+                    profile_url=profile_url,
+                    platform=platform,
+                    platform_display_name=platform_display_name,
+                )
+            )
+            continue
+
+        # Handle ip_geolocation facts: expose IP address, country, region, ISP, ASN, timezone
+        if f.connector_name == "ip_geolocation":
+            display_value = str(f.value)
+            profile_url = None
+            platform = "ip_geolocation"
+            field = meta.get("field", "")
+            ip_class = meta.get("ip_class", "")
+
+            if field == "ip_address":
+                if ip_class:
+                    platform_display_name = f"IP Address ({ip_class})"
+                else:
+                    platform_display_name = "IP Address"
+                identifier_type = "ip"
+            elif field == "country":
+                platform_display_name = "Country (Geolocation Estimate)"
+                identifier_type = "ip"
+            elif field == "region_city":
+                platform_display_name = "Region / City (Geolocation Estimate)"
+                identifier_type = "ip"
+            elif field == "isp_org":
+                platform_display_name = "ISP / Network Owner"
+                identifier_type = "ip"
+            elif field == "asn":
+                platform_display_name = "ASN (Autonomous System)"
+                identifier_type = "ip"
+            elif field == "timezone":
+                platform_display_name = "Timezone (Geolocation Estimate)"
+                identifier_type = "ip"
+            else:
+                platform_display_name = "IP Geolocation Data"
+                identifier_type = "ip"
+
+            items.append(
+                IdentifierRead(
+                    id=str(f.id),
+                    type=identifier_type,
+                    value=display_value,
+                    confidence=f.confidence,
+                    sources=1,
+                    first_seen=f.created_at.isoformat() if f.created_at else "",
+                    profile_url=profile_url,
+                    platform=platform,
+                    platform_display_name=platform_display_name,
+                )
+            )
+            continue
+
+        # Handle reverse_dns facts: expose PTR hostnames discovered for IP addresses
+        if f.connector_name == "reverse_dns" and f.fact_type == "domain":
+            ip_addr = meta.get("ip_address", "")
+            shodan_url = (
+                f"https://www.shodan.io/host/{ip_addr}" if ip_addr else None
+            )
+            items.append(
+                IdentifierRead(
+                    id=str(f.id),
+                    type="domain",
+                    value=str(f.value),
+                    confidence=f.confidence,
+                    sources=1,
+                    first_seen=f.created_at.isoformat() if f.created_at else "",
+                    profile_url=shodan_url,
+                    platform="reverse_dns",
+                    platform_display_name="Reverse DNS (PTR Record)",
+                )
+            )
+            continue
+
+        # Handle mac_osint facts: expose Hardware Vendor, Wi-Fi Location, SSID
+        if f.connector_name == "mac_osint":
+            display_value = str(f.value)
+            profile_url = None
+            platform = "mac_osint"
+            field = meta.get("field", "")
+
+            if field == "mac_address":
+                platform_display_name = "MAC Address"
+                identifier_type = "mac"
+            elif field == "hardware_vendor":
+                platform_display_name = "Hardware Vendor / Manufacturer"
+                identifier_type = "mac"
+            elif field == "wifi_location":
+                platform_display_name = "Wi-Fi Location (Wigle BSSID)"
+                identifier_type = "mac"
+            elif field == "wifi_ssid":
+                platform_display_name = "Wi-Fi Network Name (SSID)"
+                identifier_type = "mac"
+            elif field == "wifi_security":
+                platform_display_name = "Wi-Fi Security Protocol"
+                identifier_type = "mac"
+            else:
+                platform_display_name = "MAC Hardware Data"
+                identifier_type = "mac"
 
             items.append(
                 IdentifierRead(
@@ -506,6 +631,9 @@ def list_connectors(
         "gravatar": "Profile Lookup",
         "phone": "Phone Intelligence",
         "truecaller": "Caller Intelligence",
+        "ip_geolocation": "IP Intelligence",
+        "reverse_dns": "IP Intelligence",
+        "mac_osint": "Hardware & Wireless",
     }
 
     items = [

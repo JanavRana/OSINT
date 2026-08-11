@@ -1,6 +1,8 @@
+import React, { useEffect, useRef } from "react";
 import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { isAuthenticated } from "@/lib/auth";
 import { AppShell } from "@/components/app-shell";
+
 import { StatusBadge, SeverityBadge } from "@/components/badges";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -40,7 +42,9 @@ const typeIcon: Record<IdentifierType, typeof Mail> = {
   social: Share2,
   phone: Phone,
   ip: Server,
+  mac: Server,
 };
+
 
 const jumpLinks = [
   { icon: Network, label: "Graph View", to: "/graph" as const },
@@ -73,10 +77,11 @@ function IdentifierTable({ items }: { items: Identifier[] }) {
       </thead>
       <tbody>
         {items.map((i) => {
-          const Icon = typeIcon[i.type];
+          const Icon = typeIcon[i.type] || Server;
 
           // Display platform / metadata label if available, otherwise default to identifier type name
           const displayType = i.platformDisplayName || i.type;
+
 
           // Build the value cell — domain identifiers become clickable links.
           let valueCell = (
@@ -269,10 +274,16 @@ function Detail() {
       return "wallet";
     }
     if (cleaned.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) return "ip";
+    // MAC address check MUST happen before IPv6 since MACs also use colons and hex digits
+    if (/^(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$|^(?:[0-9A-Fa-f]{4}\.){2}[0-9A-Fa-f]{4}$|^[0-9A-Fa-f]{12}$/.test(cleaned)) return "mac";
+    // IPv6 check
+    if (cleaned.includes(":") && /^[0-9a-fA-F:]+$/.test(cleaned)) return "ip";
     if (cleaned.match(/^\+?\d+$/)) return "phone";
     if (cleaned.startsWith("@")) return "username";
     return "domain";
   };
+
+
 
   const handleExecute = async (inv: { id: string; target: string; seedType?: IdentifierType }) => {
     if (!inv.target) return;
@@ -285,10 +296,16 @@ function Detail() {
       invRes.refetch?.();
       identifiersRes.refetch?.();
       connectorsRes.refetch?.();
+      setTimeout(() => {
+        invRes.refetch?.();
+        identifiersRes.refetch?.();
+        connectorsRes.refetch?.();
+      }, 500);
     } catch {
       // Error in execute.error
     }
   };
+
 
   // Derive progress from connector results
   const connectors = connectorsRes.data ?? [];

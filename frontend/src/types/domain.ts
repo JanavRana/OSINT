@@ -11,7 +11,9 @@ export type IdentifierType =
   | "wallet"
   | "social"
   | "phone"
-  | "ip";
+  | "ip"
+  | "mac";
+
 export type TimelineChannel =
   | "email"
   | "wallet"

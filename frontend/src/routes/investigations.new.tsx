@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
 import { isAuthenticated } from "@/lib/auth";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -47,12 +48,24 @@ function New() {
       return "wallet";
     }
     if (cleaned.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) return "ip";
+    // MAC address check MUST happen before IPv6 since MACs also use colons and hex digits
+    if (/^(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$|^(?:[0-9A-Fa-f]{4}\.){2}[0-9A-Fa-f]{4}$|^[0-9A-Fa-f]{12}$/.test(cleaned)) return "mac";
+    // IPv6 check
+    if (cleaned.includes(":") && /^[0-9a-fA-F:]+$/.test(cleaned)) return "ip";
     if (cleaned.match(/^\+?\d+$/)) return "phone";
     if (cleaned.startsWith("@")) return "username";
     return "domain";
   };
 
+  useEffect(() => {
+    if (!isSeedTypeManuallySet && seeds.trim()) {
+      const firstLine = seeds.split("\n")[0].trim();
+      setSeedType(detectIdentifierType(firstLine));
+    }
+  }, [seeds, isSeedTypeManuallySet]);
+
   async function handleLaunch() {
+
     const seedIdentifiers = seeds
       .split("\n")
       .map((s) => s.trim())
@@ -117,6 +130,7 @@ function New() {
                   <SelectItem value="wallet">Wallet</SelectItem>
                   <SelectItem value="phone">Phone</SelectItem>
                   <SelectItem value="ip">IP Address</SelectItem>
+                  <SelectItem value="mac">MAC / BSSID Address</SelectItem>
                 </SelectContent>
               </Select>
             </div>
