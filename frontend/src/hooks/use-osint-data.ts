@@ -183,9 +183,15 @@ export function useExecuteInvestigation() {
 }
 
 export function useGenerateReport() {
-  return useMutation<string, GeneratedReport>((investigationId) =>
-    getDataProvider().generateReport(investigationId),
-  );
+  return useMutation<
+    string | { investigationId: string; graphImage?: string },
+    GeneratedReport
+  >((arg) => {
+    if (typeof arg === "string") {
+      return getDataProvider().generateReport(arg);
+    }
+    return getDataProvider().generateReport(arg.investigationId, arg.graphImage);
+  });
 }
 
 export function useDownloadReport() {

@@ -10,6 +10,7 @@ import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.connectors.types import Identifier
@@ -575,6 +576,10 @@ def get_report_service(db: Session = Depends(get_db)):
     return ReportService(db)
 
 
+class ReportGeneratePayload(BaseModel):
+    graph_image: str | None = None
+
+
 @router.post(
     "/{investigation_id}/report",
     status_code=status.HTTP_201_CREATED,
@@ -582,6 +587,7 @@ def get_report_service(db: Session = Depends(get_db)):
 )
 def generate_report(
     investigation_id: uuid.UUID,
+    payload: ReportGeneratePayload | None = None,
     report_service=Depends(get_report_service),
     service: InvestigationService = Depends(get_investigation_service),
     current_user: User = Depends(get_current_user),
@@ -590,7 +596,8 @@ def generate_report(
     try:
         investigation = service.get_investigation(investigation_id)
         _assert_owner(investigation, current_user)
-        report = report_service.generate_report(investigation_id)
+        graph_img = payload.graph_image if payload else None
+        report = report_service.generate_report(investigation_id, graph_image_base64=graph_img)
         return {
             "id": str(report.id),
             "investigation_id": str(report.investigation_id),
