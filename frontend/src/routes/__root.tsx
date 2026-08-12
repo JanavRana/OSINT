@@ -77,17 +77,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "AXIOM — Advanced Multi-Platform OSINT Intelligence Aggregator" },
+      { title: "Intel Weave — Advanced Multi-Platform OSINT Intelligence Aggregator" },
       { name: "description", content: "Professional OSINT investigation platform for cybercrime analysts. Aggregate identifiers, run connectors, map identity graphs, and export evidence-grade reports." },
-      { name: "author", content: "AXIOM Intel" },
-      { property: "og:title", content: "AXIOM — OSINT Intelligence Aggregator" },
+      { name: "author", content: "Intel Weave" },
+      { property: "og:title", content: "Intel Weave — OSINT Intelligence Aggregator" },
       { property: "og:description", content: "Multi-platform intelligence aggregation, identity resolution and evidence reporting for security teams." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" },
@@ -104,6 +104,39 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en" className="dark">
       <head>
         <HeadContent />
+        {/* Apply theme synchronously before hydration to prevent flash */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var theme = JSON.parse(localStorage.getItem('axiom_theme') || '{}');
+                  var root = document.documentElement;
+                  
+                  if (theme.mode === 'light') {
+                    root.classList.add('light');
+                    root.classList.remove('dark');
+                  } else {
+                    root.classList.add('dark');
+                    root.classList.remove('light');
+                  }
+                  
+                  if (theme.primaryColor) {
+                    root.style.setProperty('--primary', theme.primaryColor);
+                    root.style.setProperty('--sidebar-primary', theme.primaryColor);
+                    root.style.setProperty('--ring', theme.primaryColor);
+                    root.style.setProperty('--sidebar-ring', theme.primaryColor);
+                    root.style.setProperty('--cyan', theme.primaryColor);
+                  }
+                  if (theme.accentColor) {
+                    root.style.setProperty('--accent', theme.accentColor);
+                    root.style.setProperty('--violet', theme.accentColor);
+                  }
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
       </head>
       <body>
         {children}

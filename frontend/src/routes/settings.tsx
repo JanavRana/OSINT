@@ -13,7 +13,7 @@ import { getUser } from "@/lib/auth";
 import { Palette, User, Bell, Check, Sun, Moon, Mail } from "lucide-react";
 
 export const Route = createFileRoute("/settings")({
-  head: () => ({ meta: [{ title: "Settings — AXIOM OSINT" }] }),
+  head: () => ({ meta: [{ title: "Settings — Intel Weave" }] }),
   component: Settings,
 });
 

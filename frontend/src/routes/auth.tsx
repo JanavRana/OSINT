@@ -12,7 +12,7 @@ import { useSignup, useVerifyOtp, useLogin, useResendOtp } from "@/hooks/use-aut
 import { isAuthenticated } from "@/lib/auth";
 
 export const Route = createFileRoute("/auth")({
-  head: () => ({ meta: [{ title: "Sign in — AXIOM OSINT" }] }),
+  head: () => ({ meta: [{ title: "Sign in — Intel Weave" }] }),
   component: Auth,
 });
 
@@ -147,7 +147,7 @@ function Auth() {
               <Radar className="h-5 w-5 text-primary-foreground" />
             </div>
             <div>
-              <div className="font-display font-bold text-xl">AXIOM</div>
+              <div className="font-display font-bold text-xl">Intel Weave</div>
               <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">OSINT Intelligence Aggregator</div>
             </div>
           </div>
@@ -160,12 +160,9 @@ function Auth() {
               Unify emails, wallets, domains and social identifiers into a single graph.
               Purpose-built for cybercrime investigators and analysts.
             </p>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <ShieldCheck className="h-4 w-4 text-success" /> SOC 2 · TLP compliant · end-to-end encrypted
-            </div>
           </div>
 
-          <div className="text-xs text-muted-foreground">© AXIOM Intel · v3.2</div>
+          <div className="text-xs text-muted-foreground">© Intel Weave · v3.2</div>
         </div>
 
         {/* Form pane */}
@@ -175,7 +172,7 @@ function Auth() {
             <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-primary to-accent grid place-items-center">
               <Radar className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="font-display font-bold">AXIOM</span>
+            <span className="font-display font-bold">Intel Weave</span>
           </div>
 
           {/* ── OTP Step ──────────────────────────────────────────────── */}
@@ -367,10 +364,6 @@ function Auth() {
                     </button>
                   </>
                 )}
-              </div>
-
-              <div className="mt-6 text-center text-[10px] text-muted-foreground">
-                By continuing you agree to the Terms and TLP handling policy.
               </div>
             </>
           )}
