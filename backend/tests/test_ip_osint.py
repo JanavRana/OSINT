@@ -45,8 +45,8 @@ import pytest
 
 
 def run(coro):
-    """Run a coroutine synchronously (compatible with both pytest and pytest-asyncio)."""
-    return asyncio.get_event_loop().run_until_complete(coro)
+    """Run a coroutine synchronously."""
+    return asyncio.run(coro)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
