@@ -780,16 +780,40 @@ def list_identifiers(
             )
         )
 
-    # Deduplicate items by (platform_display_name, type, value) to prevent duplicate UI rows
+    # Deduplicate items by core concept category and value to prevent duplicate UI rows across overlapping connectors
     deduped_items: list[IdentifierRead] = []
-    seen: set[tuple[str, str, str]] = set()
+    seen: set[tuple[str, str]] = set()
+
     for item in items:
-        key = (item.platform_display_name or "", item.type, item.value)
+        disp_name = (item.platform_display_name or "").lower().split("(")[0].strip()
+
+        # Map equivalent category concepts across different connectors
+        if "timezone" in disp_name:
+            concept = "timezone"
+        elif "country" in disp_name:
+            concept = "country"
+        elif "ip address" in disp_name or disp_name == "abstract ip intelligence":
+            concept = "ip_address"
+        elif "mac address" in disp_name:
+            concept = "mac_address"
+        elif "carrier" in disp_name:
+            concept = "carrier"
+        elif "phone number" in disp_name:
+            concept = "phone_number"
+        elif "asn" in disp_name:
+            concept = "asn"
+        elif "region" in disp_name or "city" in disp_name:
+            concept = "region_city"
+        else:
+            concept = disp_name
+
+        key = (concept, item.value.strip().lower())
         if key not in seen:
             seen.add(key)
             deduped_items.append(item)
 
     return IdentifierListResponse(items=deduped_items, count=len(deduped_items))
+
 
 
 @router.get(
