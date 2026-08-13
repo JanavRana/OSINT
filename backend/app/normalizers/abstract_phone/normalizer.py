@@ -133,6 +133,42 @@ class AbstractPhoneNormalizer(BaseNormalizer):
                     )
                 )
 
+        # Disposable & Risk Facts
+        is_disposable = raw_data.get("is_disposable")
+        risk_level = raw_data.get("risk_level")
+
+        if is_disposable:
+            facts.append(
+                NormalizedFact(
+                    source_connector=self.connector_name,
+                    fact_type=FactType.GENERIC,
+                    value="DISPOSABLE / BURNER NUMBER",
+                    confidence=0.95,
+                    metadata={
+                        "field": "disposable_detected",
+                        "is_disposable": True,
+                        "risk_level": "HIGH",
+                        "data_label": "Disposable Number Flag",
+                    },
+                )
+            )
+
+        if risk_level and isinstance(risk_level, str) and risk_level.strip():
+            facts.append(
+                NormalizedFact(
+                    source_connector=self.connector_name,
+                    fact_type=FactType.GENERIC,
+                    value=f"RISK LEVEL: {risk_level.upper()}",
+                    confidence=0.85,
+                    metadata={
+                        "field": "phone_risk_level",
+                        "risk_level": risk_level.upper(),
+                        "data_label": "Phone Risk Rating",
+                    },
+                )
+            )
+
+
         # 3. Telecom Carrier Identification
         carrier = raw_data.get("carrier")
         if carrier and isinstance(carrier, str) and carrier.strip():

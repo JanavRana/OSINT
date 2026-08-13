@@ -110,10 +110,22 @@ class AbstractPhoneConnector(BaseConnector):
                         result["country_code"] = ctry_data.get("code")
                         result["country_prefix"] = ctry_data.get("prefix")
 
+                    # Risk & Disposable Detection
+                    risk_data = data.get("phone_risk") or {}
+                    if isinstance(risk_data, dict):
+                        result["is_disposable"] = bool(risk_data.get("is_disposable") or data.get("is_disposable"))
+                        result["risk_level"] = risk_data.get("risk_level")
+                        result["is_abuse_detected"] = bool(risk_data.get("is_abuse_detected"))
+                    else:
+                        result["is_disposable"] = bool(data.get("is_disposable"))
+                        result["risk_level"] = data.get("risk_level")
+                        result["is_abuse_detected"] = False
+
                     # Line Type Flags (VoIP / Virtual Burner Detection)
                     line_type_str = str(result["type"] or "").lower()
-                    if "voip" in line_type_str or "virtual" in line_type_str:
+                    if "voip" in line_type_str or "virtual" in line_type_str or result["is_disposable"]:
                         result["is_voip"] = True
+
 
                 elif resp.status_code in (401, 403):
                     logger.warning("Abstract Phone API unauthorized (%s) for %s - check API key", resp.status_code, cleaned_phone)

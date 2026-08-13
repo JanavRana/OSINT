@@ -700,9 +700,16 @@ def list_identifiers(
             elif field == "voip_detected":
                 platform_display_name = "VoIP / Virtual Line (HIGH RISK BURNER)"
                 identifier_type = "phone"
+            elif field == "disposable_detected":
+                platform_display_name = "Disposable Burner Number Flag"
+                identifier_type = "phone"
+            elif field == "phone_risk_level":
+                platform_display_name = "Abstract Phone Risk Rating"
+                identifier_type = "phone"
             elif field == "line_type":
                 platform_display_name = "Phone Line Classification"
                 identifier_type = "phone"
+
             elif field == "telecom_carrier":
                 platform_display_name = "Telecom Carrier Network"
                 identifier_type = "phone"
