@@ -519,8 +519,9 @@ def list_identifiers(
                 platform_display_name = "Hardware Vendor / Manufacturer"
                 identifier_type = "mac"
             elif field == "wifi_location":
-                platform_display_name = "Wi-Fi Location (Wigle BSSID)"
+                platform_display_name = "Wi-Fi Location & GPS Coordinates (WiGLE BSSID)"
                 identifier_type = "mac"
+
             elif field == "wifi_ssid":
                 platform_display_name = "Wi-Fi Network Name (SSID)"
                 identifier_type = "mac"
