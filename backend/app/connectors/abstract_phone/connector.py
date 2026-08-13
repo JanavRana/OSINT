@@ -47,10 +47,12 @@ class AbstractPhoneConnector(BaseConnector):
         Clean phone number and query Abstract Phone Validation API.
         """
         raw_value = identifier.value.strip()
-        # Basic digits & leading plus cleaning
-        cleaned_phone = re.sub(r"[^\d+]", "", raw_value)
+        # Extract digits and ensure leading + prefix required by Abstract API
+        digits_only = re.sub(r"\D", "", raw_value)
+        cleaned_phone = f"+{digits_only}" if digits_only else raw_value
 
         result: Dict[str, Any] = {
+
             "phone": raw_value,
             "cleaned_phone": cleaned_phone,
             "valid": False,
@@ -81,8 +83,8 @@ class AbstractPhoneConnector(BaseConnector):
             result["error_code"] = "api_key_missing"
             return result
 
-        # Query Abstract Phone API
-        url = "https://phonevalidation.abstractapi.com/v1/"
+        # Query Abstract Phone Intelligence API
+        url = "https://phoneintelligence.abstractapi.com/v1/"
         params = {"api_key": api_key.strip(), "phone": cleaned_phone}
 
         try:
@@ -92,28 +94,52 @@ class AbstractPhoneConnector(BaseConnector):
                 if resp.status_code == 200:
                     data = resp.json()
                     result["abstract_matched"] = True
-                    result["valid"] = bool(data.get("valid", False))
-                    result["location"] = data.get("location")
-                    result["type"] = data.get("type")
-                    result["carrier"] = data.get("carrier")
 
-                    # Formats
-                    fmt_data = data.get("format") or {}
+                    # 1. Validation block
+                    val_data = data.get("phone_validation") or {}
+                    if isinstance(val_data, dict) and "is_valid" in val_data:
+                        result["valid"] = bool(val_data.get("is_valid"))
+                        result["is_voip"] = bool(val_data.get("is_voip"))
+                    else:
+                        result["valid"] = bool(data.get("valid", False))
+
+                    # 2. Formats block
+                    fmt_data = data.get("phone_format") or data.get("format") or {}
                     if isinstance(fmt_data, dict):
                         result["international_format"] = fmt_data.get("international")
-                        result["local_format"] = fmt_data.get("local")
+                        result["local_format"] = fmt_data.get("national") or fmt_data.get("local")
 
-                    # Country
-                    ctry_data = data.get("country") or {}
-                    if isinstance(ctry_data, dict):
-                        result["country_name"] = ctry_data.get("name")
-                        result["country_code"] = ctry_data.get("code")
-                        result["country_prefix"] = ctry_data.get("prefix")
+                    # 3. Carrier & Line type block
+                    carr_data = data.get("phone_carrier") or {}
+                    if isinstance(carr_data, dict) and "name" in carr_data:
+                        result["carrier"] = carr_data.get("name")
+                        result["type"] = carr_data.get("line_type")
+                    else:
+                        result["carrier"] = data.get("carrier")
+                        result["type"] = data.get("type")
 
-                    # Risk & Disposable Detection
+                    # 4. Location block
+                    loc_data = data.get("phone_location") or {}
+                    if isinstance(loc_data, dict) and "country_name" in loc_data:
+                        result["country_name"] = loc_data.get("country_name")
+                        result["country_code"] = loc_data.get("country_code")
+                        result["country_prefix"] = loc_data.get("country_prefix")
+                        city = loc_data.get("city")
+                        region = loc_data.get("region")
+                        loc_parts = [p for p in [city, region] if p and str(p).strip() and str(p).strip().lower() != str(loc_data.get("country_name")).lower()]
+                        result["location"] = ", ".join(loc_parts) if loc_parts else region or city
+                    else:
+                        result["location"] = data.get("location")
+                        ctry_data = data.get("country") or {}
+                        if isinstance(ctry_data, dict):
+                            result["country_name"] = ctry_data.get("name")
+                            result["country_code"] = ctry_data.get("code")
+                            result["country_prefix"] = ctry_data.get("prefix")
+
+                    # 5. Risk & Disposable Detection
                     risk_data = data.get("phone_risk") or {}
-                    if isinstance(risk_data, dict):
-                        result["is_disposable"] = bool(risk_data.get("is_disposable") or data.get("is_disposable"))
+                    if isinstance(risk_data, dict) and "risk_level" in risk_data:
+                        result["is_disposable"] = bool(risk_data.get("is_disposable"))
                         result["risk_level"] = risk_data.get("risk_level")
                         result["is_abuse_detected"] = bool(risk_data.get("is_abuse_detected"))
                     else:
@@ -121,10 +147,16 @@ class AbstractPhoneConnector(BaseConnector):
                         result["risk_level"] = data.get("risk_level")
                         result["is_abuse_detected"] = False
 
+                    # 6. Messaging block
+                    msg_data = data.get("phone_messaging") or {}
+                    if isinstance(msg_data, dict):
+                        result["sms_email"] = msg_data.get("sms_email")
+
                     # Line Type Flags (VoIP / Virtual Burner Detection)
                     line_type_str = str(result["type"] or "").lower()
                     if "voip" in line_type_str or "virtual" in line_type_str or result["is_disposable"]:
                         result["is_voip"] = True
+
 
 
                 elif resp.status_code in (401, 403):

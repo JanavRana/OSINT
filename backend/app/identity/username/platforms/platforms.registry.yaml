@@ -16,8 +16,8 @@ platforms:
   - codechef.yaml
   - codepen.yaml
   - npm.yaml
-  - pypi.yaml
   - docker-hub.yaml
+
   - kaggle.yaml
   - sourceforge.yaml
   - tryhackme.yaml
