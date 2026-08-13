@@ -157,7 +157,13 @@ class EmailOsintNormalizer(BaseNormalizer):
             gravatar_facts = self._build_gravatar_facts(gravatar_profile, email)
             facts.extend(gravatar_facts)
 
-        # ── 6. Graph relationships ─────────────────────────────────────────
+        # ── 6. Abstract Email Reputation & Data Breaches ───────────────────
+        abstract_rep = raw_payload.get("abstract_reputation")
+        if abstract_rep and isinstance(abstract_rep, dict) and not abstract_rep.get("error"):
+            abstract_facts = self._build_abstract_facts(abstract_rep)
+            facts.extend(abstract_facts)
+
+        # ── 7. Graph relationships ─────────────────────────────────────────
         if email and domain:
             graph_facts = self._build_graph_relationships(email, domain, gravatar_profile)
             facts.extend(graph_facts)
@@ -252,9 +258,11 @@ class EmailOsintNormalizer(BaseNormalizer):
         metadata: Dict[str, Any],
     ) -> NormalizedFact:
         """Build a GENERIC fact with the given parameters."""
+        # Include field name in value string to prevent deduplication of boolean generic facts
+        val_str = f"{field}:{value}"
         return NormalizedFact(
             fact_type=FactType.GENERIC,
-            value=value,
+            value=val_str,
             source_connector=self.connector_name,
             confidence=confidence,
             metadata=metadata,
@@ -268,33 +276,35 @@ class EmailOsintNormalizer(BaseNormalizer):
         """Build PROFILE_DATA and SOCIAL_ACCOUNT facts from Gravatar profile."""
         facts = []
 
-        # Main profile fact
-        profile_value = {
-            "display_name": gravatar_data.get("display_name"),
-            "preferred_username": gravatar_data.get("preferred_username"),
-            "about_me": gravatar_data.get("about_me"),
-            "current_location": gravatar_data.get("current_location"),
-            "avatar_url": gravatar_data.get("avatar_url"),
-            "profile_url": gravatar_data.get("profile_url"),
-        }
+        display_name = gravatar_data.get("display_name")
+        pref_user = gravatar_data.get("preferred_username")
+        about_me = gravatar_data.get("about_me")
+        location = gravatar_data.get("current_location")
+        avatar_url = gravatar_data.get("avatar_url")
+        profile_url = gravatar_data.get("profile_url")
+        email_hash = gravatar_data.get("hash")
 
-        # Remove None values
-        profile_value = {k: v for k, v in profile_value.items() if v is not None}
+        val_str = display_name or pref_user or profile_url or f"gravatar:{email_hash}"
 
-        if profile_value:
-            facts.append(
-                NormalizedFact(
-                    fact_type=FactType.PROFILE_DATA,
-                    value=profile_value,
-                    source_connector=self.connector_name,
-                    confidence=self._CONF_GRAVATAR_PROFILE,
-                    metadata={
-                        "field": "gravatar_profile",
-                        "source": "gravatar",
-                        "email_hash": gravatar_data.get("hash"),
-                    },
-                )
+        facts.append(
+            NormalizedFact(
+                fact_type=FactType.PROFILE_DATA,
+                value=str(val_str),
+                source_connector=self.connector_name,
+                confidence=self._CONF_GRAVATAR_PROFILE,
+                metadata={
+                    "field": "gravatar_profile",
+                    "source": "gravatar",
+                    "display_name": display_name,
+                    "preferred_username": pref_user,
+                    "about_me": about_me,
+                    "current_location": location,
+                    "avatar_url": avatar_url,
+                    "profile_url": profile_url,
+                    "email_hash": email_hash,
+                },
             )
+        )
 
         # Verified accounts
         accounts = gravatar_data.get("accounts", [])
@@ -302,18 +312,18 @@ class EmailOsintNormalizer(BaseNormalizer):
             if not isinstance(account, dict):
                 continue
 
-            service = account.get("service")
+            service = account.get("shortname") or account.get("service")
             username = account.get("username")
             url = account.get("url")
             verified = account.get("verified", False)
 
-            if not service or not username:
+            if not service and not username:
                 continue
 
             facts.append(
                 NormalizedFact(
                     fact_type=FactType.SOCIAL_ACCOUNT,
-                    value=username,
+                    value=username or str(url) or str(service),
                     source_connector=self.connector_name,
                     confidence=self._CONF_GRAVATAR_ACCOUNT,
                     metadata={
@@ -380,5 +390,94 @@ class EmailOsintNormalizer(BaseNormalizer):
                         },
                     )
                 )
+
+        return facts
+
+    def _build_abstract_facts(self, rep: Dict[str, Any]) -> List[NormalizedFact]:
+        """Extract data breach exposure, deliverability, domain age, and quality facts from Abstract API."""
+        facts = []
+
+        # 1. Data Breaches Exposure Summary & Individual Breached Platforms
+        breaches_data = rep.get("email_breaches", {})
+        total_breaches = breaches_data.get("total_breaches", 0)
+        breached_domains = breaches_data.get("breached_domains", [])
+
+        if total_breaches > 0:
+            first_b = breaches_data.get("date_first_breached", "Unknown Date")
+            last_b = breaches_data.get("date_last_breached", "Unknown Date")
+            facts.append(
+                NormalizedFact(
+                    fact_type=FactType.GENERIC,
+                    value=f"Data Breach Exposure: {total_breaches} Breaches (First: {first_b}, Last: {last_b})",
+                    source_connector=self.connector_name,
+                    confidence=0.95,
+                    metadata={
+                        "field": "breach_count",
+                        "total_breaches": total_breaches,
+                        "date_first_breached": first_b,
+                        "date_last_breached": last_b,
+                    },
+                )
+            )
+
+            for breach in breached_domains:
+                if isinstance(breach, dict) and breach.get("domain"):
+                    b_domain = breach.get("domain")
+                    b_date = breach.get("breach_date", "Unknown Date")
+                    url = f"https://{b_domain}" if "." in b_domain else None
+                    facts.append(
+                        NormalizedFact(
+                            fact_type=FactType.SOCIAL_ACCOUNT,
+                            value=f"{b_domain} (Breached: {b_date})",
+                            source_connector=self.connector_name,
+                            confidence=0.90,
+                            metadata={
+                                "platform": b_domain,
+                                "platform_display_name": f"Breached Platform ({b_domain})",
+                                "breach_date": b_date,
+                                "profile_url": url,
+                            },
+                        )
+                    )
+
+        # 2. Email Reputation & Risk Status
+        quality = rep.get("email_quality", {})
+        score = quality.get("score")
+        if score is not None:
+            score_pct = int(score * 100)
+            risk = rep.get("email_risk", {}).get("address_risk_status", "low")
+            facts.append(
+                NormalizedFact(
+                    fact_type=FactType.GENERIC,
+                    value=f"Email Reputation Score: {score_pct}% ({risk.capitalize()} Risk)",
+                    source_connector=self.connector_name,
+                    confidence=0.90,
+                    metadata={
+                        "field": "reputation_score",
+                        "score": score,
+                        "risk_status": risk,
+                    },
+                )
+            )
+
+        # 3. Domain Registration Date & Registrar Details
+        domain_info = rep.get("email_domain", {})
+        reg_date = domain_info.get("date_registered")
+        registrar = domain_info.get("registrar")
+        if reg_date:
+            reg_str = f" via {registrar}" if registrar else ""
+            facts.append(
+                NormalizedFact(
+                    fact_type=FactType.GENERIC,
+                    value=f"Registered on {reg_date}{reg_str}",
+                    source_connector=self.connector_name,
+                    confidence=0.95,
+                    metadata={
+                        "field": "domain_age",
+                        "date_registered": reg_date,
+                        "registrar": registrar,
+                    },
+                )
+            )
 
         return facts

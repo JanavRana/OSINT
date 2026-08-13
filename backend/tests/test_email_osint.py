@@ -214,8 +214,9 @@ class TestEmailOsintConnector:
             assert result["disposable"] is False
 
     def test_disposable_check_unavailable(self):
-        """If disposable package unavailable, should return None gracefully."""
+        """If disposable package unavailable and network fails, should return None gracefully."""
         with patch('dns.resolver.resolve') as mock_resolve, \
+             patch('httpx.AsyncClient.get', side_effect=Exception("Network error")), \
              patch('app.connectors.email.connector._load_disposable_domains') as mock_load:
             
             # Mock empty MX
@@ -471,7 +472,7 @@ class TestEmailOsintNormalizer:
                          and f.metadata.get("field") == "mail_provider"]
 
         assert len(provider_facts) == 1
-        assert provider_facts[0].value == "Google"
+        assert provider_facts[0].value == "mail_provider:Google"
         assert provider_facts[0].confidence == 0.70
         assert provider_facts[0].metadata["inferred"] is True
 
@@ -491,7 +492,7 @@ class TestEmailOsintNormalizer:
                            and f.metadata.get("field") == "disposable"]
 
         assert len(disposable_facts) == 1
-        assert disposable_facts[0].value is True
+        assert disposable_facts[0].value == "disposable:True"
         assert disposable_facts[0].confidence == 0.95
 
     def test_gravatar_profile_fact(self):
@@ -517,7 +518,8 @@ class TestEmailOsintNormalizer:
         assert len(profile_facts) == 1
         assert profile_facts[0].confidence == 0.75
         assert profile_facts[0].metadata["source"] == "gravatar"
-        assert profile_facts[0].value["display_name"] == "John Doe"
+        assert profile_facts[0].value == "John Doe"
+        assert profile_facts[0].metadata["display_name"] == "John Doe"
 
     def test_gravatar_social_accounts(self):
         """Gravatar verified accounts should produce SOCIAL_ACCOUNT facts."""

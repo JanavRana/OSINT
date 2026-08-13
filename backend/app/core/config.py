@@ -57,6 +57,9 @@ class Settings(BaseSettings):
     truecaller_rapidapi_key: str = ""
     truecaller_rapidapi_host: str = "truecaller-data2.p.rapidapi.com"
 
+    # --- Abstract Email Reputation API ---
+    abstract_api_key: str = "960cfb8915eb402c961657d4fc422e7e"
+
     @property
     def sqlalchemy_database_url(self) -> str:
         """Return the connection string SQLAlchemy should use.

@@ -36,6 +36,9 @@ from typing import Any, ClassVar, Dict, FrozenSet, Optional
 import dns.resolver
 import httpx
 
+from app.core.config import get_settings
+
+settings = get_settings()
 from ..base import BaseConnector
 from ..registry import registry
 from ..types import Identifier, IdentifierType
@@ -128,15 +131,17 @@ class EmailOsintConnector(BaseConnector):
         domain = validation.domain
         email = validation.email
 
-        tasks = [
+        # ── Run MX lookup, Gravatar lookup, and Abstract Reputation lookup concurrently ──
+        mx_result, gravatar_result, abstract_result = await asyncio.gather(
             self._lookup_mx(domain),
-            self._check_disposable(domain),
             self._lookup_gravatar(email),
-        ]
-
-        mx_result, disposable_result, gravatar_result = await asyncio.gather(
-            *tasks, return_exceptions=True
+            self._lookup_abstract_reputation(email),
+            return_exceptions=True,
         )
+
+        # ── Run disposable check with MX host context ──────────────────────
+        real_mx = mx_result if not isinstance(mx_result, Exception) else None
+        disposable_result = await self._check_disposable(domain, real_mx)
 
         # ── Process MX lookup result ───────────────────────────────────────
         if isinstance(mx_result, Exception):
@@ -160,6 +165,12 @@ class EmailOsintConnector(BaseConnector):
             result["gravatar_profile"] = {"error": str(gravatar_result)}
         else:
             result["gravatar_profile"] = gravatar_result
+
+        # ── Process Abstract Reputation lookup result ──────────────────────
+        if isinstance(abstract_result, Exception):
+            result["abstract_reputation"] = {"error": str(abstract_result)}
+        else:
+            result["abstract_reputation"] = abstract_result
 
         return result
 
@@ -249,31 +260,70 @@ class EmailOsintConnector(BaseConnector):
         
         return None
 
-    async def _check_disposable(self, domain: str) -> Optional[bool]:
+    KNOWN_DISPOSABLE_KEYWORDS = frozenset({
+        "lanvos", "mailinator", "trash", "guerrilla", "yopmail",
+        "dispos", "temp", "10min", "minute", "burn", "drop", "throw",
+        "generator", "fake", "maildrop", "nada", "crazy", "sink", "dnsink",
+        "mohmal", "emailondeck", "sharklaser", "pokemail", "spam", "anon",
+        "dispostable", "getnada", "crazymailing", "vmail", "byom", "inbox",
+        "discard", "mytemp", "tempinbox", "guerrillamailblock", "grr"
+    })
+
+    async def _check_disposable(
+        self,
+        domain: str,
+        mx_result: Optional[Dict[str, Any]] = None,
+    ) -> Optional[bool]:
         """
-        Check if the domain is a known disposable email provider.
+        Check if the domain is a disposable / temporary email provider.
 
-        Uses the disposable-email-domains package (offline static list).
-        Returns None if the package is unavailable.
-
-        Args:
-            domain: The email domain to check
-
-        Returns:
-            True if disposable, False if not, None if check unavailable
+        Uses an optimal multi-layered algorithmic approach:
+          1. Offline static blocklist package (disposable-email-domains) - 0ms
+          2. Heuristic keyword matching on domain name and MX hostnames - 0ms
+          3. Live real-time disposable lookup API (Debounce public API) - catches dynamic temp domains
         """
+        # 1. Check static blocklist package (instant, offline)
         blocklist = _load_disposable_domains()
-        if blocklist is None:
-            # Package not available — graceful degradation
-            return None
+        if blocklist:
+            parts = domain.split('.')
+            for i in range(len(parts)):
+                check_domain = '.'.join(parts[i:])
+                if check_domain in blocklist:
+                    return True
 
-        # Check domain and any parent domains
-        # e.g., "mail.tempmail.com" should match if "tempmail.com" is blocked
-        parts = domain.split('.')
-        for i in range(len(parts)):
-            check_domain = '.'.join(parts[i:])
-            if check_domain in blocklist:
-                return True
+        # 2. Check keyword heuristics on domain name (e.g. lanvos.com, dnsink.com)
+        domain_lower = domain.lower()
+        if any(kw in domain_lower for kw in self.KNOWN_DISPOSABLE_KEYWORDS):
+            return True
+
+        # 3. Check keyword heuristics on MX hostnames (e.g. mail.lanvos.com)
+        if mx_result and isinstance(mx_result, dict):
+            records = mx_result.get("records", [])
+            for r in records:
+                host = r.get("host", "").lower()
+                if any(kw in host for kw in self.KNOWN_DISPOSABLE_KEYWORDS):
+                    return True
+
+        # 4. Live real-time API check (catches newly registered unlisted temp mail domains like careney.com)
+        try:
+            async with httpx.AsyncClient(timeout=4.0) as client:
+                resp = await client.get(
+                    f"https://disposable.debounce.io/?email=check@{domain}"
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    disposable_flag = data.get("disposable")
+                    if str(disposable_flag).lower() == "true":
+                        return True
+                    elif str(disposable_flag).lower() == "false":
+                        return False
+        except Exception:
+            # Fall back gracefully if offline or API unreachable
+            pass
+
+        # If blocklist is unavailable and API failed / keyword negative
+        if blocklist is None:
+            return None
 
         return False
 
@@ -290,17 +340,28 @@ class EmailOsintConnector(BaseConnector):
         Returns:
             Dict with profile data if found, None if no profile, or error annotation
         """
-        # Try SHA-256 first (Gravatar modern standard), then fallback to MD5 (legacy)
-        sha256_hash = hashlib.sha256(email.encode()).hexdigest()
-        md5_hash = hashlib.md5(email.encode()).hexdigest()
+        email_clean = email.strip().lower()
+        sha256_hash = hashlib.sha256(email_clean.encode()).hexdigest()
+        md5_hash = hashlib.md5(email_clean.encode()).hexdigest()
+        local_part = email_clean.split('@')[0]
+        email_hash = sha256_hash
+
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
 
         try:
-            async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
-                # Try SHA-256 profile URL
-                response = await client.get(f"https://www.gravatar.com/{sha256_hash}.json")
+            async with httpx.AsyncClient(timeout=10.0, follow_redirects=True, headers=headers) as client:
+                # 1. Try SHA-256 profile URL
+                response = await client.get(f"https://gravatar.com/{sha256_hash}.json")
                 if response.status_code == 404:
-                    # Fallback to MD5 profile URL
-                    response = await client.get(f"https://www.gravatar.com/{md5_hash}.json")
+                    # 2. Fallback to MD5 profile URL
+                    response = await client.get(f"https://gravatar.com/{md5_hash}.json")
+                    email_hash = md5_hash
+                if response.status_code == 404 and local_part:
+                    # 3. Fallback to local_part profile URL (e.g. gravatar.com/matt.json)
+                    response = await client.get(f"https://gravatar.com/{local_part}.json")
+                    email_hash = local_part
 
                 if response.status_code == 404:
                     # No profile found — this is clean, not an error
@@ -328,7 +389,7 @@ class EmailOsintConnector(BaseConnector):
                 # Extract relevant fields
                 result = {
                     "hash": email_hash,
-                    "profile_url": f"https://www.gravatar.com/{email_hash}",
+                    "profile_url": profile.get("profileUrl") or f"https://gravatar.com/{email_hash}",
                     "display_name": profile.get('displayName'),
                     "preferred_username": profile.get('preferredUsername'),
                     "about_me": profile.get('aboutMe'),
@@ -349,16 +410,16 @@ class EmailOsintConnector(BaseConnector):
                                 "type": photo.get('type'),
                             })
 
-                # Extract verified accounts
+                # Extract verified accounts (Twitter, LinkedIn, WordPress, Flickr, etc.)
                 accounts = profile.get('accounts', [])
                 if isinstance(accounts, list):
-                    for account in accounts:
-                        if isinstance(account, dict):
+                    for acc in accounts:
+                        if isinstance(acc, dict):
                             result["accounts"].append({
-                                "service": account.get('shortname'),
-                                "username": account.get('username'),
-                                "url": account.get('url'),
-                                "verified": account.get('verified', False),
+                                "service": acc.get('shortname') or acc.get('name'),
+                                "username": acc.get('username') or acc.get('display'),
+                                "url": acc.get('url'),
+                                "verified": acc.get('verified', False),
                             })
 
                 return result
@@ -369,7 +430,28 @@ class EmailOsintConnector(BaseConnector):
                 "source": "gravatar",
             }
         except Exception as exc:
+            # Return isolated error dict so connector.fetch envelope remains intact
             return {
-                "error": f"Lookup failed: {exc}",
+                "error": f"Gravatar lookup failed: {exc}",
                 "source": "gravatar",
             }
+
+    async def _lookup_abstract_reputation(self, email: str) -> Optional[Dict[str, Any]]:
+        """
+        Query Abstract Email Reputation API for breach exposure, deliverability,
+        domain age, and email quality metrics.
+        """
+        api_key = settings.abstract_api_key
+        if not api_key:
+            return None
+
+        url = f"https://emailreputation.abstractapi.com/v1/?api_key={api_key}&email={email}"
+        headers = {"User-Agent": "Mozilla/5.0"}
+        try:
+            async with httpx.AsyncClient(timeout=8.0, headers=headers) as client:
+                resp = await client.get(url)
+                if resp.status_code == 200:
+                    return resp.json()
+                return {"error": f"HTTP {resp.status_code}", "source": "abstract_api"}
+        except Exception as exc:
+            return {"error": f"Abstract API lookup failed: {exc}", "source": "abstract_api"}
