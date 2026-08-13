@@ -40,6 +40,7 @@ from .ip import IpGeolocationNormalizer  # noqa: F401
 from .mac import MacNormalizer  # noqa: F401
 from .email import EmailOsintNormalizer  # noqa: F401
 from .abstract_ip import AbstractIpNormalizer  # noqa: F401
+from .abstract_phone import AbstractPhoneNormalizer  # noqa: F401
 
 __all__ = [
     "BaseNormalizer",
@@ -65,5 +66,7 @@ __all__ = [
     "MacNormalizer",
     "EmailOsintNormalizer",
     "AbstractIpNormalizer",
+    "AbstractPhoneNormalizer",
 ]
+
 

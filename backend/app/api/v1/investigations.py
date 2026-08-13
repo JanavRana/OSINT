@@ -687,6 +687,48 @@ def list_identifiers(
             )
             continue
 
+        # Handle abstract_phone facts: expose Line Type, VoIP warning, Carrier, Location
+        if f.connector_name == "abstract_phone":
+            display_value = str(f.value)
+            profile_url = None
+            platform = "abstract_phone"
+            field = meta.get("field", "")
+
+            if field in ("phone_number", "", "generic"):
+                # Skip duplicate base phone number row
+                continue
+            elif field == "voip_detected":
+                platform_display_name = "VoIP / Virtual Line (HIGH RISK BURNER)"
+                identifier_type = "phone"
+            elif field == "line_type":
+                platform_display_name = "Phone Line Classification"
+                identifier_type = "phone"
+            elif field == "telecom_carrier":
+                platform_display_name = "Telecom Carrier Network"
+                identifier_type = "phone"
+            elif field == "phone_location":
+                platform_display_name = "Phone Geographic Origin"
+                identifier_type = "phone"
+            else:
+                platform_display_name = "Abstract Phone Intelligence"
+                identifier_type = "phone"
+
+            items.append(
+                IdentifierRead(
+                    id=str(f.id),
+                    type=identifier_type,
+                    value=display_value,
+                    confidence=f.confidence,
+                    sources=1,
+                    first_seen=f.created_at.isoformat() if f.created_at else "",
+                    profile_url=profile_url,
+                    platform=platform,
+                    platform_display_name=platform_display_name,
+                )
+            )
+            continue
+
+
 
         identifier_type = IDENTIFIER_FACT_TYPES.get(f.fact_type)
         if identifier_type is None:
@@ -787,7 +829,9 @@ def list_connectors(
         "mac_osint": "Hardware & Wireless",
         "email_osint": "Email Intelligence",
         "abstract_ip": "IP Anonymity & Threat Intelligence",
+        "abstract_phone": "Phone Intelligence",
     }
+
 
 
     items = [
