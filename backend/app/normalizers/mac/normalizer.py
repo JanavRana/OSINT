@@ -123,7 +123,10 @@ class MacNormalizer(BaseNormalizer):
             region = raw_payload.get("region")
 
             location_parts = [p for p in [city, region, country] if p]
-            loc_str = ", ".join(location_parts) if location_parts else f"{lat}, {lon}"
+            city_str = ", ".join(location_parts) if location_parts else ""
+            gps_str = f"Lat: {lat}, Lon: {lon}"
+            loc_str = f"{gps_str} ({city_str})" if city_str else gps_str
+
 
             facts.append(
                 NormalizedFact(

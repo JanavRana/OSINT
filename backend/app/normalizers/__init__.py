@@ -38,6 +38,9 @@ from .solana import SolanaNormalizer  # noqa: F401
 from .truecaller import TruecallerNormalizer  # noqa: F401
 from .ip import IpGeolocationNormalizer  # noqa: F401
 from .mac import MacNormalizer  # noqa: F401
+from .email import EmailOsintNormalizer  # noqa: F401
+from .abstract_ip import AbstractIpNormalizer  # noqa: F401
+from .abstract_phone import AbstractPhoneNormalizer  # noqa: F401
 
 __all__ = [
     "BaseNormalizer",
@@ -61,4 +64,9 @@ __all__ = [
     "TruecallerNormalizer",
     "IpGeolocationNormalizer",
     "MacNormalizer",
+    "EmailOsintNormalizer",
+    "AbstractIpNormalizer",
+    "AbstractPhoneNormalizer",
 ]
+
+

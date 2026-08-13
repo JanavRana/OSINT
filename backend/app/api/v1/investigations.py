@@ -519,8 +519,9 @@ def list_identifiers(
                 platform_display_name = "Hardware Vendor / Manufacturer"
                 identifier_type = "mac"
             elif field == "wifi_location":
-                platform_display_name = "Wi-Fi Location (Wigle BSSID)"
+                platform_display_name = "Wi-Fi Location & GPS Coordinates (WiGLE BSSID)"
                 identifier_type = "mac"
+
             elif field == "wifi_ssid":
                 platform_display_name = "Wi-Fi Network Name (SSID)"
                 identifier_type = "mac"
@@ -545,6 +546,196 @@ def list_identifiers(
                 )
             )
             continue
+
+        # Handle email_osint facts: expose Email, Domain, MX servers, Provider, Disposable status, Gravatar profile
+        if f.connector_name == "email_osint":
+            # Skip graph relationship edge facts to prevent duplicating primary facts
+            if meta.get("graph_edge") is True:
+                continue
+
+            display_value = str(f.value)
+            profile_url = None
+            platform = "email_osint"
+            field = meta.get("field", "")
+
+            if f.fact_type == "email" or field == "email":
+                platform_display_name = "Email Address"
+                identifier_type = "email"
+            elif f.fact_type == "domain" or field == "domain":
+                platform_display_name = "Extracted Domain"
+                identifier_type = "domain"
+            elif f.fact_type == "dns_record" or field == "mx_record":
+                pref = meta.get("preference")
+                pref_str = f" (Priority {pref})" if pref is not None else ""
+                platform_display_name = f"Mail Server MX{pref_str}"
+                identifier_type = "domain"
+            elif field == "mx_present":
+                platform_display_name = "MX Records Present"
+                identifier_type = "email"
+                is_mx = "true" in str(f.value).lower()
+                display_value = "Yes" if is_mx else "No"
+            elif field == "mail_provider":
+                platform_display_name = "Inferred Mail Provider"
+                identifier_type = "email"
+                val = str(f.value)
+                display_value = val.split(":", 1)[1] if ":" in val else val
+            elif field == "disposable":
+                platform_display_name = "Disposable Email Domain"
+                identifier_type = "email"
+                val_lower = str(f.value).lower()
+                is_disp = "true" in val_lower and "false" not in val_lower
+                display_value = "Yes (Disposable Domain)" if is_disp else "No (Standard Domain)"
+            elif field == "gravatar_profile" or f.fact_type == "profile_data":
+                platform_display_name = "Gravatar Public Profile"
+                identifier_type = "username"
+                display_value = meta.get("display_name") or meta.get("preferred_username") or str(f.value)
+                profile_url = meta.get("profile_url") or meta.get("avatar_url")
+            elif field == "social_account" or meta.get("source") == "gravatar":
+                platform_display_name = f"Gravatar Linked Account ({meta.get('platform', 'Social')})"
+                identifier_type = "social"
+                profile_url = meta.get("url")
+            elif field == "breach_count":
+                platform_display_name = "Data Breach Exposure"
+                identifier_type = "email"
+            elif meta.get("platform_display_name", "").startswith("Breached Platform"):
+                platform_display_name = meta.get("platform_display_name")
+                identifier_type = "social"
+                profile_url = meta.get("profile_url")
+            elif field == "reputation_score":
+                platform_display_name = "Email Reputation Score"
+                identifier_type = "email"
+            elif field == "domain_age":
+                platform_display_name = "Domain Registration Date"
+                identifier_type = "email"
+                profile_url = None
+            else:
+                platform_display_name = "Email OSINT Data"
+                identifier_type = "email"
+
+            items.append(
+                IdentifierRead(
+                    id=str(f.id),
+                    type=identifier_type,
+                    value=display_value,
+                    confidence=f.confidence,
+                    sources=1,
+                    first_seen=f.created_at.isoformat() if f.created_at else "",
+                    profile_url=profile_url,
+                    platform=platform,
+                    platform_display_name=platform_display_name,
+                )
+            )
+            continue
+
+        # Handle abstract_ip facts: expose Tor Exit Node, VPN, Proxy, Datacenter, Threat Level, Location, ISP
+        if f.connector_name == "abstract_ip":
+            display_value = str(f.value)
+            profile_url = None
+            platform = "abstract_ip"
+            field = meta.get("field", "")
+
+            if field in ("ip_address", "", "generic"):
+                # Skip duplicate base IP address row
+                continue
+            elif field == "tor_exit_node":
+                platform_display_name = "Tor Exit Node (CRITICAL ANONYMITY)"
+                identifier_type = "ip"
+
+            elif field == "vpn_detected":
+                platform_display_name = "Commercial VPN (HIGH ANONYMITY)"
+                identifier_type = "ip"
+            elif field == "proxy_detected":
+                platform_display_name = "Open / SOCKS Proxy"
+                identifier_type = "ip"
+            elif field == "datacenter_ip":
+                platform_display_name = "Datacenter / Hosting IP"
+                identifier_type = "ip"
+            elif field == "threat_level":
+                platform_display_name = "Abstract Threat Rating"
+                identifier_type = "ip"
+            elif field == "country":
+                platform_display_name = "Country (Abstract IP Geolocation)"
+                identifier_type = "ip"
+            elif field == "region_city":
+                platform_display_name = "Region / City (Abstract IP Geolocation)"
+                identifier_type = "ip"
+            elif field == "isp_org":
+                platform_display_name = "ISP / Network Owner (Abstract)"
+                identifier_type = "ip"
+            elif field == "asn":
+                platform_display_name = "ASN (Autonomous System)"
+                identifier_type = "ip"
+            elif field == "timezone":
+                platform_display_name = "Timezone (Abstract Geolocation)"
+                identifier_type = "ip"
+            else:
+                platform_display_name = "Abstract IP Intelligence"
+                identifier_type = "ip"
+
+            items.append(
+                IdentifierRead(
+                    id=str(f.id),
+                    type=identifier_type,
+                    value=display_value,
+                    confidence=f.confidence,
+                    sources=1,
+                    first_seen=f.created_at.isoformat() if f.created_at else "",
+                    profile_url=profile_url,
+                    platform=platform,
+                    platform_display_name=platform_display_name,
+                )
+            )
+            continue
+
+        # Handle abstract_phone facts: expose Line Type, VoIP warning, Carrier, Location
+        if f.connector_name == "abstract_phone":
+            display_value = str(f.value)
+            profile_url = None
+            platform = "abstract_phone"
+            field = meta.get("field", "")
+
+            if field in ("phone_number", "", "generic"):
+                # Skip duplicate base phone number row
+                continue
+            elif field == "voip_detected":
+                platform_display_name = "VoIP / Virtual Line (HIGH RISK BURNER)"
+                identifier_type = "phone"
+            elif field == "disposable_detected":
+                platform_display_name = "Disposable Burner Number Flag"
+                identifier_type = "phone"
+            elif field == "phone_risk_level":
+                platform_display_name = "Abstract Phone Risk Rating"
+                identifier_type = "phone"
+            elif field == "line_type":
+                platform_display_name = "Phone Line Classification"
+                identifier_type = "phone"
+
+            elif field == "telecom_carrier":
+                platform_display_name = "Telecom Carrier Network"
+                identifier_type = "phone"
+            elif field == "phone_location":
+                platform_display_name = "Phone Geographic Origin"
+                identifier_type = "phone"
+            else:
+                platform_display_name = "Abstract Phone Intelligence"
+                identifier_type = "phone"
+
+            items.append(
+                IdentifierRead(
+                    id=str(f.id),
+                    type=identifier_type,
+                    value=display_value,
+                    confidence=f.confidence,
+                    sources=1,
+                    first_seen=f.created_at.isoformat() if f.created_at else "",
+                    profile_url=profile_url,
+                    platform=platform,
+                    platform_display_name=platform_display_name,
+                )
+            )
+            continue
+
+
 
         identifier_type = IDENTIFIER_FACT_TYPES.get(f.fact_type)
         if identifier_type is None:
@@ -589,7 +780,40 @@ def list_identifiers(
             )
         )
 
-    return IdentifierListResponse(items=items, count=len(items))
+    # Deduplicate items by core concept category and value to prevent duplicate UI rows across overlapping connectors
+    deduped_items: list[IdentifierRead] = []
+    seen: set[tuple[str, str]] = set()
+
+    for item in items:
+        disp_name = (item.platform_display_name or "").lower().split("(")[0].strip()
+
+        # Map equivalent category concepts across different connectors
+        if "timezone" in disp_name:
+            concept = "timezone"
+        elif "country" in disp_name:
+            concept = "country"
+        elif "ip address" in disp_name or disp_name == "abstract ip intelligence":
+            concept = "ip_address"
+        elif "mac address" in disp_name:
+            concept = "mac_address"
+        elif "carrier" in disp_name:
+            concept = "carrier"
+        elif "phone number" in disp_name:
+            concept = "phone_number"
+        elif "asn" in disp_name:
+            concept = "asn"
+        elif "region" in disp_name or "city" in disp_name:
+            concept = "region_city"
+        else:
+            concept = disp_name
+
+        key = (concept, item.value.strip().lower())
+        if key not in seen:
+            seen.add(key)
+            deduped_items.append(item)
+
+    return IdentifierListResponse(items=deduped_items, count=len(deduped_items))
+
 
 
 @router.get(
@@ -634,7 +858,12 @@ def list_connectors(
         "ip_geolocation": "IP Intelligence",
         "reverse_dns": "IP Intelligence",
         "mac_osint": "Hardware & Wireless",
+        "email_osint": "Email Intelligence",
+        "abstract_ip": "IP Anonymity & Threat Intelligence",
+        "abstract_phone": "Phone Intelligence",
     }
+
+
 
     items = [
         ConnectorResultRead(

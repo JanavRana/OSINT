@@ -313,7 +313,8 @@ class MacOsintConnector(BaseConnector):
         URL: https://wigle.net/api/v2/network/search?netid={mac}
         Auth: HTTP Basic Auth (api_name:api_token)
         """
-        url = "https://wigle.net/api/v2/network/search"
+        url = "https://api.wigle.net/api/v2/network/search"
+
         params = {"netid": mac}
         auth = (api_name.strip(), api_token.strip())
         headers = {"Accept": "application/json"}

@@ -83,11 +83,17 @@ function IdentifierTable({ items }: { items: Identifier[] }) {
           const displayType = i.platformDisplayName || i.type;
 
 
-          // Build the value cell — domain identifiers become clickable links.
+          // Build the value cell — actual domain hostnames become clickable links.
           let valueCell = (
             <span className="font-mono text-xs break-all">{i.value}</span>
           );
-          if (i.type === "domain") {
+          const isDomainUrl =
+            i.type === "domain" &&
+            i.value.includes(".") &&
+            !i.value.startsWith("Yes") &&
+            !i.value.startsWith("No");
+
+          if (isDomainUrl) {
             const href = i.value.startsWith("http") ? i.value : `https://${i.value}`;
             valueCell = (
               <a

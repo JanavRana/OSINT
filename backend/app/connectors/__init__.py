@@ -61,6 +61,9 @@ from .solana import SolanaConnector  # noqa: F401
 from .truecaller import TruecallerConnector  # noqa: F401
 from .ip import IpGeolocationConnector  # noqa: F401
 from .mac import MacOsintConnector  # noqa: F401
+from .email import EmailOsintConnector  # noqa: F401
+from .abstract_ip import AbstractIpConnector  # noqa: F401
+from .abstract_phone import AbstractPhoneConnector  # noqa: F401
 
 __all__ = [
     "BaseConnector",
@@ -86,4 +89,8 @@ __all__ = [
     "TruecallerConnector",
     "IpGeolocationConnector",
     "MacOsintConnector",
+    "EmailOsintConnector",
+    "AbstractIpConnector",
+    "AbstractPhoneConnector",
 ]
+

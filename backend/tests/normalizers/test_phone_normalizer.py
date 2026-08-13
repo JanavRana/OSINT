@@ -31,8 +31,8 @@ from app.normalizers.types import FactType, NormalizationError
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 def run(coro):
-    """Run a coroutine synchronously for test convenience."""
-    return asyncio.get_event_loop().run_until_complete(coro)
+    """Run a coroutine synchronously."""
+    return asyncio.run(coro)
 
 
 def phone_id(value: str) -> Identifier:

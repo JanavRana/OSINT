@@ -17,7 +17,10 @@ from app.normalizers.types import FactType
 async def test_truecaller_connector_not_configured():
     connector = TruecallerConnector()
     identifier = Identifier(value="+919944234127", type=IdentifierType.PHONE)
-    with patch.dict("os.environ", {}, clear=True):
+    mock_settings = MagicMock()
+    mock_settings.truecaller_rapidapi_key = ""
+    mock_settings.truecaller_rapidapi_host = ""
+    with patch.dict("os.environ", {}, clear=True), patch("app.connectors.truecaller.connector.get_settings", return_value=mock_settings):
         result = await connector.fetch(identifier)
         assert result["name"] is None
         assert "not configured" in result["error"]
