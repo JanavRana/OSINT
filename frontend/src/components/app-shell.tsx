@@ -96,7 +96,7 @@ export function AppShell({ children, title, subtitle, actions }: {
             <Terminal className="h-4 w-4" />
           </div>
           <div className="flex flex-col leading-none">
-            <span className="font-mono text-xs font-bold tracking-tight uppercase text-foreground">AXIOM INTEL</span>
+            <span className="font-mono text-xs font-bold tracking-tight uppercase text-foreground">INTELWEAVE</span>
             <span className="text-[9px] font-mono tracking-widest text-muted-foreground uppercase mt-0.5">OSINT Console</span>
           </div>
         </div>

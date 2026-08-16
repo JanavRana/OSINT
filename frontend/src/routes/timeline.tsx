@@ -17,7 +17,7 @@ import type { TimelineChannel, TimelineEvent } from "@/types/domain";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/timeline")({
-  head: () => ({ meta: [{ title: "Timeline — AXIOM OSINT" }] }),
+  head: () => ({ meta: [{ title: "Timeline — IntelWeave" }] }),
   component: Timeline,
 });
 

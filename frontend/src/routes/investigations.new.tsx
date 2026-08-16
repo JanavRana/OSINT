@@ -17,7 +17,7 @@ export const Route = createFileRoute("/investigations/new")({
   beforeLoad: () => {
     if (!isAuthenticated()) throw redirect({ to: "/auth" });
   },
-  head: () => ({ meta: [{ title: "New Investigation — AXIOM OSINT" }] }),
+  head: () => ({ meta: [{ title: "New Investigation — IntelWeave" }] }),
   component: New,
 });
 

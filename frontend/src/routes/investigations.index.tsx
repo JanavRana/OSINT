@@ -19,7 +19,7 @@ export const Route = createFileRoute("/investigations/")({
   beforeLoad: () => {
     if (!isAuthenticated()) throw redirect({ to: "/auth" });
   },
-  head: () => ({ meta: [{ title: "Investigations — AXIOM OSINT" }] }),
+  head: () => ({ meta: [{ title: "Investigations — IntelWeave" }] }),
   component: List,
 });
 

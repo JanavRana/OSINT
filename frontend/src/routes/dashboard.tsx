@@ -30,7 +30,7 @@ export const Route = createFileRoute("/dashboard")({
   },
   head: () => ({
     meta: [
-      { title: "Dashboard — AXIOM OSINT" },
+      { title: "Dashboard — IntelWeave" },
       { name: "description", content: "Overview of active investigations, connector health, and recent intelligence events." },
     ],
   }),
