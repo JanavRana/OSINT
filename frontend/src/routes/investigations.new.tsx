@@ -48,9 +48,7 @@ function New() {
       return "wallet";
     }
     if (cleaned.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) return "ip";
-    // MAC address check MUST happen before IPv6 since MACs also use colons and hex digits
     if (/^(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$|^(?:[0-9A-Fa-f]{4}\.){2}[0-9A-Fa-f]{4}$|^[0-9A-Fa-f]{12}$/.test(cleaned)) return "mac";
-    // IPv6 check
     if (cleaned.includes(":") && /^[0-9a-fA-F:]+$/.test(cleaned)) return "ip";
     if (cleaned.match(/^\+?\d+$/)) return "phone";
     if (cleaned.startsWith("@")) return "username";
@@ -65,14 +63,12 @@ function New() {
   }, [seeds, isSeedTypeManuallySet]);
 
   async function handleLaunch() {
-
     const seedIdentifiers = seeds
       .split("\n")
       .map((s) => s.trim())
       .filter(Boolean);
     if (!name.trim() || seedIdentifiers.length === 0) return;
     
-    // Auto-detect seed type if user hasn't explicitly changed the default dropdown selection
     const finalSeedType = isSeedTypeManuallySet ? seedType : detectIdentifierType(seedIdentifiers[0]);
     
     try {
@@ -92,25 +88,33 @@ function New() {
 
   return (
     <AppShell
-      title="Create Investigation"
-      subtitle="Seed a new case with one or more identifiers"
+      title="Create Case Intake"
+      subtitle="Provision a new investigation record and seed target identifiers"
       actions={
         <Link to="/investigations">
-          <Button variant="ghost" className="gap-2"><ArrowLeft className="h-4 w-4" /> Back</Button>
+          <Button variant="ghost" size="sm" className="gap-1 text-xs font-mono">
+            <ArrowLeft className="h-3.5 w-3.5" /> BACK
+          </Button>
         </Link>
       }
     >
-      <div className="max-w-3xl mx-auto">
-        <Card className="glass p-6 border-border/60 space-y-5">
-          <div>
-            <Label htmlFor="case-name">Case name</Label>
-            <Input id="case-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Operation Nightshade" className="mt-1.5 bg-surface/60" />
+      <div className="max-w-2xl mx-auto">
+        <Card className="p-5 border-border bg-surface rounded-md space-y-4">
+          <div className="pb-3 border-b border-border/60">
+            <h3 className="font-display text-xs font-bold uppercase tracking-wider text-foreground">Case Parameters</h3>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Specify investigation title and priority level</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          <div>
+            <Label htmlFor="case-name" className="text-xs font-mono text-muted-foreground uppercase">Case Title / Mandate</Label>
+            <Input id="case-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Operation Nightshade" className="mt-1 bg-surface-2 border-border text-xs h-8" />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <Label>Severity</Label>
+              <Label className="text-xs font-mono text-muted-foreground uppercase">Severity Level</Label>
               <Select value={severity} onValueChange={(v) => setSeverity(v as Severity)}>
-                <SelectTrigger className="mt-1.5 bg-surface/60"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="mt-1 bg-surface-2 border-border text-xs h-8"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="critical">Critical</SelectItem>
                   <SelectItem value="high">High</SelectItem>
@@ -120,9 +124,9 @@ function New() {
               </Select>
             </div>
             <div>
-              <Label>Seed identifier type</Label>
+              <Label className="text-xs font-mono text-muted-foreground uppercase">Seed Entity Type</Label>
               <Select value={seedType} onValueChange={(v) => { setSeedType(v as IdentifierType); setIsSeedTypeManuallySet(true); }}>
-                <SelectTrigger className="mt-1.5 bg-surface/60"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="mt-1 bg-surface-2 border-border text-xs h-8"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="email">Email</SelectItem>
                   <SelectItem value="domain">Domain</SelectItem>
@@ -135,29 +139,32 @@ function New() {
               </Select>
             </div>
           </div>
+
           <div>
-            <Label htmlFor="seeds">Seed identifiers</Label>
-            <Textarea id="seeds" rows={4} value={seeds} onChange={(e) => setSeeds(e.target.value)} placeholder="one per line, e.g.&#10;j.doe@protonmail.com&#10;secure-login-verify.io" className="mt-1.5 bg-surface/60 font-mono text-xs" />
+            <Label htmlFor="seeds" className="text-xs font-mono text-muted-foreground uppercase">Seed Identifiers (one per line)</Label>
+            <Textarea id="seeds" rows={4} value={seeds} onChange={(e) => setSeeds(e.target.value)} placeholder="j.doe@protonmail.com&#10;secure-login-verify.io" className="mt-1 bg-surface-2 border-border font-mono text-xs p-2.5" />
           </div>
+
           <div>
-            <Label htmlFor="notes">Notes</Label>
-            <Textarea id="notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Investigator context, mandates, TLP…" className="mt-1.5 bg-surface/60" />
+            <Label htmlFor="notes" className="text-xs font-mono text-muted-foreground uppercase">Analyst Notes & Context</Label>
+            <Textarea id="notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Investigator context, mandates, TLP classification..." className="mt-1 bg-surface-2 border-border text-xs p-2.5" />
           </div>
 
           {create.error && (
-            <div role="alert" className="text-xs text-destructive">
+            <div role="alert" className="text-xs font-mono text-destructive bg-destructive/10 border border-destructive/30 rounded-sm p-2">
               {create.error.message}
             </div>
           )}
 
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/60">
-            <Button variant="ghost" onClick={() => nav({ to: "/investigations" })}>Cancel</Button>
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-border/60">
+            <Button variant="ghost" size="sm" className="text-xs font-mono" onClick={() => nav({ to: "/investigations" })}>Cancel</Button>
             <Button
+              size="sm"
               onClick={handleLaunch}
               disabled={!canSubmit}
-              className="bg-gradient-to-r from-primary to-accent text-primary-foreground gap-2"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 gap-1.5 font-mono text-xs"
             >
-              <Rocket className="h-4 w-4" /> {create.isPending ? "Launching…" : "Launch Investigation"}
+              <Rocket className="h-3.5 w-3.5" /> {create.isPending ? "LAUNCHING…" : "LAUNCH CASE"}
             </Button>
           </div>
         </Card>
@@ -165,3 +172,4 @@ function New() {
     </AppShell>
   );
 }
+

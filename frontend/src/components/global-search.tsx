@@ -214,52 +214,53 @@ export function GlobalSearch() {
 
   return (
     <div ref={searchRef} className="relative flex-1 max-w-xl">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+      {/* Search input bar */}
+      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
       <Input
         ref={inputRef}
         type="text"
-        placeholder="Search identifiers, investigations, wallets, domains…"
+        placeholder="Query target, case ID, IP, domain, hash, email..."
         value={query}
         onChange={handleInputChange}
         onFocus={handleInputFocus}
         onKeyDown={handleKeyDown}
-        className="pl-9 pr-16 h-10 bg-surface/60 border-border/60 focus-visible:ring-primary/40"
+        className="pl-8 pr-14 h-8 bg-surface-2 border-border text-xs font-mono focus-visible:ring-primary/40"
       />
       {query && (
         <button
           onClick={handleClear}
-          className="absolute right-14 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition"
+          className="absolute right-12 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition"
           aria-label="Clear search"
         >
           <X className="h-3.5 w-3.5" />
         </button>
       )}
-      <kbd className="absolute right-2 top-1/2 -translate-y-1/2 h-6 px-1.5 rounded-md border border-border/70 bg-surface text-[10px] font-mono text-muted-foreground flex items-center gap-1 pointer-events-none">
-        <Command className="h-3 w-3" />K
+      <kbd className="absolute right-2 top-1/2 -translate-y-1/2 h-5 px-1 rounded-sm border border-border bg-surface text-[9px] font-mono text-muted-foreground flex items-center gap-0.5 pointer-events-none">
+        <Command className="h-2.5 w-2.5" />K
       </kbd>
 
       {/* Search results dropdown */}
       {isOpen && (
-        <div className="absolute top-full mt-2 left-0 right-0 bg-background/95 backdrop-blur-xl border border-border/60 rounded-lg shadow-xl max-h-96 overflow-y-auto z-50">
+        <div className="absolute top-full mt-1.5 left-0 right-0 bg-surface border border-border rounded-sm shadow-2xl max-h-96 overflow-y-auto z-50 font-mono text-xs">
           {isLoading && (
-            <div className="flex items-center justify-center gap-2 p-4 text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-sm">Searching...</span>
+            <div className="flex items-center justify-center gap-2 p-3 text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+              <span className="text-xs">Searching registry...</span>
             </div>
           )}
 
           {!isLoading && results.length === 0 && query.trim() && (
-            <div className="flex flex-col items-center justify-center gap-2 p-8 text-muted-foreground">
-              <FileSearch className="h-8 w-8 opacity-50" />
-              <p className="text-sm">No results found for "{query}"</p>
-              <p className="text-xs text-muted-foreground">Try a different search term</p>
+            <div className="flex flex-col items-center justify-center gap-1.5 p-6 text-muted-foreground">
+              <FileSearch className="h-6 w-6 opacity-40" />
+              <p className="text-xs font-bold text-foreground">NO MATCHES FOUND</p>
+              <p className="text-[11px] text-muted-foreground">No entity or investigation matches "{query}"</p>
             </div>
           )}
 
           {!isLoading && results.length > 0 && (
-            <div className="py-2">
-              <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                {results.length} result{results.length !== 1 ? "s" : ""}
+            <div className="py-1">
+              <div className="px-3 py-1 text-[9px] uppercase font-bold text-muted-foreground border-b border-border/60 bg-surface-2">
+                MATCHES ({results.length})
               </div>
               {results.map((result, index) => (
                 <button
@@ -267,32 +268,32 @@ export function GlobalSearch() {
                   onClick={() => handleSelectResult(result)}
                   onMouseEnter={() => setSelectedIndex(index)}
                   className={cn(
-                    "w-full text-left px-3 py-2.5 flex items-start gap-3 transition-colors",
+                    "w-full text-left px-3 py-2 flex items-start gap-2.5 transition-colors border-l-2",
                     index === selectedIndex
-                      ? "bg-primary/10 border-l-2 border-primary"
-                      : "hover:bg-white/5 border-l-2 border-transparent"
+                      ? "bg-surface-2 border-primary"
+                      : "border-transparent hover:bg-surface-2/60"
                   )}
                 >
                   <div className={cn(
-                    "h-8 w-8 rounded-lg grid place-items-center shrink-0 mt-0.5",
+                    "h-6 w-6 rounded-sm border grid place-items-center shrink-0 mt-0.5",
                     result.type === "investigation"
-                      ? "bg-primary/15 text-primary"
-                      : "bg-accent/15 text-accent"
+                      ? "bg-primary/10 border-primary/30 text-primary"
+                      : "bg-accent/10 border-accent/30 text-accent"
                   )}>
                     {result.type === "investigation" ? (
-                      <FileSearch className="h-4 w-4" />
+                      <FileSearch className="h-3 w-3" />
                     ) : (
-                      <Hash className="h-4 w-4" />
+                      <Hash className="h-3 w-3" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-foreground truncate">
+                    <div className="text-xs font-bold text-foreground truncate font-sans">
                       {result.title}
                     </div>
-                    <div className="text-xs text-muted-foreground truncate mt-0.5">
+                    <div className="text-[10px] text-muted-foreground truncate font-mono">
                       {result.subtitle}
                     </div>
-                    <div className="text-xs text-muted-foreground/70 truncate mt-1">
+                    <div className="text-[10px] text-muted-foreground/70 truncate">
                       {result.metadata}
                     </div>
                   </div>
@@ -305,3 +306,4 @@ export function GlobalSearch() {
     </div>
   );
 }
+
