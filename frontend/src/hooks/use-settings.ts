@@ -98,13 +98,16 @@ export function useProfileSettings() {
 }
 
 export function useNotificationPrefs() {
-  const [prefs, setPrefsState] = useState<NotificationPrefs>(() =>
-    readStorage("axiom_notifications", NOTIF_DEFAULT)
-  );
+  const [prefs, setPrefsState] = useState<NotificationPrefs>(() => {
+    const stored = readStorage("axiom_notifications", NOTIF_DEFAULT);
+    console.log("[settings] Loaded notification prefs:", stored);
+    return stored;
+  });
 
   const toggle = useCallback((key: keyof NotificationPrefs) => {
     setPrefsState((prev) => {
       const next = { ...prev, [key]: !prev[key] };
+      console.log("[settings] Toggling", key, ":", prev[key], "→", next[key]);
       writeStorage("axiom_notifications", next);
       return next;
     });
