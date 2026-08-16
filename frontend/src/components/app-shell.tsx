@@ -2,10 +2,9 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
   LayoutDashboard, Search, Network, UserSearch, Clock, FileText,
-  Settings, Command, Plus, Radar, Shield, LogOut, ChevronDown
+  Settings, Plus, Radar, Shield, LogOut, ChevronDown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Toaster } from "sonner";
 import { cn } from "@/lib/utils";
 import { useNotifications } from "@/hooks/use-notifications";
@@ -13,6 +12,7 @@ import { useProfileSettings } from "@/hooks/use-settings";
 import { NotificationsPanel } from "@/components/notifications-panel";
 import { useConnectors } from "@/hooks/use-osint-data";
 import { useLogout, useCurrentUser } from "@/hooks/use-auth";
+import { GlobalSearch } from "@/components/global-search";
 
 const nav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -134,16 +134,7 @@ export function AppShell({ children, title, subtitle, actions }: {
       <div className="flex-1 min-w-0 flex flex-col">
         {/* Topbar */}
         <header className="h-16 border-b border-border/60 bg-background/60 backdrop-blur-xl px-4 md:px-6 flex items-center gap-3 sticky top-0 z-30">
-          <div className="relative flex-1 max-w-xl">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search identifiers, investigations, wallets, domains…"
-              className="pl-9 pr-16 h-10 bg-surface/60 border-border/60 focus-visible:ring-primary/40"
-            />
-            <kbd className="absolute right-2 top-1/2 -translate-y-1/2 h-6 px-1.5 rounded-md border border-border/70 bg-surface text-[10px] font-mono text-muted-foreground flex items-center gap-1">
-              <Command className="h-3 w-3" />K
-            </kbd>
-          </div>
+          <GlobalSearch />
           <div className="ml-auto flex items-center gap-2">
             {/* Real notifications panel */}
             <NotificationsPanel

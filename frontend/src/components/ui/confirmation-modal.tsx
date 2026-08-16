@@ -61,7 +61,7 @@ export function ConfirmationModal({
       />
 
       {/* Panel */}
-      <div className="relative glass border border-border/60 rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative bg-popover text-popover-foreground border border-border/60 rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in fade-in zoom-in-95 duration-200">
         <div className="flex items-start gap-4">
           {destructive && (
             <div className="h-10 w-10 rounded-full bg-destructive/15 grid place-items-center shrink-0 mt-0.5">
