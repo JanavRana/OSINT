@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 import type { GraphData, GraphEdge, GraphNode, GraphNodeType } from "@/types/domain";
 
 export const Route = createFileRoute("/graph")({
-  head: () => ({ meta: [{ title: "Graph View — AXIOM OSINT" }] }),
+  head: () => ({ meta: [{ title: "Graph View — IntelWeave" }] }),
   component: Graph,
 });
 

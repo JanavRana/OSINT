@@ -12,7 +12,7 @@ import { getDataProvider } from "@/lib/api/data-provider";
 import { Identifier } from "@/types/domain";
 
 export const Route = createFileRoute("/identity")({
-  head: () => ({ meta: [{ title: "Identity Profile — AXIOM OSINT" }] }),
+  head: () => ({ meta: [{ title: "Identity Profile — IntelWeave" }] }),
   component: Identity,
 });
 

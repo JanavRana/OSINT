@@ -22,7 +22,7 @@ import { fmtDate } from "@/lib/format";
 import type { Investigation } from "@/types/domain";
 
 export const Route = createFileRoute("/reports")({
-  head: () => ({ meta: [{ title: "Reports — AXIOM OSINT" }] }),
+  head: () => ({ meta: [{ title: "Reports — IntelWeave" }] }),
   component: ReportsPage,
 });
 
@@ -232,7 +232,7 @@ function ReportPreview({
               <h2 className="text-sm font-bold text-foreground mt-0.5">{investigation?.name ?? "OSINT Intelligence Dossier"}</h2>
             </div>
             <div className="text-right">
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">AXIOM OSINT Engine</div>
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">INTELWEAVE OSINT Engine</div>
               <div className="text-[10px] font-mono text-primary font-bold mt-0.5">{report.investigationId}</div>
             </div>
           </div>

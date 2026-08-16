@@ -12,7 +12,7 @@ import { useSignup, useVerifyOtp, useLogin, useResendOtp } from "@/hooks/use-aut
 import { isAuthenticated } from "@/lib/auth";
 
 export const Route = createFileRoute("/auth")({
-  head: () => ({ meta: [{ title: "Sign In — AXIOM OSINT" }] }),
+  head: () => ({ meta: [{ title: "Sign In — IntelWeave" }] }),
   component: Auth,
 });
 
@@ -134,7 +134,7 @@ function Auth() {
               <Terminal className="h-4 w-4" />
             </div>
             <div>
-              <div className="font-display font-bold text-sm tracking-wider">AXIOM OSINT</div>
+              <div className="font-display font-bold text-sm tracking-wider">INTELWEAVE</div>
               <div className="text-[9px] font-mono tracking-widest text-muted-foreground uppercase">Tactical Intelligence Console</div>
             </div>
           </div>
@@ -163,7 +163,7 @@ function Auth() {
             <div className="h-7 w-7 rounded-sm bg-primary/10 border border-primary/40 text-primary grid place-items-center">
               <Terminal className="h-3.5 w-3.5" />
             </div>
-            <span className="font-display font-bold text-sm">AXIOM OSINT</span>
+            <span className="font-display font-bold text-sm">INTELWEAVE</span>
           </div>
 
           {step === "otp" ? (
