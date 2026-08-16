@@ -1,11 +1,3 @@
-/**
- * connector-timeline.tsx
- *
- * Renders ExecutionConnectorResult[] as a vertical timeline stepper.
- * Shows each connector's execution in order with start/end times,
- * status indicator, and error messages.
- */
-
 import { CheckCircle2, XCircle, Loader2, Clock3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fmtDate } from "@/lib/format";
@@ -15,37 +7,37 @@ const statusConfig = {
   success: {
     icon: CheckCircle2,
     color: "text-success",
-    bg: "bg-success/15",
+    bg: "bg-success/10 border-success/30",
     dot: "bg-success",
-    label: "Succeeded",
+    label: "SUCCESS",
   },
   succeeded: {
     icon: CheckCircle2,
     color: "text-success",
-    bg: "bg-success/15",
+    bg: "bg-success/10 border-success/30",
     dot: "bg-success",
-    label: "Succeeded",
+    label: "SUCCESS",
   },
   failed: {
     icon: XCircle,
     color: "text-destructive",
-    bg: "bg-destructive/15",
+    bg: "bg-destructive/10 border-destructive/30",
     dot: "bg-destructive",
-    label: "Failed",
+    label: "FAILED",
   },
   running: {
     icon: Loader2,
     color: "text-primary",
-    bg: "bg-primary/15",
+    bg: "bg-primary/10 border-primary/30",
     dot: "bg-primary",
-    label: "Running",
+    label: "RUNNING",
   },
   queued: {
     icon: Clock3,
     color: "text-muted-foreground",
-    bg: "bg-white/5",
+    bg: "bg-surface-2 border-border",
     dot: "bg-muted-foreground",
-    label: "Queued",
+    label: "QUEUED",
   },
 } as const;
 
@@ -73,37 +65,35 @@ interface ConnectorTimelineProps {
 export function ConnectorTimeline({ results, className }: ConnectorTimelineProps) {
   if (results.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground py-4">
+      <p className="text-xs font-mono text-muted-foreground py-3">
         No connector results recorded.
       </p>
     );
   }
 
   return (
-    <div className={cn("relative", className)}>
-      {/* Vertical line */}
+    <div className={cn("relative font-mono text-xs", className)}>
       <div
-        className="absolute left-4 top-4 bottom-4 w-px bg-border/60"
+        className="absolute left-3 top-3 bottom-3 w-px bg-border"
         aria-hidden="true"
       />
-      <ol className="space-y-1" aria-label="Connector execution timeline">
+      <ol className="space-y-2" aria-label="Connector execution timeline">
         {results.map((cr, idx) => {
           const cfg = getStatusConfig(cr.status);
           const Icon = cfg.icon;
-          const isLast = idx === results.length - 1;
           return (
-            <li key={`${cr.connectorName}-${idx}`} className="relative flex gap-4">
+            <li key={`${cr.connectorName}-${idx}`} className="relative flex gap-3">
               {/* Dot */}
               <div
                 className={cn(
-                  "relative z-10 h-8 w-8 shrink-0 rounded-full grid place-items-center border-2 border-background",
+                  "relative z-10 h-6 w-6 shrink-0 rounded-sm grid place-items-center border bg-surface",
                   cfg.bg
                 )}
                 aria-hidden="true"
               >
                 <Icon
                   className={cn(
-                    "h-3.5 w-3.5",
+                    "h-3 w-3",
                     cfg.color,
                     cr.status === "running" && "animate-spin"
                   )}
@@ -113,25 +103,25 @@ export function ConnectorTimeline({ results, className }: ConnectorTimelineProps
               {/* Content */}
               <div
                 className={cn(
-                  "flex-1 rounded-xl p-3 border border-border/40 bg-surface/40 mb-3",
-                  cr.status === "failed" && "border-destructive/30 bg-destructive/[0.04]"
+                  "flex-1 rounded-sm p-2.5 border border-border bg-surface-2/60",
+                  cr.status === "failed" && "border-destructive/40 bg-destructive/5"
                 )}
               >
                 <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <span className="text-sm font-medium capitalize">
+                  <span className="font-semibold text-foreground font-sans text-xs">
                     {cr.connectorName}
                   </span>
                   <div className="flex items-center gap-2">
                     <span
                       className={cn(
-                        "text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full font-medium",
+                        "text-[9px] font-bold px-1.5 py-0.5 rounded-sm border",
                         cfg.bg,
                         cfg.color
                       )}
                     >
                       {cfg.label}
                     </span>
-                    <span className="text-[11px] font-mono text-muted-foreground">
+                    <span className="text-[10px] text-muted-foreground">
                       {durationLabel(cr.startedAt, cr.finishedAt)}
                     </span>
                   </div>
@@ -139,23 +129,15 @@ export function ConnectorTimeline({ results, className }: ConnectorTimelineProps
 
                 {/* Timestamps */}
                 {(cr.startedAt || cr.finishedAt) && (
-                  <div className="mt-1.5 flex gap-4 text-[11px] text-muted-foreground">
-                    {cr.startedAt && (
-                      <span>
-                        Started: <span className="font-mono">{fmtDate(cr.startedAt)}</span>
-                      </span>
-                    )}
-                    {cr.finishedAt && (
-                      <span>
-                        Finished: <span className="font-mono">{fmtDate(cr.finishedAt)}</span>
-                      </span>
-                    )}
+                  <div className="mt-1 flex gap-3 text-[10px] text-muted-foreground/80">
+                    {cr.startedAt && <span>START: {fmtDate(cr.startedAt)}</span>}
+                    {cr.finishedAt && <span>END: {fmtDate(cr.finishedAt)}</span>}
                   </div>
                 )}
 
                 {/* Error message */}
                 {cr.errorMessage && (
-                  <div className="mt-2 text-xs text-destructive bg-destructive/10 rounded-md px-2 py-1.5 font-mono">
+                  <div className="mt-1.5 text-[11px] text-destructive bg-destructive/10 border border-destructive/30 rounded-sm p-1.5">
                     {cr.errorMessage}
                   </div>
                 )}
@@ -167,3 +149,4 @@ export function ConnectorTimeline({ results, className }: ConnectorTimelineProps
     </div>
   );
 }
+

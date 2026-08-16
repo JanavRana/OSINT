@@ -131,7 +131,7 @@ class ReportService:
         for c in connectors_raw:
             raw = c.raw_response if isinstance(c.raw_response, dict) else {}
             err = raw.get("error")
-            c_status = "failed" if err else (raw.get("status") or "success")
+            c_status = "failed" if err else ("success" if c.raw_response else "completed")
             if c_status == "success":
                 successful_cnt += 1
             

@@ -9,6 +9,7 @@ from __future__ import annotations
 import base64
 import io
 import hashlib
+import html
 from datetime import datetime
 from typing import Any, Dict, List
 
@@ -25,6 +26,28 @@ from reportlab.platypus import (
     Table,
     TableStyle,
 )
+
+
+def safe_cell_text(val: Any, max_len: int = 250) -> str:
+    """Safely convert, truncate, and XML-escape text for ReportLab Paragraph cells."""
+    if val is None:
+        return "—"
+    s = str(val).strip()
+    if not s:
+        return "—"
+    if len(s) > max_len:
+        s = s[:max_len] + "…"
+    # Escape XML special chars safely for ReportLab's ParaParser (which doesn't support &#x27;)
+    s = (
+        s.replace("&", "&amp;")
+         .replace("<", "&lt;")
+         .replace(">", "&gt;")
+         .replace('"', "&quot;")
+         .replace("'", "&#39;")
+    )
+    return s
+
+
 
 
 class BaseSection:
@@ -145,13 +168,13 @@ class CoverPage(BaseSection):
         connectors = data.get('connectors', [])
         facts = data.get('facts', [])
         
-        case_name = investigation.get('name', 'Untitled Investigation')
-        inv_id = investigation.get('id', 'N/A')
-        target = investigation.get('seed_value', 'N/A')
-        category_str = investigation.get('category', 'Target Identifier')
-        investigator_str = investigation.get('investigator', 'Lead OSINT Investigator')
-        status_str = str(investigation.get('status', 'ACTIVE')).upper()
-        created_at = investigation.get('created_at', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        case_name = safe_cell_text(investigation.get('name', 'Untitled Investigation'), 100)
+        inv_id = safe_cell_text(investigation.get('id', 'N/A'), 36)
+        target = safe_cell_text(investigation.get('seed_value', 'N/A'), 120)
+        category_str = safe_cell_text(investigation.get('category', 'Target Identifier'), 50)
+        investigator_str = safe_cell_text(investigation.get('investigator', 'Lead OSINT Investigator'), 60)
+        status_str = safe_cell_text(str(investigation.get('status', 'ACTIVE')).upper(), 20)
+        created_at = safe_cell_text(investigation.get('created_at', datetime.now().strftime('%Y-%m-%d %H:%M:%S')), 30)
         
         avg_conf = stats.get('average_confidence', 0.0)
         avg_conf_pct = f"{int(round(avg_conf * 100))}%" if isinstance(avg_conf, (int, float)) else "N/A"
@@ -274,13 +297,16 @@ class CoverPage(BaseSection):
         ]
         
         for c in connectors[:4]:  # Show top connectors summary on Page 1
-            st_str = str(c.get('status', 'N/A')).upper()
+            st_str = safe_cell_text(c.get('status', 'N/A'), 20).upper()
             st_color = "#10b981" if st_str == "SUCCESS" else "#ef4444" if st_str == "FAILED" else "#f59e0b"
+            name_str = safe_cell_text(c.get('name', 'N/A'), 50)
+            dur_str = safe_cell_text(c.get('duration', 'N/A'), 20)
+            start_str = safe_cell_text(c.get('started_at', 'N/A'), 20)
             cov_data.append([
-                Paragraph(f"<b>{c.get('name', 'N/A')}</b>", self.styles['TableCell']),
+                Paragraph(f"<b>{name_str}</b>", self.styles['TableCell']),
                 Paragraph(f"<font color='{st_color}'><b>{st_str}</b></font>", self.styles['TableCell']),
-                Paragraph(str(c.get('duration', 'N/A')), self.styles['TableCell']),
-                Paragraph(str(c.get('started_at', 'N/A')), self.styles['TableCellMono']),
+                Paragraph(dur_str, self.styles['TableCell']),
+                Paragraph(start_str, self.styles['TableCellMono']),
             ])
             
         if len(connectors) == 0:
@@ -353,9 +379,9 @@ class IdentifiersSection(BaseSection):
             conf_val = f.get('confidence', 1.0)
             conf_pct = f"{int(round(conf_val * 100))}%"
             
-            fact_type = str(f.get('type', 'generic')).replace('_', ' ').title()
-            val_str = str(f.get('value', ''))
-            source_str = str(f.get('connector', 'OSINT'))
+            fact_type = safe_cell_text(str(f.get('type', 'generic')).replace('_', ' ').title(), 50)
+            val_str = safe_cell_text(f.get('value'), 200)
+            source_str = safe_cell_text(f.get('connector', 'OSINT'), 40)
             meta = f.get('metadata', {})
             
             profile_url = meta.get('profile_url') or meta.get('wallet_address')
@@ -412,15 +438,19 @@ class ConnectorSection(BaseSection):
         ]
         
         for c in connectors:
-            status_str = str(c.get('status', 'N/A')).upper()
+            status_str = safe_cell_text(c.get('status', 'N/A'), 20).upper()
             status_color = "#10b981" if status_str == "SUCCESS" else "#ef4444" if status_str == "FAILED" else "#f59e0b"
+            name_str = safe_cell_text(c.get('name', 'N/A'), 50)
+            start_str = safe_cell_text(c.get('started_at', 'N/A'), 20)
+            dur_str = safe_cell_text(c.get('duration', 'N/A'), 20)
+            err_str = safe_cell_text(c.get('error') or 'None', 150)
             
             table_data.append([
-                Paragraph(f"<b>{c.get('name', 'N/A')}</b>", self.styles['TableCell']),
+                Paragraph(f"<b>{name_str}</b>", self.styles['TableCell']),
                 Paragraph(f"<font color='{status_color}'><b>{status_str}</b></font>", self.styles['TableCell']),
-                Paragraph(str(c.get('started_at', 'N/A')), self.styles['TableCell']),
-                Paragraph(str(c.get('duration', 'N/A')), self.styles['TableCell']),
-                Paragraph(str(c.get('error') or 'None'), self.styles['TableCell']),
+                Paragraph(start_str, self.styles['TableCell']),
+                Paragraph(dur_str, self.styles['TableCell']),
+                Paragraph(err_str, self.styles['TableCell']),
             ])
             
         c_table = Table(table_data, colWidths=[1.3 * inch, 1.0 * inch, 1.2 * inch, 1.0 * inch, 2.2 * inch])
@@ -465,11 +495,16 @@ class TimelineSection(BaseSection):
         ]
         
         for t in timeline[:30]:  # Limit to recent 30 events for readability
+            date_str = safe_cell_text(t.get('date', 'N/A'), 30)
+            title_str = safe_cell_text(t.get('title', 'Event'), 80)
+            conn_str = safe_cell_text(t.get('connector', 'OSINT'), 40)
+            desc_str = safe_cell_text(t.get('description') or '—', 150)
+
             table_data.append([
-                Paragraph(str(t.get('date', 'N/A')), self.styles['TableCellMono']),
-                Paragraph(f"<b>{t.get('title', 'Event')}</b>", self.styles['TableCell']),
-                Paragraph(str(t.get('connector', 'OSINT')), self.styles['TableCell']),
-                Paragraph(str(t.get('description') or '—'), self.styles['TableCell']),
+                Paragraph(date_str, self.styles['TableCellMono']),
+                Paragraph(f"<b>{title_str}</b>", self.styles['TableCell']),
+                Paragraph(conn_str, self.styles['TableCell']),
+                Paragraph(desc_str, self.styles['TableCell']),
             ])
             
         t_table = Table(table_data, colWidths=[1.4 * inch, 2.0 * inch, 1.0 * inch, 2.3 * inch])
@@ -484,6 +519,7 @@ class TimelineSection(BaseSection):
         story.append(t_table)
         story.append(Spacer(1, 0.2 * inch))
         return story
+
 
 
 # Export compatibility aliases
