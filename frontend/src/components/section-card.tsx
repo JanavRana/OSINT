@@ -18,13 +18,13 @@ export function SectionCard({
   children: ReactNode;
 }) {
   return (
-    <Card className={cn("glass p-5 border-border/60", className)}>
+    <Card className={cn("p-4 border-border bg-surface rounded-md", className)}>
       {(title || action) && (
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between pb-3 mb-3 border-b border-border/60">
           <div>
-            <h3 className="font-display text-lg font-semibold">{title}</h3>
+            <h3 className="font-display text-sm font-semibold text-foreground tracking-tight">{title}</h3>
             {subtitle && (
-              <p className="text-xs text-muted-foreground">{subtitle}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{subtitle}</p>
             )}
           </div>
           {action}
@@ -39,9 +39,10 @@ export function ViewAllLink({ to, children = "View all" }: { to: string; childre
   return (
     <Link
       to={to}
-      className="text-xs text-primary hover:underline flex items-center gap-1"
+      className="text-xs text-primary hover:underline font-medium inline-flex items-center gap-1"
     >
       {children} <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
     </Link>
   );
 }
+

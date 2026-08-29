@@ -7,8 +7,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  FileText, Download, Plus, Sparkles, ChevronRight, Clock, CheckCircle2,
-  XCircle, Loader2, AlertTriangle,
+  FileText, Download, Clock, CheckCircle2,
+  XCircle, Loader2, AlertTriangle, FileDown, Shield, ChevronRight,
 } from "lucide-react";
 import { AsyncBoundary, EmptyState } from "@/components/states";
 import {
@@ -22,7 +22,7 @@ import { fmtDate } from "@/lib/format";
 import type { Investigation } from "@/types/domain";
 
 export const Route = createFileRoute("/reports")({
-  head: () => ({ meta: [{ title: "Reports — AXIOM OSINT" }] }),
+  head: () => ({ meta: [{ title: "Reports — IntelWeave" }] }),
   component: ReportsPage,
 });
 
@@ -31,7 +31,7 @@ export const Route = createFileRoute("/reports")({
 function ReportStatusIcon({ status }: { status: SessionReport["status"] }) {
   switch (status) {
     case "ready":
-      return <CheckCircle2 className="h-4 w-4 text-success" />;
+      return <CheckCircle2 className="h-4 w-4 text-emerald-400" />;
     case "failed":
       return <XCircle className="h-4 w-4 text-destructive" />;
     case "generating":
@@ -49,10 +49,10 @@ const statusLabel: Record<SessionReport["status"], string> = {
 };
 
 const statusColor: Record<SessionReport["status"], string> = {
-  ready: "text-success bg-success/15",
-  failed: "text-destructive bg-destructive/15",
-  generating: "text-primary bg-primary/15",
-  queued: "text-muted-foreground bg-white/5",
+  ready: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+  failed: "text-destructive bg-destructive/10 border-destructive/20",
+  generating: "text-primary bg-primary/10 border-primary/20",
+  queued: "text-muted-foreground bg-surface-2 border-border/40",
 };
 
 // ─── Report list item ─────────────────────────────────────────────────────────
@@ -71,32 +71,32 @@ function ReportListItem({
       onClick={() => onSelect(report)}
       aria-pressed={active}
       className={cn(
-        "w-full text-left rounded-xl p-4 border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+        "w-full text-left rounded-md p-3 border transition-colors focus-visible:outline-none font-mono text-xs",
         active
-          ? "border-primary/50 bg-primary/[0.06] shadow-[0_0_20px_-6px_var(--primary)]"
-          : "border-border/60 hover:border-border bg-card/60 glass"
+          ? "border-primary/50 bg-primary/10 text-foreground"
+          : "border-border/60 hover:border-border bg-surface-2/60 text-muted-foreground hover:text-foreground"
       )}
     >
       <div className="flex items-start gap-3">
-        <div className="h-10 w-10 rounded-lg bg-destructive/15 text-destructive grid place-items-center shrink-0" aria-hidden="true">
+        <div className="h-8 w-8 rounded bg-primary/10 text-primary grid place-items-center shrink-0 mt-0.5" aria-hidden="true">
           <FileText className="h-4 w-4" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="font-medium text-sm truncate">
-            Report — {report.investigationName}
+          <div className="font-bold text-foreground truncate">
+            {report.investigationName}
           </div>
-          <div className="text-[11px] text-muted-foreground font-mono mt-0.5">
+          <div className="text-[10px] text-muted-foreground font-mono mt-0.5">
             {report.investigationId} · {fmtDate(report.createdAt)}
           </div>
           <div className="mt-2 flex items-center gap-2 text-[10px]">
             <ReportStatusIcon status={report.status} />
-            <span className={cn("px-1.5 py-0.5 rounded-full font-medium", statusColor[report.status])}>
+            <span className={cn("px-1.5 py-0.5 rounded border text-[9px] font-bold uppercase", statusColor[report.status])}>
               {statusLabel[report.status]}
             </span>
             <span className="text-muted-foreground">PDF</span>
           </div>
         </div>
-        <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
+        <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 self-center" aria-hidden="true" />
       </div>
     </button>
   );
@@ -132,13 +132,9 @@ function ReportPreview({
   const pollStatus = useCallback(async () => {
     if (!report.investigationId) return;
     try {
-      // Re-generate (idempotent on backend) or call a status endpoint.
-      // Since our backend endpoint is POST-to-generate, we re-issue the
-      // generate call — if the PDF already exists the backend returns its
-      // current status. This is the safest path without a dedicated GET status.
       const result = await generate.mutate(report.investigationId);
       const newStatus: SessionReport["status"] =
-        result.status === "ready"
+        result.status === "ready" || (result.status as string) === "completed"
           ? "ready"
           : result.status === "failed"
           ? "failed"
@@ -158,7 +154,6 @@ function ReportPreview({
 
   useEffect(() => {
     if (isPending) {
-      // Start polling
       pollingRef.current = setInterval(pollStatus, 3000);
     } else {
       stopPolling();
@@ -166,7 +161,7 @@ function ReportPreview({
     return stopPolling;
   }, [isPending, pollStatus, stopPolling]);
 
-  // ── Download ────────────────────────────────────────────────────────────────
+  // ── Download PDF ────────────────────────────────────────────────────────────
   const handleDownload = async () => {
     try {
       const result = await download.mutate({
@@ -188,27 +183,27 @@ function ReportPreview({
   };
 
   return (
-    <Card className="glass border-border/60 overflow-hidden">
+    <Card className="border-border bg-surface rounded-md overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-2 p-4 border-b border-border/60">
-        <FileText className="h-4 w-4 text-primary" aria-hidden="true" />
-        <div className="min-w-0 flex-1">
-          <div className="font-medium text-sm truncate">
+      <div className="p-3 border-b border-border bg-surface-2/40 flex items-center justify-between font-mono text-xs">
+        <div className="flex items-center gap-2 min-w-0">
+          <FileText className="h-4 w-4 text-primary shrink-0" aria-hidden="true" />
+          <span className="font-bold text-foreground truncate">
             {investigation?.name ?? report.investigationId}
-          </div>
-          <div className="text-[11px] text-muted-foreground font-mono">
-            {report.investigationId} · Generated {fmtDate(report.createdAt)}
-          </div>
+          </span>
+          <span className="text-[10px] text-muted-foreground hidden sm:inline">
+            ({report.investigationId})
+          </span>
         </div>
-        <div className="ml-auto flex items-center gap-2">
-          <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium", statusColor[report.status])}>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className={cn("text-[9px] px-2 py-0.5 rounded border font-bold uppercase", statusColor[report.status])}>
             {statusLabel[report.status]}
           </span>
           <Button
             size="sm"
             disabled={!isReady || download.isPending}
             onClick={handleDownload}
-            className="bg-gradient-to-r from-primary to-accent text-primary-foreground gap-1"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-mono gap-1.5 h-7 rounded-sm"
           >
             {download.isPending ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -222,83 +217,79 @@ function ReportPreview({
 
       {/* Download error */}
       {download.error && (
-        <div className="flex items-center gap-2 px-4 py-2 bg-destructive/10 text-destructive text-xs">
+        <div className="flex items-center gap-2 px-4 py-2 bg-destructive/10 text-destructive text-xs border-b border-border">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
           {download.error.message}
         </div>
       )}
 
-      {/* Mock report preview */}
-      <div className="p-6 bg-[oklch(0.11_0.015_260)] min-h-[520px]">
-        <div className="max-w-2xl mx-auto bg-white text-black rounded-md p-10 shadow-2xl">
-          <div className="flex items-center justify-between border-b pb-4">
+      {/* Flat Report Details & Metadata Preview */}
+      <div className="p-6 space-y-6 font-mono text-xs">
+        <div className="p-4 bg-surface-2/60 border border-border/80 rounded-md space-y-3">
+          <div className="flex items-center justify-between border-b border-border/60 pb-3">
             <div>
-              <div className="text-xs uppercase tracking-widest text-slate-500">Confidential — TLP:AMBER</div>
-              <div className="mt-1 text-xl font-bold">{investigation?.name ?? "Investigation Report"}</div>
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Classification: TLP:AMBER</div>
+              <h2 className="text-sm font-bold text-foreground mt-0.5">{investigation?.name ?? "OSINT Intelligence Dossier"}</h2>
             </div>
             <div className="text-right">
-              <div className="text-[10px] uppercase tracking-widest text-slate-400">AXIOM Intel</div>
-              <div className="text-[10px] font-mono text-slate-500">{report.investigationId}</div>
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">INTELWEAVE OSINT Engine</div>
+              <div className="text-[10px] font-mono text-primary font-bold mt-0.5">{report.investigationId}</div>
             </div>
           </div>
 
-          <div className="mt-6 space-y-4 text-xs text-slate-700">
-            <div>
-              <div className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">Report Status</div>
-              <div className="flex items-center gap-2">
-                <ReportStatusIcon status={report.status} />
-                <span className="font-medium">{statusLabel[report.status]}</span>
-                <span className="text-slate-400 ml-auto">Generated {fmtDate(report.createdAt)}</span>
-              </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs pt-1">
+            <div className="p-2 bg-surface border border-border/60 rounded-sm">
+              <div className="text-[9px] uppercase text-muted-foreground">Target</div>
+              <div className="font-bold text-foreground mt-0.5 truncate">{investigation?.target || "N/A"}</div>
             </div>
-
-            {investigation && (
-              <>
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    ["Target", investigation.target || "—"],
-                    ["Status", investigation.status],
-                    ["Severity", investigation.severity],
-                  ].map(([l, v]) => (
-                    <div key={l} className="border border-slate-200 rounded p-2">
-                      <div className="text-[9px] uppercase text-slate-400">{l}</div>
-                      <div className="font-bold text-slate-900 capitalize">{v}</div>
-                    </div>
-                  ))}
-                </div>
-
-                <div>
-                  <div className="text-[10px] uppercase tracking-widest text-slate-400 mb-1">Investigation Details</div>
-                  <p>
-                    Investigation <strong>{investigation.id}</strong> was created on{" "}
-                    {fmtDate(investigation.createdAt)} and targets{" "}
-                    <code className="bg-slate-100 px-1 rounded">{investigation.target || "—"}</code>.
-                    {investigation.tags.length > 0 && (
-                      <> Tagged: {investigation.tags.map((t) => `#${t}`).join(", ")}.</>
-                    )}
-                  </p>
-                </div>
-              </>
-            )}
-
-            {isPending && (
-              <div className="border-t pt-4 text-center text-slate-400">
-                <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
-                <p>Report is being generated — polling for status…</p>
-              </div>
-            )}
-
-            {isFailed && (
-              <div className="border-t pt-4 text-center text-red-400">
-                <XCircle className="h-5 w-5 mx-auto mb-2" />
-                <p>Report generation failed. Please try generating again.</p>
-              </div>
-            )}
-
-            <div className="border-t pt-3 text-[9px] text-slate-400">
-              Generated {fmtDate(report.createdAt)} · AXIOM OSINT Platform
+            <div className="p-2 bg-surface border border-border/60 rounded-sm">
+              <div className="text-[9px] uppercase text-muted-foreground">Status</div>
+              <div className="font-bold text-foreground mt-0.5 uppercase">{investigation?.status || "Active"}</div>
+            </div>
+            <div className="p-2 bg-surface border border-border/60 rounded-sm">
+              <div className="text-[9px] uppercase text-muted-foreground">Severity</div>
+              <div className="font-bold text-foreground mt-0.5 uppercase">{investigation?.severity || "Medium"}</div>
+            </div>
+            <div className="p-2 bg-surface border border-border/60 rounded-sm">
+              <div className="text-[9px] uppercase text-muted-foreground">Generated At</div>
+              <div className="font-bold text-foreground mt-0.5">{fmtDate(report.createdAt)}</div>
             </div>
           </div>
+
+          <div className="text-xs text-muted-foreground pt-1 space-y-1.5">
+            <div className="text-[10px] font-bold text-foreground uppercase tracking-wider">Report Format & Content</div>
+            <p>
+              This export provides an evidence-grade PDF document containing full intelligence data for case <code className="text-foreground bg-surface px-1 py-0.5 rounded border border-border/40">{report.investigationId}</code>.
+            </p>
+            <ul className="list-disc pl-4 space-y-1 text-[11px]">
+              <li>Executive Overview & Risk Summary</li>
+              <li>Normalized Extracted Entity Identifiers with Confidence Scores</li>
+              <li>Connector Execution Logs & Duration Timestamps</li>
+              <li>Chronological Event Timeline</li>
+              <li>Investigator Attestation & SHA256 Verification Digest</li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Action footer */}
+        <div className="flex items-center justify-between p-4 bg-surface-2/40 border border-border/60 rounded-md">
+          <div className="flex items-center gap-2 text-muted-foreground text-[11px]">
+            <Shield className="h-4 w-4 text-primary shrink-0" />
+            <span>Click Download PDF to save the complete, formatted dossier.</span>
+          </div>
+          <Button
+            size="sm"
+            disabled={!isReady || download.isPending}
+            onClick={handleDownload}
+            className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-mono gap-1.5 h-8 rounded-sm"
+          >
+            {download.isPending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+            ) : (
+              <Download className="h-3.5 w-3.5" aria-hidden="true" />
+            )}
+            {download.isPending ? "Generating PDF…" : "Download PDF Report"}
+          </Button>
         </div>
       </div>
     </Card>
@@ -355,7 +346,7 @@ function ReportsPage() {
     }
   };
 
-  // Sync selectedReport with latest version from the list (for status updates)
+  // Sync selectedReport with latest version from the list
   const liveSelectedReport = selectedReport
     ? (reports.find((r) => r.reportId === selectedReport.reportId) ?? selectedReport)
     : null;
@@ -363,83 +354,79 @@ function ReportsPage() {
   return (
     <AppShell
       title="Reports"
-      subtitle="Evidence-grade exports and generated summaries"
-      actions={
-        <Button
-          onClick={handleGenerate}
-          disabled={!selectedInvId || generate.isPending}
-          className="bg-gradient-to-r from-primary to-accent text-primary-foreground gap-2"
-        >
-          {generate.isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-          ) : (
-            <Plus className="h-4 w-4" aria-hidden="true" />
-          )}
-          {generate.isPending ? "Generating…" : "Generate report"}
-        </Button>
-      }
+      subtitle="Evidence-grade PDF exports and generated summaries"
     >
-      <div className="grid grid-cols-1 xl:grid-cols-[420px_1fr] gap-4">
-        {/* Left: report history */}
+      <div className="grid grid-cols-1 xl:grid-cols-[340px_1fr] gap-3">
+        {/* Left: Controls sidebar & report history */}
         <div className="space-y-3">
           {/* Generate card */}
-          <Card className="glass p-4 border-border/60 border-dashed">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-primary to-accent grid place-items-center shrink-0" aria-hidden="true">
-                <Sparkles className="h-4 w-4 text-primary-foreground" />
-              </div>
-              <div className="flex-1">
-                <div className="font-medium text-sm">Generate a new PDF report</div>
-                <div className="text-xs text-muted-foreground">Select an investigation then click Generate.</div>
-              </div>
+          <Card className="p-4 border-border bg-surface rounded-md space-y-3 font-mono text-xs">
+            <h3 className="font-display text-xs font-bold uppercase tracking-wider text-foreground pb-2 border-b border-border/60">
+              Generate Report
+            </h3>
+
+            {/* Target investigation */}
+            <div>
+              <label className="text-[10px] text-muted-foreground uppercase">Target Investigation</label>
+              <AsyncBoundary resource={invRes}>
+                {(investigations) => (
+                  <Select value={selectedInvId} onValueChange={setSelectedInvId}>
+                    <SelectTrigger className="mt-1 bg-surface-2 border-border text-xs h-8">
+                      <SelectValue placeholder="Choose case…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {investigations.map((inv) => (
+                        <SelectItem key={inv.id} value={inv.id}>
+                          {inv.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </AsyncBoundary>
             </div>
 
-            {/* Investigation picker */}
-            <AsyncBoundary resource={invRes}>
-              {(investigations) => (
-                <Select value={selectedInvId} onValueChange={setSelectedInvId}>
-                  <SelectTrigger className="w-full bg-surface/60 text-sm" aria-label="Select investigation to report on">
-                    <SelectValue placeholder="Choose investigation…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {investigations.map((inv) => (
-                      <SelectItem key={inv.id} value={inv.id}>
-                        {inv.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </AsyncBoundary>
-
             {generate.error && (
-              <p className="mt-2 text-xs text-destructive flex items-center gap-1">
+              <p className="mt-1 text-[11px] text-destructive flex items-center gap-1">
                 <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {generate.error.message}
               </p>
             )}
+
+            <Button
+              onClick={handleGenerate}
+              disabled={!selectedInvId || generate.isPending}
+              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-mono gap-1.5 h-8 rounded-sm mt-1"
+            >
+              {generate.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+              ) : (
+                <FileDown className="h-3.5 w-3.5" aria-hidden="true" />
+              )}
+              {generate.isPending ? "Generating PDF…" : "Generate PDF Report"}
+            </Button>
           </Card>
 
           {/* Session report list */}
-          {reports.length === 0 ? (
-            <EmptyState
-              title="No reports generated yet."
-              description="Select an investigation and click Generate to create your first report."
-            />
-          ) : (
-            <div className="space-y-2">
-              {reports.map((r) => (
-                <ReportListItem
-                  key={r.reportId}
-                  report={r}
-                  active={liveSelectedReport?.reportId === r.reportId}
-                  onSelect={setSelectedReport}
-                />
-              ))}
-            </div>
+          {reports.length > 0 && (
+            <Card className="p-3 border-border bg-surface rounded-md font-mono text-xs space-y-2">
+              <h3 className="font-display text-xs font-bold uppercase tracking-wider text-foreground pb-2 border-b border-border/60 mb-2">
+                Generated Dossiers
+              </h3>
+              <div className="space-y-1.5 max-h-[480px] overflow-y-auto pr-1">
+                {reports.map((r) => (
+                  <ReportListItem
+                    key={r.reportId}
+                    report={r}
+                    active={liveSelectedReport?.reportId === r.reportId}
+                    onSelect={setSelectedReport}
+                  />
+                ))}
+              </div>
+            </Card>
           )}
         </div>
 
-        {/* Right: preview */}
+        {/* Right: preview / details */}
         {liveSelectedReport ? (
           <ReportPreview
             key={liveSelectedReport.reportId}
@@ -448,10 +435,10 @@ function ReportsPage() {
             onStatusUpdate={handleStatusUpdate}
           />
         ) : (
-          <Card className="glass border-border/60 min-h-[400px] grid place-items-center">
+          <Card className="border-border bg-surface rounded-md min-h-[400px] grid place-items-center p-6">
             <EmptyState
-              title="Select a report to preview"
-              description="Generate a report or choose one from the list on the left."
+              title="Select an investigation"
+              description="Choose a case on the left and click Generate PDF Report to compile and download your evidence dossier."
             />
           </Card>
         )}

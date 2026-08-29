@@ -17,7 +17,7 @@ import type { TimelineChannel, TimelineEvent } from "@/types/domain";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/timeline")({
-  head: () => ({ meta: [{ title: "Timeline — AXIOM OSINT" }] }),
+  head: () => ({ meta: [{ title: "Timeline — IntelWeave" }] }),
   component: Timeline,
 });
 
@@ -33,12 +33,12 @@ const channelIcon: Record<TimelineChannel, typeof Mail> = {
 };
 
 const channelColor: Record<TimelineChannel, string> = {
-  email: "text-primary bg-primary/15",
-  domain: "text-accent bg-accent/15",
-  social: "text-warning bg-warning/15",
-  wallet: "text-success bg-success/15",
-  network: "text-destructive bg-destructive/15",
-  system: "text-muted-foreground bg-white/5",
+  email: "text-primary bg-primary/10 border-primary/30",
+  domain: "text-accent bg-accent/10 border-accent/30",
+  social: "text-warning bg-warning/10 border-warning/30",
+  wallet: "text-success bg-success/10 border-success/30",
+  network: "text-destructive bg-destructive/10 border-destructive/30",
+  system: "text-muted-foreground bg-surface-2 border-border",
 };
 
 // ─── Event card ───────────────────────────────────────────────────────────────
@@ -46,28 +46,28 @@ const channelColor: Record<TimelineChannel, string> = {
 function TimelineEventCard({ event }: { event: TimelineEvent }) {
   const Icon = channelIcon[event.channel];
   return (
-    <div className="relative pl-14">
+    <div className="relative pl-10">
       <div
         className={cn(
-          "absolute left-6 -translate-x-1/2 top-4 h-4 w-4 rounded-full grid place-items-center",
+          "absolute left-3 -translate-x-1/2 top-3 h-5 w-5 rounded-sm border grid place-items-center bg-surface shrink-0 z-10",
           channelColor[event.channel]
         )}
         aria-hidden="true"
       >
-        <Icon className="h-2.5 w-2.5" />
+        <Icon className="h-3 w-3" />
       </div>
-      <Card className="glass p-4 border-border/60">
+      <Card className="p-3 border-border bg-surface rounded-md font-mono text-xs">
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="font-medium text-foreground">{event.actor}</span>
-          <span className="text-muted-foreground">{event.action}</span>
-          <span className="font-mono">{event.target}</span>
+          <span className="font-bold text-foreground font-sans">{event.actor}</span>
+          <span className="text-muted-foreground uppercase text-[10px]">{event.action}</span>
+          <span className="text-primary font-bold">{event.target}</span>
           <SeverityBadge severity={event.severity} />
-          <time dateTime={event.time} className="ml-auto text-muted-foreground flex items-center gap-1">
+          <time dateTime={event.time} className="ml-auto text-[11px] text-muted-foreground flex items-center gap-1">
             <Clock className="h-3 w-3" aria-hidden="true" />
             {fmtDate(event.time)}
           </time>
         </div>
-        <div className="mt-2 text-sm text-muted-foreground">{event.details}</div>
+        <div className="mt-1.5 text-xs text-muted-foreground font-sans">{event.details}</div>
       </Card>
     </div>
   );
@@ -77,18 +77,16 @@ function TimelineEventCard({ event }: { event: TimelineEvent }) {
 
 function DateGroupHeader({ date }: { date: string }) {
   return (
-    <div className="pl-14 flex items-center gap-3 my-4">
-      <div className="absolute left-6 -translate-x-1/2 h-6 w-6 rounded-full bg-surface border border-border/60 grid place-items-center">
+    <div className="pl-10 flex items-center gap-2 my-3">
+      <div className="absolute left-3 -translate-x-1/2 h-5 w-5 rounded-sm bg-surface-2 border border-border grid place-items-center">
         <Calendar className="h-3 w-3 text-muted-foreground" />
       </div>
-      <div className="text-[11px] uppercase tracking-widest font-medium text-muted-foreground bg-surface/80 backdrop-blur-sm px-3 py-1 rounded-full border border-border/60">
+      <div className="text-[10px] uppercase font-mono tracking-widest font-bold text-muted-foreground bg-surface-2 px-2.5 py-0.5 rounded-sm border border-border">
         {date}
       </div>
     </div>
   );
 }
-
-// ─── Group events by date ─────────────────────────────────────────────────────
 
 function groupByDate(events: TimelineEvent[]): Array<{ date: string; events: TimelineEvent[] }> {
   const groups = new Map<string, TimelineEvent[]>();
@@ -104,8 +102,6 @@ function groupByDate(events: TimelineEvent[]): Array<{ date: string; events: Tim
   }
   return Array.from(groups.entries()).map(([date, evts]) => ({ date, events: evts }));
 }
-
-// ─── Timeline page ────────────────────────────────────────────────────────────
 
 function Timeline() {
   const [q, setQ] = useState("");
@@ -134,17 +130,16 @@ function Timeline() {
   };
 
   return (
-    <AppShell title="Timeline" subtitle="Chronological event log across all connectors">
-      <Card className="glass p-4 border-border/60">
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Investigation selector */}
+    <AppShell title="Event Telemetry Log" subtitle="Chronological intelligence event stream across all executed connectors">
+      <Card className="p-3 border-border bg-surface rounded-md">
+        <div className="flex flex-wrap items-center gap-2.5">
           <AsyncBoundary resource={invRes}>
             {(investigations) => (
               <Select
                 value={selectedInvId ?? "__none__"}
                 onValueChange={handleInvChange}
               >
-                <SelectTrigger className="w-[220px] bg-surface/60" aria-label="Select investigation">
+                <SelectTrigger className="w-[200px] h-8 text-xs font-mono bg-surface-2 border-border" aria-label="Select investigation">
                   <SelectValue placeholder="Select investigation…" />
                 </SelectTrigger>
                 <SelectContent>
@@ -159,22 +154,20 @@ function Timeline() {
             )}
           </AsyncBoundary>
 
-          {/* Search */}
-          <div className="relative flex-1 min-w-[220px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden="true" />
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
             <label htmlFor="timeline-search" className="sr-only">Search events</label>
             <Input
               id="timeline-search"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search events…"
-              className="pl-9 bg-surface/60"
+              placeholder="Search event logs…"
+              className="h-8 pl-8 text-xs font-mono bg-surface-2 border-border"
             />
           </div>
 
-          {/* Channel filter */}
           <Select value={ch} onValueChange={(v) => setCh(v as ChannelFilter)}>
-            <SelectTrigger className="w-[160px] bg-surface/60" aria-label="Channel filter">
+            <SelectTrigger className="w-[150px] h-8 text-xs font-mono bg-surface-2 border-border" aria-label="Channel filter">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -188,19 +181,17 @@ function Timeline() {
             </SelectContent>
           </Select>
 
-          {/* Event count */}
           {resource.data && (
-            <span className="text-xs text-muted-foreground ml-auto">
-              {filtered.length} event{filtered.length !== 1 ? "s" : ""}
+            <span className="text-xs font-mono text-muted-foreground ml-auto">
+              LOG_EVENTS: {filtered.length}
             </span>
           )}
         </div>
       </Card>
 
-      <div className="mt-6 relative">
-        {/* Vertical timeline line */}
+      <div className="mt-4 relative">
         <div
-          className="absolute left-6 top-0 bottom-0 w-px bg-gradient-to-b from-primary/40 via-border to-transparent"
+          className="absolute left-3 top-0 bottom-0 w-px bg-border"
           aria-hidden="true"
         />
 
@@ -223,7 +214,7 @@ function Timeline() {
                   {grouped.map(({ date, events }) => (
                     <div key={date} className="relative">
                       <DateGroupHeader date={date} />
-                      <div className="space-y-3">
+                      <div className="space-y-2">
                         {events.map((e) => (
                           <TimelineEventCard key={e.id} event={e} />
                         ))}
@@ -239,3 +230,4 @@ function Timeline() {
     </AppShell>
   );
 }
+

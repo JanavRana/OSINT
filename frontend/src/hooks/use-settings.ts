@@ -21,7 +21,7 @@ export interface ProfileSettings {
 const PROFILE_DEFAULT: ProfileSettings = {
   fullName: "Analyst",
   role: "Intelligence Analyst",
-  email: "analyst@axiom-intel.io",
+  email: "analyst@intelweave.io",
   clearance: "TLP:AMBER",
   initials: "AI",
 };

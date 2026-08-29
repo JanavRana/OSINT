@@ -19,7 +19,7 @@ export const Route = createFileRoute("/investigations/")({
   beforeLoad: () => {
     if (!isAuthenticated()) throw redirect({ to: "/auth" });
   },
-  head: () => ({ meta: [{ title: "Investigations — AXIOM OSINT" }] }),
+  head: () => ({ meta: [{ title: "Investigations — IntelWeave" }] }),
   component: List,
 });
 
@@ -83,12 +83,12 @@ function List() {
 
   return (
     <AppShell
-      title="Investigations"
-      subtitle={`${filtered.length} of ${all.length} cases`}
+      title="Investigation Registry"
+      subtitle={`${filtered.length} of ${all.length} registered cases`}
       actions={
         <Link to="/investigations/new">
-          <Button className="bg-gradient-to-r from-primary to-accent text-primary-foreground gap-2">
-            <Plus className="h-4 w-4" aria-hidden="true" /> New Investigation
+          <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90 gap-1.5 text-xs font-medium rounded-sm">
+            <Plus className="h-3.5 w-3.5" aria-hidden="true" /> New Investigation
           </Button>
         </Link>
       }
@@ -111,22 +111,22 @@ function List() {
         onCancel={() => setDeleteTarget(null)}
       />
 
-      <Card className="glass p-4 border-border/60">
-        <div className="flex flex-wrap items-center gap-3">
+      <Card className="p-3 border-border bg-surface rounded-md">
+        <div className="flex flex-wrap items-center gap-2.5">
           <div className="relative flex-1 min-w-[220px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden="true" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
             <label className="sr-only" htmlFor="inv-search">Filter investigations</label>
             <Input
               id="inv-search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Filter by name, target, ID…"
-              className="pl-9 bg-surface/60"
+              placeholder="Filter by case name, target, ID…"
+              className="h-8 pl-8 text-xs bg-surface-2 border-border font-mono"
             />
           </div>
           <Select value={status} onValueChange={(v) => setStatus(v as StatusFilter)}>
-            <SelectTrigger className="w-[160px] bg-surface/60" aria-label="Status filter">
-              <Filter className="h-3.5 w-3.5 mr-2" aria-hidden="true" /><SelectValue />
+            <SelectTrigger className="w-[150px] h-8 text-xs bg-surface-2 border-border" aria-label="Status filter">
+              <Filter className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" aria-hidden="true" /><SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All statuses</SelectItem>
@@ -137,8 +137,8 @@ function List() {
             </SelectContent>
           </Select>
           <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
-            <SelectTrigger className="w-[180px] bg-surface/60" aria-label="Sort order">
-              <ArrowUpDown className="h-3.5 w-3.5 mr-2" aria-hidden="true" /><SelectValue />
+            <SelectTrigger className="w-[160px] h-8 text-xs bg-surface-2 border-border" aria-label="Sort order">
+              <ArrowUpDown className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" aria-hidden="true" /><SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="recent">Recently updated</SelectItem>
@@ -149,55 +149,55 @@ function List() {
         </div>
       </Card>
 
-      <Card className="glass mt-4 border-border/60 overflow-hidden">
+      <Card className="mt-3 border-border bg-surface rounded-md overflow-hidden">
         <AsyncBoundary resource={resource}>
           {() => (
             <>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-xs">
                   <thead>
-                    <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground border-b border-border/60">
-                      <th scope="col" className="px-5 py-3 font-medium">Case</th>
-                      <th scope="col" className="px-5 py-3 font-medium">Target</th>
-                      <th scope="col" className="px-5 py-3 font-medium">Severity</th>
-                      <th scope="col" className="px-5 py-3 font-medium">Status</th>
-                      <th scope="col" className="px-5 py-3 font-medium">Progress</th>
-                      <th scope="col" className="px-5 py-3 font-medium">Owner</th>
-                      <th scope="col" className="px-5 py-3 font-medium">Updated</th>
-                      <th scope="col" className="px-5 py-3 font-medium sr-only">Actions</th>
+                    <tr className="text-left text-[10px] uppercase font-mono tracking-widest text-muted-foreground border-b border-border bg-surface-2/60">
+                      <th scope="col" className="px-4 py-2.5 font-semibold">Case Title</th>
+                      <th scope="col" className="px-4 py-2.5 font-semibold">Target Entity</th>
+                      <th scope="col" className="px-4 py-2.5 font-semibold">Severity</th>
+                      <th scope="col" className="px-4 py-2.5 font-semibold">Status</th>
+                      <th scope="col" className="px-4 py-2.5 font-semibold">Connectors Progress</th>
+                      <th scope="col" className="px-4 py-2.5 font-semibold">Analyst</th>
+                      <th scope="col" className="px-4 py-2.5 font-semibold">Updated</th>
+                      <th scope="col" className="px-4 py-2.5 font-semibold sr-only">Actions</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-border/40 font-mono">
                     {filtered.map((inv) => (
-                      <tr key={inv.id} className="border-b border-border/40 hover:bg-white/[0.02] transition group">
-                        <td className="px-5 py-3">
-                          <Link to="/investigations/$id" params={{ id: inv.id }} className="flex items-center gap-3">
-                            <div className="h-8 w-8 rounded-md bg-gradient-to-br from-primary/20 to-accent/20 grid place-items-center text-[10px] font-mono text-primary">
+                      <tr key={inv.id} className="hover:bg-surface-3/50 transition-colors group">
+                        <td className="px-4 py-2.5 font-sans">
+                          <Link to="/investigations/$id" params={{ id: inv.id }} className="flex items-center gap-2.5">
+                            <div className="h-6 px-1.5 rounded-sm bg-surface-3 border border-border grid place-items-center text-[10px] font-mono text-primary font-bold">
                               {inv.id.split("-")[1]}
                             </div>
                             <div>
-                              <div className="font-medium hover:text-primary">{inv.name}</div>
+                              <div className="font-semibold text-foreground hover:text-primary transition-colors">{inv.name}</div>
                               <div className="text-[10px] text-muted-foreground font-mono">{inv.id}</div>
                             </div>
                           </Link>
                         </td>
-                        <td className="px-5 py-3 font-mono text-xs text-muted-foreground">{inv.target}</td>
-                        <td className="px-5 py-3"><SeverityBadge severity={inv.severity} /></td>
-                        <td className="px-5 py-3"><StatusBadge status={inv.status} /></td>
-                        <td className="px-5 py-3 w-48">
-                          <Progress value={inv.progress} className="h-1.5" />
-                          <div className="text-[10px] text-muted-foreground mt-1">
-                            {inv.progress}% • {inv.identifiers} identifiers
+                        <td className="px-4 py-2.5 font-mono text-xs text-foreground/90">{inv.target}</td>
+                        <td className="px-4 py-2.5"><SeverityBadge severity={inv.severity} /></td>
+                        <td className="px-4 py-2.5"><StatusBadge status={inv.status} /></td>
+                        <td className="px-4 py-2.5 w-44">
+                          <Progress value={inv.progress} className="h-1 bg-surface-3" />
+                          <div className="text-[10px] text-muted-foreground mt-1 font-mono">
+                            {inv.progress}% · {inv.identifiers} ids
                           </div>
                         </td>
-                        <td className="px-5 py-3 text-xs">{inv.owner}</td>
-                        <td className="px-5 py-3 text-xs text-muted-foreground">{fmtDate(inv.updatedAt)}</td>
-                        <td className="px-5 py-3">
+                        <td className="px-4 py-2.5 text-xs text-muted-foreground font-sans">{inv.owner}</td>
+                        <td className="px-4 py-2.5 text-[11px] text-muted-foreground font-mono">{fmtDate(inv.updatedAt)}</td>
+                        <td className="px-4 py-2.5 text-right">
                           <Button
                             variant="ghost"
                             size="icon"
                             aria-label={`Delete ${inv.name}`}
-                            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                             onClick={() => setDeleteTarget(inv)}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -207,7 +207,7 @@ function List() {
                     ))}
                     {filtered.length === 0 && (
                       <tr>
-                        <td colSpan={8} className="px-5 py-16 text-center text-muted-foreground">
+                        <td colSpan={8} className="px-5 py-12 text-center text-muted-foreground">
                           <EmptyState
                             title="No investigations match your filters."
                             description="Adjust your search or clear filters to see more results."
@@ -218,16 +218,16 @@ function List() {
                   </tbody>
                 </table>
               </div>
-              <div className="flex items-center justify-between px-5 py-3 border-t border-border/60 text-xs text-muted-foreground">
-                <div>Showing 1–{filtered.length} of {all.length}</div>
+              <div className="flex items-center justify-between px-4 py-2.5 border-t border-border text-xs text-muted-foreground font-mono bg-surface-2/30">
+                <div>LOG_COUNT: 1–{filtered.length} of {all.length}</div>
                 <nav aria-label="Pagination" className="flex items-center gap-1">
-                  <Button variant="ghost" size="sm" disabled aria-label="Previous page">
+                  <Button variant="ghost" size="sm" disabled aria-label="Previous page" className="h-7 w-7 p-0">
                     <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
                   </Button>
-                  <Button variant="ghost" size="sm" className="text-primary" aria-current="page">1</Button>
-                  <Button variant="ghost" size="sm">2</Button>
-                  <Button variant="ghost" size="sm">3</Button>
-                  <Button variant="ghost" size="sm" aria-label="Next page">
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-primary font-bold" aria-current="page">1</Button>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0">2</Button>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0">3</Button>
+                  <Button variant="ghost" size="sm" aria-label="Next page" className="h-7 w-7 p-0">
                     <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
                   </Button>
                 </nav>
@@ -239,3 +239,4 @@ function List() {
     </AppShell>
   );
 }
+

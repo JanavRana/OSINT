@@ -11,10 +11,10 @@ export function Field({
 }) {
   return (
     <div>
-      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+      <div className="text-[10px] uppercase font-mono tracking-widest text-muted-foreground">
         {label}
       </div>
-      <div className={cn("mt-0.5", mono && "font-mono text-xs break-all")}>
+      <div className={cn("mt-0.5 text-xs text-foreground", mono && "font-mono break-all")}>
         {value}
       </div>
     </div>
@@ -33,18 +33,18 @@ export function MetricPill({
   return (
     <div
       className={cn(
-        "rounded-xl border px-3 py-1.5",
+        "rounded-sm border px-2.5 py-1 font-mono text-xs",
         tone === "success"
-          ? "border-success/40 bg-success/10"
-          : "border-border/60 bg-surface/60",
+          ? "border-success/40 bg-success/10 text-success"
+          : "border-border bg-surface-2 text-foreground",
       )}
     >
-      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+      <div className="text-[9px] uppercase tracking-widest text-muted-foreground">
         {label}
       </div>
       <div
         className={cn(
-          "text-sm font-display font-semibold",
+          "font-bold text-sm mt-0.5",
           tone === "success" && "text-success",
         )}
       >
@@ -53,3 +53,4 @@ export function MetricPill({
     </div>
   );
 }
+

@@ -10,76 +10,71 @@ import {
   useThemeSettings,
 } from "@/hooks/use-settings";
 import { getUser } from "@/lib/auth";
-import { Palette, User, Bell, Check, Sun, Moon, Mail } from "lucide-react";
+import { Palette, User, Bell, Check, Sun, Moon, Mail, ShieldCheck } from "lucide-react";
 
 export const Route = createFileRoute("/settings")({
-  head: () => ({ meta: [{ title: "Settings — Intel Weave" }] }),
+  head: () => ({ meta: [{ title: "Settings — IntelWeave" }] }),
   component: Settings,
 });
 
-const themePresets: ReadonlyArray<{ name: string; gradient: string; primary: string; accent: string }> = [
-  { name: "Cyan · Violet", gradient: "from-primary to-accent", primary: "oklch(0.82 0.17 195)", accent: "oklch(0.65 0.24 295)" },
-  { name: "Ember", gradient: "from-orange-400 to-red-500", primary: "oklch(0.78 0.20 45)", accent: "oklch(0.65 0.26 25)" },
-  { name: "Emerald", gradient: "from-emerald-400 to-teal-500", primary: "oklch(0.78 0.17 155)", accent: "oklch(0.65 0.18 185)" },
-  { name: "Rose", gradient: "from-pink-400 to-fuchsia-500", primary: "oklch(0.76 0.21 340)", accent: "oklch(0.65 0.28 320)" },
+const themePresets: ReadonlyArray<{ name: string; primary: string; accent: string }> = [
+  { name: "Cobalt Titanium", primary: "oklch(0.72 0.14 220)", accent: "oklch(0.68 0.14 190)" },
+  { name: "Crimson Red", primary: "oklch(0.65 0.22 25)", accent: "oklch(0.70 0.18 45)" },
+  { name: "Emerald Green", primary: "oklch(0.72 0.18 150)", accent: "oklch(0.70 0.15 180)" },
+  { name: "Amber Ochre", primary: "oklch(0.75 0.18 80)", accent: "oklch(0.70 0.15 60)" },
 ];
-
-// ─── Profile section ──────────────────────────────────────────────────────────
 
 function ProfileSection() {
   const user = getUser();
 
   return (
-    <Card className="glass p-6 border-border/60">
-      <div className="flex items-center gap-2 mb-4">
+    <Card className="p-4 border-border bg-surface rounded-md">
+      <div className="flex items-center gap-2 pb-2 border-b border-border/60 mb-3">
         <User className="h-4 w-4 text-primary" aria-hidden="true" />
-        <h3 className="font-display text-lg font-semibold">Profile</h3>
+        <h3 className="font-display text-xs font-bold uppercase tracking-wider text-foreground">Analyst Credentials</h3>
       </div>
-      <p className="text-sm text-muted-foreground mb-4">
-        Your authenticated account information.
-      </p>
       
       {user ? (
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 p-4 rounded-lg bg-surface/60 border border-border/60">
-            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-accent grid place-items-center text-sm font-display font-bold text-primary-foreground">
+        <div className="space-y-3 font-mono text-xs">
+          <div className="flex items-center gap-3 p-3 rounded-sm bg-surface-2 border border-border">
+            <div className="h-9 w-9 rounded-sm bg-surface-3 border border-border grid place-items-center text-sm font-bold text-primary shrink-0">
               {user.email[0].toUpperCase()}
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 font-sans">
               <div className="flex items-center gap-2">
                 <Mail className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
-                <span className="text-sm font-mono">{user.email}</span>
+                <span className="text-xs font-mono font-bold text-foreground">{user.email}</span>
               </div>
               {user.fullName && (
-                <div className="text-xs text-muted-foreground mt-1">{user.fullName}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">{user.fullName}</div>
               )}
             </div>
             {user.isVerified && (
-              <Check className="h-4 w-4 text-success" aria-label="Verified" />
+              <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-success bg-success/10 border border-success/30 px-2 py-0.5 rounded-sm flex items-center gap-1">
+                <ShieldCheck className="h-3 w-3" /> VERIFIED
+              </span>
             )}
           </div>
           
-          <div className="grid grid-cols-2 gap-3 text-xs">
-            <div className="p-3 rounded-lg bg-surface/60 border border-border/60">
-              <div className="text-muted-foreground">Account ID</div>
-              <div className="font-mono mt-1 truncate">{user.id}</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+            <div className="p-2.5 rounded-sm bg-surface-2 border border-border">
+              <div className="text-[9px] uppercase tracking-widest text-muted-foreground">Account Identifier</div>
+              <div className="font-bold text-foreground mt-0.5 truncate">{user.id}</div>
             </div>
-            <div className="p-3 rounded-lg bg-surface/60 border border-border/60">
-              <div className="text-muted-foreground">Created</div>
-              <div className="font-mono mt-1">{new Date(user.createdAt).toLocaleDateString()}</div>
+            <div className="p-2.5 rounded-sm bg-surface-2 border border-border">
+              <div className="text-[9px] uppercase tracking-widest text-muted-foreground">Provisioned Date</div>
+              <div className="font-bold text-foreground mt-0.5">{new Date(user.createdAt).toLocaleDateString()}</div>
             </div>
           </div>
         </div>
       ) : (
-        <div className="p-4 rounded-lg bg-surface/60 border border-border/60 text-sm text-muted-foreground">
-          No user data available. Please log in.
+        <div className="p-3 rounded-sm bg-surface-2 border border-border text-xs font-mono text-muted-foreground">
+          No session active. Please authenticate.
         </div>
       )}
     </Card>
   );
 }
-
-// ─── Appearance section ───────────────────────────────────────────────────────
 
 function AppearanceSection() {
   const { theme, setPreset, mode, setMode } = useThemeSettings();
@@ -88,71 +83,61 @@ function AppearanceSection() {
     const preset = themePresets.find((p) => p.name === name);
     if (preset) {
       setPreset(name, preset.primary, preset.accent);
-      toast.success("Theme updated", { description: `Switched to ${name} preset.` });
+      toast.success(`Switched to ${name} palette`);
     }
   };
 
   const handleModeChange = (newMode: "light" | "dark") => {
     setMode(newMode);
-    toast.success("Theme mode updated", { description: `Switched to ${newMode} mode.` });
+    toast.success(`Switched to ${newMode} mode`);
   };
 
   return (
-    <Card className="glass p-6 border-border/60">
-      <div className="flex items-center gap-2 mb-4">
+    <Card className="p-4 border-border bg-surface rounded-md">
+      <div className="flex items-center gap-2 pb-2 border-b border-border/60 mb-3">
         <Palette className="h-4 w-4 text-primary" aria-hidden="true" />
-        <h3 className="font-display text-lg font-semibold">Appearance</h3>
+        <h3 className="font-display text-xs font-bold uppercase tracking-wider text-foreground">Console Theme & Accent</h3>
       </div>
-      <p className="text-sm text-muted-foreground mb-5">
-        Customize theme mode and accent colors.
-      </p>
       
-      {/* Theme mode selector */}
-      <div className="mb-5">
-        <Label className="text-sm font-medium">Theme Mode</Label>
-        <div className="mt-2 grid grid-cols-2 gap-3">
+      {/* Mode choice */}
+      <div className="mb-4">
+        <Label className="text-xs font-mono text-muted-foreground uppercase">Display Mode</Label>
+        <div className="mt-1.5 grid grid-cols-2 gap-2 font-mono text-xs">
           <button
-            className={`rounded-xl p-4 border ${mode === "dark" ? "border-primary ring-2 ring-primary/40" : "border-border/60"} bg-surface/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 transition-all flex items-center justify-center gap-2`}
-            aria-pressed={mode === "dark"}
+            className={`p-2.5 rounded-sm border ${mode === "dark" ? "border-primary bg-primary/10 text-foreground font-bold" : "border-border bg-surface-2 text-muted-foreground"} flex items-center justify-center gap-2`}
             onClick={() => handleModeChange("dark")}
           >
-            <Moon className="h-4 w-4" aria-hidden="true" />
-            <span className="text-sm font-medium">Dark</span>
-            {mode === "dark" && <Check className="h-4 w-4 ml-auto text-primary" />}
+            <Moon className="h-3.5 w-3.5" />
+            <span>Dark Workstation</span>
+            {mode === "dark" && <Check className="h-3.5 w-3.5 ml-auto text-primary" />}
           </button>
           <button
-            className={`rounded-xl p-4 border ${mode === "light" ? "border-primary ring-2 ring-primary/40" : "border-border/60"} bg-surface/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 transition-all flex items-center justify-center gap-2`}
-            aria-pressed={mode === "light"}
+            className={`p-2.5 rounded-sm border ${mode === "light" ? "border-primary bg-primary/10 text-foreground font-bold" : "border-border bg-surface-2 text-muted-foreground"} flex items-center justify-center gap-2`}
             onClick={() => handleModeChange("light")}
           >
-            <Sun className="h-4 w-4" aria-hidden="true" />
-            <span className="text-sm font-medium">Light</span>
-            {mode === "light" && <Check className="h-4 w-4 ml-auto text-primary" />}
+            <Sun className="h-3.5 w-3.5" />
+            <span>Light Terminal</span>
+            {mode === "light" && <Check className="h-3.5 w-3.5 ml-auto text-primary" />}
           </button>
         </div>
       </div>
 
-      {/* Accent color presets */}
+      {/* Preset choice */}
       <div>
-        <Label className="text-sm font-medium">Accent Color</Label>
-        <div className="mt-2 grid grid-cols-4 gap-3">
-          {themePresets.map(({ name, gradient }) => {
+        <Label className="text-xs font-mono text-muted-foreground uppercase">Tactical Color Preset</Label>
+        <div className="mt-1.5 grid grid-cols-2 md:grid-cols-4 gap-2 font-mono text-xs">
+          {themePresets.map(({ name }) => {
             const active = theme.preset === name;
             return (
               <button
                 key={name}
-                className={`rounded-xl p-3 border ${active ? "border-primary ring-2 ring-primary/40" : "border-border/60"} bg-surface/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 transition-all`}
-                aria-pressed={active}
+                className={`p-2.5 rounded-sm border text-left ${active ? "border-primary bg-primary/10 text-foreground font-bold" : "border-border bg-surface-2 text-muted-foreground"}`}
                 onClick={() => handleSelectPreset(name)}
               >
-                <div className={`h-16 rounded-lg bg-gradient-to-br ${gradient} relative`} aria-hidden="true">
-                  {active && (
-                    <div className="absolute top-1 right-1 h-5 w-5 rounded-full bg-white/90 grid place-items-center">
-                      <Check className="h-3 w-3 text-foreground" />
-                    </div>
-                  )}
+                <div className="flex items-center justify-between">
+                  <span>{name}</span>
+                  {active && <Check className="h-3 w-3 text-primary" />}
                 </div>
-                <div className="mt-2 text-xs">{name}</div>
               </button>
             );
           })}
@@ -162,8 +147,6 @@ function AppearanceSection() {
   );
 }
 
-// ─── Notifications section ────────────────────────────────────────────────────
-
 function NotificationsSection() {
   const { prefs, toggle } = useNotificationPrefs();
   const [notificationsEnabled, setNotificationsEnabled] = useState(prefs.investigationUpdates);
@@ -171,33 +154,24 @@ function NotificationsSection() {
   const handleToggle = () => {
     const newState = !notificationsEnabled;
     setNotificationsEnabled(newState);
-    
-    // Update the actual preference
     if (prefs.investigationUpdates !== newState) {
       toggle("investigationUpdates");
     }
-    
-    toast.info(
-      newState ? "Notifications enabled" : "Notifications disabled",
-      { description: newState ? "You'll receive investigation status updates" : "Notifications are now silent" }
-    );
+    toast.info(newState ? "Telemetry alerts enabled" : "Telemetry alerts muted");
   };
 
   return (
-    <Card className="glass p-6 border-border/60">
-      <div className="flex items-center gap-2 mb-4">
+    <Card className="p-4 border-border bg-surface rounded-md">
+      <div className="flex items-center gap-2 pb-2 border-b border-border/60 mb-3">
         <Bell className="h-4 w-4 text-primary" aria-hidden="true" />
-        <h3 className="font-display text-lg font-semibold">Notifications</h3>
+        <h3 className="font-display text-xs font-bold uppercase tracking-wider text-foreground">Alert Preferences</h3>
       </div>
-      <p className="text-sm text-muted-foreground mb-4">
-        Control investigation status notifications.
-      </p>
       
-      <div className="flex items-center justify-between p-4 rounded-lg bg-surface/60 border border-border/60">
-        <div className="flex-1">
-          <div className="text-sm font-medium">Investigation Updates</div>
-          <div className="text-xs text-muted-foreground mt-1">
-            Receive notifications when investigations complete or fail
+      <div className="flex items-center justify-between p-3 rounded-sm bg-surface-2 border border-border">
+        <div>
+          <div className="text-xs font-semibold text-foreground font-sans">Execution & System Alerts</div>
+          <div className="text-[11px] font-mono text-muted-foreground mt-0.5">
+            Receive real-time push events when connector runs finish or fail
           </div>
         </div>
         <Switch
@@ -210,15 +184,13 @@ function NotificationsSection() {
   );
 }
 
-// ─── Settings page ────────────────────────────────────────────────────────────
-
 function Settings() {
   return (
     <AppShell 
-      title="Settings" 
-      subtitle="Manage your profile, appearance, and notification preferences"
+      title="System Preferences" 
+      subtitle="Configure analyst account settings, workstation theme, and telemetry alerts"
     >
-      <div className="max-w-4xl space-y-6">
+      <div className="max-w-3xl space-y-3">
         <ProfileSection />
         <AppearanceSection />
         <NotificationsSection />
@@ -226,3 +198,4 @@ function Settings() {
     </AppShell>
   );
 }
+
