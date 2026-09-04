@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { isAuthenticated } from "@/lib/auth";
 import { AppShell } from "@/components/app-shell";
@@ -11,8 +11,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Mail, Globe, User, Wallet, Share2, Phone, Server,
   Network, Clock, FileText, ArrowLeft, Play, RefreshCw, AlertTriangle,
-  CheckCircle2, XCircle, Loader2, RotateCcw, ExternalLink,
+  CheckCircle2, XCircle, Loader2, RotateCcw, LayoutGrid, List, ExternalLink,
 } from "lucide-react";
+import { PLATFORM_BRANDS, getBrand, parseUrl, WebsiteIdentifierBadge } from "@/components/ui/website-profile-card";
 import { AsyncBoundary, EmptyState } from "@/components/states";
 import { ConfidenceBar } from "@/components/confidence-bar";
 import { ConnectorTimeline } from "@/components/investigations/connector-timeline";
@@ -52,9 +53,157 @@ const jumpLinks = [
   { icon: FileText, label: "Reports", to: "/reports" as const },
 ];
 
+// ─── Identifier dossier card ──────────────────────────────────────────────────
+
+const typeStyle: Record<IdentifierType, { icon: typeof Mail; classes: string }> = {
+  email:    { icon: Mail,   classes: "text-primary bg-primary/10 border-primary/40" },
+  domain:   { icon: Globe,  classes: "text-accent bg-accent/10 border-accent/40" },
+  username: { icon: User,   classes: "text-warning bg-warning/10 border-warning/40" },
+  social:   { icon: User,   classes: "text-warning bg-warning/10 border-warning/40" },
+  wallet:   { icon: Wallet, classes: "text-success bg-success/10 border-success/40" },
+  phone:    { icon: Phone,  classes: "text-primary bg-primary/10 border-primary/40" },
+  ip:       { icon: Server, classes: "text-destructive bg-destructive/10 border-destructive/40" },
+  mac:      { icon: Server, classes: "text-destructive bg-destructive/10 border-destructive/40" },
+};
+
+function PlatformFaviconImage({ domain, fallbackIcon: FallbackIcon }: { domain: string; fallbackIcon: typeof Mail }) {
+  const [errored, setErrored] = useState(false);
+  const isKnown = domain ? Boolean(getBrand(domain) || PLATFORM_BRANDS[domain]) : false;
+
+  if (!isKnown || errored) return <FallbackIcon className="h-4 w-4 text-muted-foreground" />;
+
+  return (
+    <img
+      src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
+      alt=""
+      aria-hidden="true"
+      className="h-full w-full object-contain"
+      onError={() => setErrored(true)}
+    />
+  );
+}
+
+function IdentifierDossierCard({ item }: { item: Identifier }) {
+  const style = typeStyle[item.type] ?? typeStyle.domain;
+  const Icon = style.icon;
+  const displayType = item.platformDisplayName || item.type;
+
+  // Determine favicon domain: from profileUrl, value, or platform hint
+  const profileParsed = item.profileUrl ? parseUrl(item.profileUrl) : null;
+  let faviconDomain = profileParsed
+    ? profileParsed.domain
+    : item.platform ?? null;
+
+  if (!faviconDomain) {
+    if (item.type === "domain" && item.value.includes(".")) {
+      faviconDomain = parseUrl(item.value).domain;
+    } else if (item.value.includes("@")) {
+      const parts = item.value.split("@");
+      if (parts.length > 1 && parts[1].includes(".")) faviconDomain = parts[1];
+    } else if (item.value.includes("t.me/")) {
+      faviconDomain = "telegram.org";
+    }
+  }
+
+  const brand = faviconDomain ? getBrand(faviconDomain) : null;
+  const accentColor = brand?.accent;
+
+  const isDomainUrl =
+    item.type === "domain" &&
+    item.value.includes(".") &&
+    !item.value.startsWith("Yes") &&
+    !item.value.startsWith("No");
+
+  const externalHref = profileParsed
+    ? profileParsed.href
+    : isDomainUrl
+    ? parseUrl(item.value).href
+    : null;
+
+  return (
+    <div
+      className={cn(
+        "relative rounded-md border bg-surface-2/80 backdrop-blur-sm p-3 flex flex-col justify-between gap-2.5 min-h-[105px]",
+        "hover:border-primary/50 transition-all duration-200"
+      )}
+      style={
+        accentColor
+          ? {
+              borderColor: `${accentColor}40`,
+              background: `linear-gradient(135deg, ${accentColor}12 0%, rgba(20, 24, 33, 0.85) 100%)`,
+              boxShadow: `inset 0 0 25px -8px ${accentColor}20`,
+            }
+          : undefined
+      }
+    >
+      {/* Top section: Avatar + Type & Value */}
+      <div className="flex items-start gap-2.5 pr-9">
+        {/* Platform logo avatar circle */}
+        <div
+          className="h-9 w-9 rounded-full border grid place-items-center shrink-0 bg-surface-3 overflow-hidden p-1.5"
+          style={{
+            borderColor: accentColor ? `${accentColor}60` : undefined,
+            boxShadow: accentColor ? `0 0 8px ${accentColor}30` : undefined,
+          }}
+          aria-hidden="true"
+        >
+          {faviconDomain ? (
+            <PlatformFaviconImage domain={faviconDomain} fallbackIcon={Icon} />
+          ) : (
+            <Icon className="h-4 w-4 text-muted-foreground" />
+          )}
+        </div>
+
+        <div className="min-w-0 flex-1 flex flex-col justify-center">
+          <div className="mb-1.5">
+            <span
+              className="inline-block text-[9px] font-mono font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-sm border"
+              style={
+                accentColor
+                  ? { color: accentColor, borderColor: `${accentColor}40`, background: `${accentColor}15` }
+                  : undefined
+              }
+              aria-label={`Type: ${displayType}`}
+            >
+              {displayType}
+            </span>
+          </div>
+          <div className="font-mono text-xs font-bold text-foreground truncate" title={item.value}>
+            {item.value}
+          </div>
+        </div>
+      </div>
+
+      {/* Top right external profile link button — larger and prominent */}
+      {externalHref && (
+        <a
+          href={externalHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          id={`dossier-link-${item.id}`}
+          aria-label={`Open profile for ${item.value}`}
+          className="absolute top-2.5 right-2.5 p-2 rounded-sm border border-border/70 bg-surface-2 text-muted-foreground hover:text-primary hover:border-primary/50 transition-colors shadow-sm"
+          style={accentColor ? { color: accentColor, borderColor: `${accentColor}50` } : undefined}
+        >
+          <ExternalLink className="h-4 w-4" aria-hidden="true" />
+        </a>
+      )}
+
+      {/* Bottom section: Confidence bar rating (tighter top padding) */}
+      <div className="pt-1 border-t border-border/30">
+        <ConfidenceBar value={item.confidence} ariaLabel={`Confidence for ${item.value}`} />
+      </div>
+    </div>
+  );
+}
+
 // ─── Identifier table ─────────────────────────────────────────────────────────
 
+type IdentifierView = "table" | "dossier";
+
 function IdentifierTable({ items }: { items: Identifier[] }) {
+  const [view, setView] = useState<IdentifierView>("dossier");
+
   if (items.length === 0) {
     return <EmptyState title="No identifiers enriched yet." description="Run connectors to gather identifiers." className="py-8" />;
   }
@@ -62,87 +211,128 @@ function IdentifierTable({ items }: { items: Identifier[] }) {
   const hasProfileLinks = items.some((i) => i.profileUrl);
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-xs font-mono">
-        <thead>
-          <tr className="text-left text-[10px] uppercase font-mono tracking-widest text-muted-foreground border-b border-border bg-surface-2/60">
-            <th scope="col" className="px-4 py-2.5 font-semibold">Entity Type</th>
-            <th scope="col" className="px-4 py-2.5 font-semibold">Value</th>
-            <th scope="col" className="px-4 py-2.5 font-semibold">Confidence Metric</th>
-            <th scope="col" className="px-4 py-2.5 font-semibold">Sources</th>
-            {hasProfileLinks && (
-              <th scope="col" className="px-4 py-2.5 font-semibold">External Profile</th>
+    <div>
+      {/* View toggle */}
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/60 bg-surface-2/40">
+        <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+          {items.length} identifiers
+        </span>
+        <div
+          className="flex items-center gap-0.5 rounded-sm border border-border bg-surface-2 p-0.5"
+          role="group"
+          aria-label="Switch identifier view"
+        >
+          <button
+            id="view-toggle-table"
+            onClick={() => setView("table")}
+            aria-pressed={view === "table"}
+            className={cn(
+              "inline-flex items-center gap-1 px-2 py-1 rounded-sm text-[10px] font-mono transition-colors",
+              view === "table" ? "bg-surface-3 text-foreground" : "text-muted-foreground hover:text-foreground"
             )}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border/40">
-          {items.map((i) => {
-            const Icon = typeIcon[i.type] || Server;
-            const displayType = i.platformDisplayName || i.type;
+          >
+            <List className="h-3 w-3" aria-hidden="true" /> Table
+          </button>
+          <button
+            id="view-toggle-dossier"
+            onClick={() => setView("dossier")}
+            aria-pressed={view === "dossier"}
+            className={cn(
+              "inline-flex items-center gap-1 px-2 py-1 rounded-sm text-[10px] font-mono transition-colors",
+              view === "dossier" ? "bg-surface-3 text-foreground" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <LayoutGrid className="h-3 w-3" aria-hidden="true" /> Dossier
+          </button>
+        </div>
+      </div>
 
-            let valueCell = (
-              <span className="font-mono text-xs text-foreground break-all">{i.value}</span>
-            );
-            const isDomainUrl =
-              i.type === "domain" &&
-              i.value.includes(".") &&
-              !i.value.startsWith("Yes") &&
-              !i.value.startsWith("No");
+      {/* Dossier grid — 3 columns per row on md+ */}
+      {view === "dossier" && (
+        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+          {items.map((i) => (
+            <IdentifierDossierCard key={i.id} item={i} />
+          ))}
+        </div>
+      )}
 
-            if (isDomainUrl) {
-              const href = i.value.startsWith("http") ? i.value : `https://${i.value}`;
-              valueCell = (
-                <a
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  id={`domain-link-${i.id}`}
-                  className="font-mono text-xs break-all text-primary hover:underline inline-flex items-center gap-1"
-                >
-                  {i.value}
-                  <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />
-                </a>
-              );
-            }
-
-            return (
-              <tr key={i.id} className="hover:bg-surface-3/50 transition-colors">
-                <td className="px-4 py-2.5 font-sans">
-                  <div className="flex items-center gap-2">
-                    <div className="h-6 w-6 rounded-sm bg-surface-3 border border-border text-primary grid place-items-center shrink-0" aria-hidden="true">
-                      <Icon className="h-3 w-3" />
-                    </div>
-                    <span className="text-xs uppercase font-mono tracking-wider text-muted-foreground">{displayType}</span>
-                  </div>
-                </td>
-                <td className="px-4 py-2.5">{valueCell}</td>
-                <td className="px-4 py-2.5 w-48">
-                  <ConfidenceBar value={i.confidence} ariaLabel={`Confidence for ${i.value}`} />
-                </td>
-                <td className="px-4 py-2.5 text-xs text-muted-foreground">{i.sources}</td>
+      {/* Table view */}
+      {view === "table" && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs font-mono">
+            <thead>
+              <tr className="text-left text-[10px] uppercase font-mono tracking-widest text-muted-foreground border-b border-border bg-surface-2/60">
+                <th scope="col" className="px-4 py-2.5 font-semibold">Entity Type</th>
+                <th scope="col" className="px-4 py-2.5 font-semibold">Value</th>
+                <th scope="col" className="px-4 py-2.5 font-semibold">Confidence</th>
                 {hasProfileLinks && (
-                  <td className="px-4 py-2.5 font-sans">
-                    {i.profileUrl ? (
-                      <a
-                        href={i.profileUrl.startsWith("http") ? i.profileUrl : `https://${i.profileUrl}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        id={`view-profile-${i.id}`}
-                        className="inline-flex items-center gap-1 text-[11px] font-mono font-medium text-primary hover:underline"
-                      >
-                        <ExternalLink className="h-3 w-3" aria-hidden="true" />
-                        [PROFILE]
-                      </a>
-                    ) : (
-                      <span className="text-xs text-muted-foreground/40">—</span>
-                    )}
-                  </td>
+                  <th scope="col" className="px-4 py-2.5 font-semibold">Profile</th>
                 )}
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
+            </thead>
+            <tbody className="divide-y divide-border/40">
+              {items.map((i) => {
+                const Icon = typeIcon[i.type] || Server;
+                const displayType = i.platformDisplayName || i.type;
+
+                const isDomainUrl =
+                  i.type === "domain" &&
+                  i.value.includes(".") &&
+                  !i.value.startsWith("Yes") &&
+                  !i.value.startsWith("No");
+
+                const valueCell = isDomainUrl ? (
+                  <WebsiteIdentifierBadge url={i.value} id={`domain-link-${i.id}`} />
+                ) : (
+                  <span className="font-mono text-xs text-foreground break-all">{i.value}</span>
+                );
+
+                // Simple link for table profile column
+                let profileCell: React.ReactNode = null;
+                if (i.profileUrl) {
+                  const { href, domain, handle } = parseUrl(i.profileUrl);
+                  const shortLabel = handle ? `@${handle}` : domain;
+                  profileCell = (
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      id={`view-profile-${i.id}`}
+                      aria-label={`Open profile ${shortLabel}`}
+                      className="inline-flex items-center gap-1 text-[11px] font-mono font-medium text-primary hover:underline"
+                    >
+                      <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />
+                      {shortLabel}
+                    </a>
+                  );
+                }
+
+                return (
+                  <tr key={i.id} className="hover:bg-surface-3/50 transition-colors">
+                    <td className="px-4 py-2.5 font-sans">
+                      <div className="flex items-center gap-2">
+                        <div className="h-6 w-6 rounded-sm bg-surface-3 border border-border text-primary grid place-items-center shrink-0" aria-hidden="true">
+                          <Icon className="h-3 w-3" />
+                        </div>
+                        <span className="text-xs uppercase font-mono tracking-wider text-muted-foreground">{displayType}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-2.5">{valueCell}</td>
+                    <td className="px-4 py-2.5 w-48">
+                      <ConfidenceBar value={i.confidence} ariaLabel={`Confidence for ${i.value}`} />
+                    </td>
+                    {hasProfileLinks && (
+                      <td className="px-4 py-2.5 font-sans">
+                        {profileCell ?? <span className="text-xs text-muted-foreground/40">—</span>}
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
