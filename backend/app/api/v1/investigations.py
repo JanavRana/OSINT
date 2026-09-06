@@ -38,6 +38,7 @@ from app.repositories.seed_identifier_repository import SeedIdentifierRepository
 from app.services.exceptions import NotFoundError
 from app.services.investigation_service import InvestigationService
 from app.timeline.service import TimelineService
+from app.utils.error_formatter import format_human_error
 
 logger = logging.getLogger(__name__)
 
@@ -225,7 +226,7 @@ async def execute_investigation(
                 status=envelope.status,
                 started_at=envelope.started_at,
                 finished_at=envelope.finished_at,
-                error_message=envelope.error_message,
+                error_message=format_human_error(envelope.error_message) if envelope.error_message else None,
             )
             for envelope in execution_result.raw_responses
         ]
@@ -933,19 +934,28 @@ def list_connectors(
 
 
 
-    items = [
-        ConnectorResultRead(
-            id=str(r.id),
-            name=r.connector_name,
-            category=connector_categories.get(
-                r.connector_name.lower(), "OSINT"
-            ),
-            status="success" if r.raw_response else "failed",
-            hits=len(r.raw_response) if isinstance(r.raw_response, dict) else 0,
-            runtime=r.created_at.strftime("%H:%M:%S") if r.created_at else "—",
+    items: list[ConnectorResultRead] = []
+    for r in results:
+        raw = r.raw_response if isinstance(r.raw_response, dict) else {}
+        err_msg = raw.get("error") if isinstance(raw, dict) else None
+        err_code = raw.get("error_code") if isinstance(raw, dict) else None
+        
+        is_success = bool(raw and not err_msg and err_code != "validation_error")
+        formatted_error = format_human_error(err_msg, err_code) if not is_success else None
+
+        items.append(
+            ConnectorResultRead(
+                id=str(r.id),
+                name=r.connector_name,
+                category=connector_categories.get(
+                    r.connector_name.lower(), "OSINT"
+                ),
+                status="success" if is_success else "failed",
+                hits=len(raw) if is_success else 0,
+                runtime=r.created_at.strftime("%H:%M:%S") if r.created_at else "—",
+                error_message=formatted_error,
+            )
         )
-        for r in results
-    ]
 
     return ConnectorResultListResponse(items=items, count=len(items))
 

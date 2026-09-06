@@ -258,6 +258,14 @@ function ConnectorCard({
         </span>
       </div>
 
+      {/* Human-readable error message banner */}
+      {c.status === "failed" && c.errorMessage && (
+        <div className="p-2 rounded-sm border border-destructive/30 bg-destructive/10 flex items-start gap-1.5 text-[10px] font-mono text-destructive">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
+          <span className="break-words leading-tight">{c.errorMessage}</span>
+        </div>
+      )}
+
       {/* Running progress bar */}
       {c.status === "running" && (
         <div
