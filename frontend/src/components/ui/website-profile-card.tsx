@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ExternalLink, Globe, ShieldCheck } from "lucide-react";
+import { ExternalLink, Globe, Mail, Phone, Server, User, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConfidenceBar } from "@/components/confidence-bar";
 
@@ -50,6 +50,7 @@ export const PLATFORM_BRANDS: Record<string, PlatformBrand> = {
   "twitch.tv":         { name: "Twitch",          accent: "#9146ff", bg: "linear-gradient(135deg, #0f0a1a 0%, #150e26 100%)" },
   "pinterest.com":     { name: "Pinterest",       accent: "#e60023", bg: "linear-gradient(135deg, #1a0004 0%, #1f0008 100%)" },
   "medium.com":        { name: "Medium",          accent: "#00ab6c", bg: "linear-gradient(135deg, #001a10 0%, #001f14 100%)" },
+  "hackerrank.com":    { name: "HackerRank",      accent: "#2ec4b6", bg: "linear-gradient(135deg, #051b18 0%, #082924 100%)" },
   "stackoverflow.com": { name: "Stack Overflow",  accent: "#f48024", bg: "linear-gradient(135deg, #1a0e00 0%, #1f1200 100%)" },
   "gitlab.com":        { name: "GitLab",          accent: "#fc6d26", bg: "linear-gradient(135deg, #1a0e04 0%, #1f1208 100%)" },
   "gravatar.com":      { name: "Gravatar",        accent: "#1e8cbf", bg: "linear-gradient(135deg, #06121a 0%, #081820 100%)" },
@@ -68,33 +69,109 @@ export function getBrand(domain: string): PlatformBrand | null {
   return null;
 }
 
+export function isIpAddress(val: string): boolean {
+  if (!val) return false;
+  const clean = val.trim();
+  if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(clean)) return true;
+  if (clean.includes(":") && /^[0-9a-fA-F:]+$/.test(clean)) return true;
+  return false;
+}
+
+export function getTypeAccent(type?: string, platformDisplayName?: string): string {
+  const pName = platformDisplayName?.toLowerCase() || "";
+  if (pName.includes("mail server") || pName.includes("mx")) {
+    return "#3b82f6";
+  }
+  if (pName.includes("resolved ip") || pName.includes("ip address") || type === "ip" || type === "mac") {
+    return "#ef4444";
+  }
+  switch (type) {
+    case "email": return "#3b82f6";
+    case "domain": return "#06b6d4";
+    case "username":
+    case "social": return "#f59e0b";
+    case "wallet": return "#10b981";
+    case "phone": return "#8b5cf6";
+    case "ip":
+    case "mac": return "#ef4444";
+    default: return "#06b6d4";
+  }
+}
+
+export function getTypeBannerBg(type?: string, platformDisplayName?: string): string {
+  const pName = platformDisplayName?.toLowerCase() || "";
+  if (pName.includes("mail server") || pName.includes("mx")) {
+    return "linear-gradient(135deg, #0b192e 0%, #0d2240 100%)";
+  }
+  if (pName.includes("resolved ip") || pName.includes("ip address") || type === "ip" || type === "mac") {
+    return "linear-gradient(135deg, #290808 0%, #380a0a 100%)";
+  }
+  switch (type) {
+    case "email": return "linear-gradient(135deg, #0b192e 0%, #0d2240 100%)";
+    case "domain": return "linear-gradient(135deg, #081d24 0%, #0a2933 100%)";
+    case "username":
+    case "social": return "linear-gradient(135deg, #241908 0%, #33230a 100%)";
+    case "wallet": return "linear-gradient(135deg, #082419 0%, #0a3323 100%)";
+    case "phone": return "linear-gradient(135deg, #180b2e 0%, #220d40 100%)";
+    case "ip":
+    case "mac": return "linear-gradient(135deg, #290808 0%, #380a0a 100%)";
+    default: return "linear-gradient(135deg, #10141e 0%, #171d2b 100%)";
+  }
+}
+
+function getTypeIcon(type?: string, platformDisplayName?: string) {
+  const pName = platformDisplayName?.toLowerCase() || "";
+  if (pName.includes("mail server") || pName.includes("mx")) {
+    return Mail;
+  }
+  if (pName.includes("resolved ip") || pName.includes("ip address") || type === "ip" || type === "mac") {
+    return Server;
+  }
+  switch (type) {
+    case "email": return Mail;
+    case "domain": return Globe;
+    case "username":
+    case "social": return User;
+    case "wallet": return Wallet;
+    case "phone": return Phone;
+    case "ip":
+    case "mac": return Server;
+    default: return Globe;
+  }
+}
+
 // ── Platform Logo Avatar ─────────────────────────────────────────────────────
 
 function PlatformLogoAvatar({
   domain,
+  type,
+  platformDisplayName,
   accentColor,
-  size = 42,
-  fallbackIcon: FallbackIcon = Globe,
+  size = 44,
 }: {
-  domain: string;
+  domain?: string | null;
+  type?: string;
+  platformDisplayName?: string;
   accentColor: string;
   size?: number;
-  fallbackIcon?: typeof Globe;
 }) {
   const [errored, setErrored] = useState(false);
+  const isKnownBrand = domain ? Boolean(getBrand(domain) || PLATFORM_BRANDS[domain]) : false;
+  const SymbolIcon = getTypeIcon(type, platformDisplayName);
 
   return (
     <div
-      className="rounded-full border-2 grid place-items-center shrink-0 bg-surface-3 overflow-hidden p-2"
+      className="rounded-full border-2 grid place-items-center shrink-0 shadow-lg overflow-hidden p-1.5 relative z-10"
       style={{
         width: size,
         height: size,
-        borderColor: `${accentColor}80`,
-        boxShadow: `0 0 10px ${accentColor}40`,
+        borderColor: `${accentColor}aa`,
+        boxShadow: `0 0 12px ${accentColor}40`,
+        background: `linear-gradient(135deg, ${accentColor}25 0%, #0d1117 100%)`,
       }}
       aria-hidden="true"
     >
-      {!errored ? (
+      {isKnownBrand && !errored ? (
         <img
           src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
           alt=""
@@ -102,7 +179,7 @@ function PlatformLogoAvatar({
           onError={() => setErrored(true)}
         />
       ) : (
-        <FallbackIcon className="w-1/2 h-1/2 text-muted-foreground" />
+        <SymbolIcon className="w-5 h-5 shrink-0" style={{ color: accentColor }} />
       )}
     </div>
   );
@@ -112,8 +189,9 @@ function PlatformLogoAvatar({
 
 function Favicon({ domain, size = 14 }: { domain: string; size?: number }) {
   const [errored, setErrored] = useState(false);
-  if (errored) {
-    return <Globe style={{ width: size, height: size }} className="text-muted-foreground shrink-0" aria-hidden="true" />;
+  const isKnownBrand = domain ? Boolean(getBrand(domain) || PLATFORM_BRANDS[domain]) : false;
+  if (!isKnownBrand || errored) {
+    return null;
   }
   return (
     <img
@@ -130,35 +208,75 @@ function Favicon({ domain, size = 14 }: { domain: string; size?: number }) {
 // ── ReconstructedProfileCard ──────────────────────────────────────────────────
 
 export interface ReconstructedProfileCardProps {
-  /** Raw profile URL, e.g. "https://github.com/janavrana" */
-  url: string;
+  /** Raw profile URL or value */
+  url?: string;
+  value?: string;
+  type?: string;
   /** Confidence value (0-1 or 0-100, same scale as ConfidenceBar) */
   confidence?: number;
   /** Platform display name override (e.g. from identifier.platformDisplayName) */
   platformDisplayName?: string;
+  profileUrl?: string;
   className?: string;
   id?: string;
 }
 
 export function ReconstructedProfileCard({
   url,
+  value,
+  type,
   confidence,
   platformDisplayName,
+  profileUrl,
   className,
   id,
 }: ReconstructedProfileCardProps) {
-  const { href, domain, handle } = parseUrl(url);
-  const brand = getBrand(domain);
-  const displayName = platformDisplayName ?? brand?.name ?? domain;
-  const accentColor = brand?.accent ?? "#6b7280";
-  const bannerBg = brand?.bg ?? "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)";
+  const targetUrl = profileUrl || (url && url.includes(".") && !isIpAddress(url) ? url : undefined);
+  
+  let href: string | undefined = undefined;
+  let domain: string | undefined = undefined;
+  let handle: string | null = null;
+
+  if (targetUrl) {
+    const parsed = parseUrl(targetUrl);
+    href = parsed.href;
+    domain = parsed.domain;
+    handle = parsed.handle;
+  }
+
+  if (!domain && value && !isIpAddress(value)) {
+    if (value.includes("@")) {
+      const parts = value.split("@");
+      if (parts.length > 1 && parts[1].includes(".")) domain = parts[1];
+    } else if (
+      value.includes(".") &&
+      !value.startsWith("Yes") &&
+      !value.startsWith("No") &&
+      !isIpAddress(value)
+    ) {
+      const parsed = parseUrl(value);
+      domain = parsed.domain;
+      if (!href) href = parsed.href;
+    }
+  }
+
+  if (domain && isIpAddress(domain)) {
+    domain = undefined;
+  }
+
+  const brand = domain ? getBrand(domain) : null;
+  const accentColor = brand?.accent ?? getTypeAccent(type, platformDisplayName);
+  const bannerBg = brand?.bg ?? getTypeBannerBg(type, platformDisplayName);
+  const displayName = platformDisplayName ?? brand?.name ?? (type ? type.toUpperCase() : (domain || "IDENTIFIER"));
+  const displayValue = handle ? `@${handle}` : (value || domain || url || "");
+  const FallbackIcon = getTypeIcon(type, platformDisplayName);
 
   return (
     <div
       id={id}
       className={cn(
-        "rounded-md border bg-surface-2/80 backdrop-blur-sm overflow-hidden",
-        "transition-all duration-200 hover:border-primary/50",
+        "rounded-md border bg-surface-2/80 backdrop-blur-sm overflow-hidden flex flex-col justify-between min-h-[145px]",
+        "transition-all duration-200 hover:border-primary/50 hover:shadow-lg",
         className
       )}
       style={{
@@ -171,7 +289,7 @@ export function ReconstructedProfileCard({
     >
       {/* Platform brand banner */}
       <div
-        className="h-12 w-full relative flex items-center px-3"
+        className="h-12 w-full relative flex items-center justify-end px-3 shrink-0"
         style={{ background: bannerBg }}
         aria-hidden="true"
       >
@@ -182,13 +300,20 @@ export function ReconstructedProfileCard({
             backgroundImage: `repeating-linear-gradient(45deg, ${accentColor}08 0px, ${accentColor}08 1px, transparent 1px, transparent 8px)`,
           }}
         />
-        {/* Platform name — prominent left-aligned */}
+
+        {/* Platform name — right aligned pill to keep space clear for avatar logo on left */}
         <span
-          className="relative text-[11px] font-mono font-bold uppercase tracking-widest"
-          style={{ color: accentColor }}
+          className="relative z-0 text-[10px] font-mono font-bold uppercase tracking-widest px-2 py-0.5 rounded-sm border truncate max-w-[170px]"
+          style={{
+            color: accentColor,
+            borderColor: `${accentColor}40`,
+            background: "rgba(10, 14, 23, 0.75)",
+            backdropFilter: "blur(4px)",
+          }}
         >
           {displayName}
         </span>
+
         {/* Accent glow strip at bottom */}
         <div
           className="absolute bottom-0 left-0 right-0 h-px"
@@ -197,89 +322,89 @@ export function ReconstructedProfileCard({
       </div>
 
       {/* Card body */}
-      <div className="px-3 pt-0 pb-3">
-        {/* Platform logo avatar — overlaps banner */}
-        <div className="flex items-end gap-2.5 -mt-5 mb-2">
-          <PlatformLogoAvatar
-            domain={domain}
-            accentColor={accentColor}
-            size={42}
-          />
-          <div className="min-w-0 pb-0.5">
-            <span
-              className="text-[10px] font-mono truncate block"
-              style={{ color: `${accentColor}cc` }}
-            >
-              {domain}
+      <div className="px-3 pt-0 pb-3 flex flex-col justify-between flex-1">
+        <div>
+          {/* Platform logo avatar — overlaps banner cleanly without cutoff */}
+          <div className="flex items-end gap-2.5 -mt-6 mb-2">
+            <PlatformLogoAvatar
+              domain={domain}
+              type={type}
+              platformDisplayName={platformDisplayName}
+              accentColor={accentColor}
+              size={44}
+            />
+            {domain && (
+              <div className="min-w-0 pb-0.5">
+                <span
+                  className="text-[10px] font-mono truncate block"
+                  style={{ color: `${accentColor}dd` }}
+                >
+                  {domain}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Main Handle / Identifier Value */}
+          <div className="mb-2">
+            <span className="text-sm font-bold font-mono text-foreground truncate block" title={displayValue}>
+              {displayValue}
             </span>
           </div>
         </div>
 
-        {/* Handle + OSINT badge */}
-        <div className="flex items-center gap-2 mb-1.5">
-          <span className="text-sm font-bold font-mono text-foreground truncate">
-            {handle ? `@${handle}` : domain}
-          </span>
-          <span
-            className="inline-flex items-center gap-0.5 text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 rounded-sm border shrink-0"
-            style={{
-              color: accentColor,
-              borderColor: `${accentColor}40`,
-              background: `${accentColor}15`,
-              boxShadow: `0 0 8px ${accentColor}50`,
-            }}
-          >
-            <ShieldCheck className="h-2.5 w-2.5" aria-hidden="true" />
-            OSINT HIT
-          </span>
-        </div>
-
-        {/* Confidence bar */}
-        {confidence !== undefined && (
-          <div className="mb-2.5">
-            <ConfidenceBar
-              value={confidence}
-              ariaLabel={`Confidence for ${handle ?? domain}`}
-            />
-          </div>
-        )}
-
-        {/* Open native profile button */}
-        <a
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={`Open ${displayName} profile for ${handle ?? domain} in new tab`}
-          className={cn(
-            "group w-full inline-flex items-center justify-center gap-1.5 rounded-sm border px-2.5 py-1",
-            "text-[10px] font-mono font-semibold uppercase tracking-wider transition-all duration-200",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        <div>
+          {/* Confidence bar */}
+          {confidence !== undefined && (
+            <div className="mb-2.5">
+              <ConfidenceBar
+                value={confidence}
+                ariaLabel={`Confidence for ${displayValue}`}
+              />
+            </div>
           )}
-          style={{
-            color: accentColor,
-            borderColor: `${accentColor}50`,
-            background: `${accentColor}10`,
-          }}
-        >
-          <ExternalLink className="h-2.5 w-2.5 shrink-0" aria-hidden="true" />
-          Open Native Profile
-        </a>
+
+          {/* Open native profile button */}
+          {href && (
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Open ${displayName} profile for ${displayValue} in new tab`}
+              className={cn(
+                "group w-full inline-flex items-center justify-center gap-1.5 rounded-sm border px-2.5 py-1.5",
+                "text-[10px] font-mono font-semibold uppercase tracking-wider transition-all duration-200",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              )}
+              style={{
+                color: accentColor,
+                borderColor: `${accentColor}50`,
+                background: `${accentColor}12`,
+              }}
+            >
+              <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />
+              Open Native Profile
+            </a>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-// ── WebsiteProfileCard (small card — kept for identity.tsx compat) ─────────────
+// ── WebsiteProfileCard (alias for compatibility) ──────────────────────────────
 
 export interface WebsiteProfileCardProps {
-  url: string;
+  url?: string;
+  value?: string;
+  type?: string;
   confidence?: number;
   platformDisplayName?: string;
+  profileUrl?: string;
   className?: string;
   id?: string;
 }
 
-/** Alias: renders the full ReconstructedProfileCard */
 export function WebsiteProfileCard(props: WebsiteProfileCardProps) {
   return <ReconstructedProfileCard {...props} />;
 }
@@ -319,3 +444,4 @@ export function WebsiteIdentifierBadge({ url, className, id }: WebsiteIdentifier
     </a>
   );
 }
+

@@ -733,11 +733,79 @@ def list_identifiers(
                     platform_display_name=platform_display_name,
                 )
             )
+        # Handle virustotal facts: expose threat rating, reputation, tags, categories, AS owner, resolved IPs, and MX mail servers
+        if f.connector_name == "virustotal":
+            display_value = str(f.value)
+            profile_url = None
+            platform = "virustotal"
+            field = meta.get("field", "")
+            rec_type = meta.get("record_type")
+
+            if field == "vt_threat_flag":
+                platform_display_name = "VirusTotal Threat Rating"
+                identifier_type = "domain" if meta.get("domain") else "ip"
+            elif field == "vt_reputation":
+                platform_display_name = "VirusTotal Reputation Score"
+                identifier_type = "domain" if meta.get("domain") else "ip"
+            elif field == "vt_tags":
+                platform_display_name = "VirusTotal Threat Tags"
+                identifier_type = "domain" if meta.get("domain") else "ip"
+            elif field == "vt_categories":
+                platform_display_name = "VirusTotal Vendor Categories"
+                identifier_type = "domain"
+            elif field == "vt_as_owner":
+                platform_display_name = "AS Owner (VirusTotal)"
+                identifier_type = "ip"
+            elif field == "vt_country":
+                platform_display_name = "Country (VirusTotal)"
+                identifier_type = "ip"
+            elif rec_type == "A" or field == "vt_dns_record" and rec_type == "A":
+                platform_display_name = "Resolved IP Address (VirusTotal DNS)"
+                identifier_type = "ip"
+            elif rec_type == "MX" or field == "vt_dns_record" and rec_type == "MX":
+                platform_display_name = "Mail Server (VirusTotal DNS)"
+                identifier_type = "domain"
+            else:
+                # Skip legacy TXT, SOA, AAAA site verification noise
+                continue
+
+            items.append(
+                IdentifierRead(
+                    id=str(f.id),
+                    type=identifier_type,
+                    value=display_value,
+                    confidence=f.confidence,
+                    sources=1,
+                    first_seen=f.created_at.isoformat() if f.created_at else "",
+                    profile_url=profile_url,
+                    platform=platform,
+                    platform_display_name=platform_display_name,
+                )
+            )
+            continue
+
+        # Handle github facts: strictly expose Disclosed Email addresses
+        if f.connector_name == "github":
+            field = meta.get("field", "")
+            if field in ("github_email", "github_commit_email") or f.fact_type == "email":
+                items.append(
+                    IdentifierRead(
+                        id=str(f.id),
+                        type="email",
+                        value=str(f.value),
+                        confidence=f.confidence,
+                        sources=1,
+                        first_seen=f.created_at.isoformat() if f.created_at else "",
+                        profile_url=None,
+                        platform="github",
+                        platform_display_name="GitHub Email Disclosure",
+                    )
+                )
             continue
 
 
-
         identifier_type = IDENTIFIER_FACT_TYPES.get(f.fact_type)
+
         if identifier_type is None:
             # Registrar, nameserver, expiration, org, location, certificate,
             # archive_snapshot, image_hash, generic, domain_registration, etc.

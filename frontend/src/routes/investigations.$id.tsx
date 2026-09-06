@@ -13,7 +13,7 @@ import {
   Network, Clock, FileText, ArrowLeft, Play, RefreshCw, AlertTriangle,
   CheckCircle2, XCircle, Loader2, RotateCcw, LayoutGrid, List, ExternalLink,
 } from "lucide-react";
-import { PLATFORM_BRANDS, getBrand, parseUrl, WebsiteIdentifierBadge } from "@/components/ui/website-profile-card";
+import { PLATFORM_BRANDS, getBrand, parseUrl, WebsiteIdentifierBadge, ReconstructedProfileCard } from "@/components/ui/website-profile-card";
 import { AsyncBoundary, EmptyState } from "@/components/states";
 import { ConfidenceBar } from "@/components/confidence-bar";
 import { ConnectorTimeline } from "@/components/investigations/connector-timeline";
@@ -39,8 +39,8 @@ const typeIcon: Record<IdentifierType, typeof Mail> = {
   email: Mail,
   domain: Globe,
   username: User,
+  social: User,
   wallet: Wallet,
-  social: Share2,
   phone: Phone,
   ip: Server,
   mac: Server,
@@ -55,145 +55,17 @@ const jumpLinks = [
 
 // ─── Identifier dossier card ──────────────────────────────────────────────────
 
-const typeStyle: Record<IdentifierType, { icon: typeof Mail; classes: string }> = {
-  email:    { icon: Mail,   classes: "text-primary bg-primary/10 border-primary/40" },
-  domain:   { icon: Globe,  classes: "text-accent bg-accent/10 border-accent/40" },
-  username: { icon: User,   classes: "text-warning bg-warning/10 border-warning/40" },
-  social:   { icon: User,   classes: "text-warning bg-warning/10 border-warning/40" },
-  wallet:   { icon: Wallet, classes: "text-success bg-success/10 border-success/40" },
-  phone:    { icon: Phone,  classes: "text-primary bg-primary/10 border-primary/40" },
-  ip:       { icon: Server, classes: "text-destructive bg-destructive/10 border-destructive/40" },
-  mac:      { icon: Server, classes: "text-destructive bg-destructive/10 border-destructive/40" },
-};
-
-function PlatformFaviconImage({ domain, fallbackIcon: FallbackIcon }: { domain: string; fallbackIcon: typeof Mail }) {
-  const [errored, setErrored] = useState(false);
-  const isKnown = domain ? Boolean(getBrand(domain) || PLATFORM_BRANDS[domain]) : false;
-
-  if (!isKnown || errored) return <FallbackIcon className="h-4 w-4 text-muted-foreground" />;
-
-  return (
-    <img
-      src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
-      alt=""
-      aria-hidden="true"
-      className="h-full w-full object-contain"
-      onError={() => setErrored(true)}
-    />
-  );
-}
-
 function IdentifierDossierCard({ item }: { item: Identifier }) {
-  const style = typeStyle[item.type] ?? typeStyle.domain;
-  const Icon = style.icon;
-  const displayType = item.platformDisplayName || item.type;
-
-  // Determine favicon domain: from profileUrl, value, or platform hint
-  const profileParsed = item.profileUrl ? parseUrl(item.profileUrl) : null;
-  let faviconDomain = profileParsed
-    ? profileParsed.domain
-    : item.platform ?? null;
-
-  if (!faviconDomain) {
-    if (item.type === "domain" && item.value.includes(".")) {
-      faviconDomain = parseUrl(item.value).domain;
-    } else if (item.value.includes("@")) {
-      const parts = item.value.split("@");
-      if (parts.length > 1 && parts[1].includes(".")) faviconDomain = parts[1];
-    } else if (item.value.includes("t.me/")) {
-      faviconDomain = "telegram.org";
-    }
-  }
-
-  const brand = faviconDomain ? getBrand(faviconDomain) : null;
-  const accentColor = brand?.accent;
-
-  const isDomainUrl =
-    item.type === "domain" &&
-    item.value.includes(".") &&
-    !item.value.startsWith("Yes") &&
-    !item.value.startsWith("No");
-
-  const externalHref = profileParsed
-    ? profileParsed.href
-    : isDomainUrl
-    ? parseUrl(item.value).href
-    : null;
-
   return (
-    <div
-      className={cn(
-        "relative rounded-md border bg-surface-2/80 backdrop-blur-sm p-3 flex flex-col justify-between gap-2.5 min-h-[105px]",
-        "hover:border-primary/50 transition-all duration-200"
-      )}
-      style={
-        accentColor
-          ? {
-              borderColor: `${accentColor}40`,
-              background: `linear-gradient(135deg, ${accentColor}12 0%, rgba(20, 24, 33, 0.85) 100%)`,
-              boxShadow: `inset 0 0 25px -8px ${accentColor}20`,
-            }
-          : undefined
-      }
-    >
-      {/* Top section: Avatar + Type & Value */}
-      <div className="flex items-start gap-2.5 pr-9">
-        {/* Platform logo avatar circle */}
-        <div
-          className="h-9 w-9 rounded-full border grid place-items-center shrink-0 bg-surface-3 overflow-hidden p-1.5"
-          style={{
-            borderColor: accentColor ? `${accentColor}60` : undefined,
-            boxShadow: accentColor ? `0 0 8px ${accentColor}30` : undefined,
-          }}
-          aria-hidden="true"
-        >
-          {faviconDomain ? (
-            <PlatformFaviconImage domain={faviconDomain} fallbackIcon={Icon} />
-          ) : (
-            <Icon className="h-4 w-4 text-muted-foreground" />
-          )}
-        </div>
-
-        <div className="min-w-0 flex-1 flex flex-col justify-center">
-          <div className="mb-1.5">
-            <span
-              className="inline-block text-[9px] font-mono font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-sm border"
-              style={
-                accentColor
-                  ? { color: accentColor, borderColor: `${accentColor}40`, background: `${accentColor}15` }
-                  : undefined
-              }
-              aria-label={`Type: ${displayType}`}
-            >
-              {displayType}
-            </span>
-          </div>
-          <div className="font-mono text-xs font-bold text-foreground truncate" title={item.value}>
-            {item.value}
-          </div>
-        </div>
-      </div>
-
-      {/* Top right external profile link button — larger and prominent */}
-      {externalHref && (
-        <a
-          href={externalHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          id={`dossier-link-${item.id}`}
-          aria-label={`Open profile for ${item.value}`}
-          className="absolute top-2.5 right-2.5 p-2 rounded-sm border border-border/70 bg-surface-2 text-muted-foreground hover:text-primary hover:border-primary/50 transition-colors shadow-sm"
-          style={accentColor ? { color: accentColor, borderColor: `${accentColor}50` } : undefined}
-        >
-          <ExternalLink className="h-4 w-4" aria-hidden="true" />
-        </a>
-      )}
-
-      {/* Bottom section: Confidence bar rating (tighter top padding) */}
-      <div className="pt-1 border-t border-border/30">
-        <ConfidenceBar value={item.confidence} ariaLabel={`Confidence for ${item.value}`} />
-      </div>
-    </div>
+    <ReconstructedProfileCard
+      url={item.profileUrl || (item.type === "domain" ? item.value : undefined)}
+      value={item.value}
+      type={item.type}
+      confidence={item.confidence}
+      platformDisplayName={item.platformDisplayName}
+      profileUrl={item.profileUrl}
+      id={`dossier-card-${item.id}`}
+    />
   );
 }
 

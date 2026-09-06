@@ -61,6 +61,13 @@ class Settings(BaseSettings):
     # --- Abstract Email Reputation API ---
     abstract_api_key: str = "960cfb8915eb402c961657d4fc422e7e"
 
+    # --- VirusTotal v3 API ---
+    virustotal_api_key: str = ""
+
+    # --- GitHub REST API ---
+    github_token: str = ""
+
+
     @property
     def sqlalchemy_database_url(self) -> str:
         """Return the connection string SQLAlchemy should use.
