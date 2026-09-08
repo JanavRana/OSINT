@@ -114,6 +114,8 @@ class EmailOsintConnector(BaseConnector):
             "mail_provider": None,
             "disposable": None,
             "gravatar_profile": None,
+            "abstract_reputation": None,
+            "digifootprint": None,
         }
 
         # ── Validate ───────────────────────────────────────────────────────
@@ -131,11 +133,12 @@ class EmailOsintConnector(BaseConnector):
         domain = validation.domain
         email = validation.email
 
-        # ── Run MX lookup, Gravatar lookup, and Abstract Reputation lookup concurrently ──
-        mx_result, gravatar_result, abstract_result = await asyncio.gather(
+        # ── Run MX lookup, Gravatar, Abstract Reputation, and DigiFootprint concurrently ──
+        mx_result, gravatar_result, abstract_result, digifootprint_result = await asyncio.gather(
             self._lookup_mx(domain),
             self._lookup_gravatar(email),
             self._lookup_abstract_reputation(email),
+            self._lookup_digifootprint(email),
             return_exceptions=True,
         )
 
@@ -171,6 +174,12 @@ class EmailOsintConnector(BaseConnector):
             result["abstract_reputation"] = {"error": str(abstract_result)}
         else:
             result["abstract_reputation"] = abstract_result
+
+        # ── Process DigiFootprint lookup result ────────────────────────────
+        if isinstance(digifootprint_result, Exception):
+            result["digifootprint"] = {"error": str(digifootprint_result)}
+        else:
+            result["digifootprint"] = digifootprint_result
 
         return result
 
@@ -455,3 +464,45 @@ class EmailOsintConnector(BaseConnector):
                 return {"error": f"HTTP {resp.status_code}", "source": "abstract_api"}
         except Exception as exc:
             return {"error": f"Abstract API lookup failed: {exc}", "source": "abstract_api"}
+
+    async def _lookup_digifootprint(self, email: str) -> Optional[Dict[str, Any]]:
+        """
+        Query DigiFootprint API (POST https://api.digifootprint.dev/v1/lookup?wait=true)
+        for email-to-social-account presence, breach history, and web mentions.
+        """
+        api_key = getattr(settings, "digifootprint_api_key", None)
+        if not api_key:
+            return None
+
+        url = "https://api.digifootprint.dev/v1/lookup?wait=true"
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0",
+        }
+        payload = {"query": email}
+
+        try:
+            async with httpx.AsyncClient(timeout=15.0, headers=headers, verify=False) as client:
+                resp = await client.post(url, json=payload)
+
+                data = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
+
+                if resp.status_code == 200:
+                    return data
+
+                # Structured machine-readable error code handling according to API spec
+                err_info = data.get("error", {}) if isinstance(data, dict) else {}
+                code = err_info.get("code") or f"HTTP_{resp.status_code}"
+                msg = err_info.get("message") or resp.text
+
+                return {
+                    "error": msg,
+                    "code": code,
+                    "status_code": resp.status_code,
+                    "source": "digifootprint",
+                }
+        except Exception as exc:
+            return {"error": f"DigiFootprint API lookup failed: {exc}", "source": "digifootprint"}
+
+

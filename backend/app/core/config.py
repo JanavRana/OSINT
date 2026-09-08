@@ -67,6 +67,10 @@ class Settings(BaseSettings):
     # --- GitHub REST API ---
     github_token: str = ""
 
+    # --- DigiFootprint API ---
+    digifootprint_api_key: str = "dfp_e322916d5de5f61fba35a2df6c19f45d76e517eb6a27292cfeafac46bf8924bf"
+
+
 
     @property
     def sqlalchemy_database_url(self) -> str:

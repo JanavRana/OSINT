@@ -591,13 +591,28 @@ def list_identifiers(
                 identifier_type = "username"
                 display_value = meta.get("display_name") or meta.get("preferred_username") or str(f.value)
                 profile_url = meta.get("profile_url") or meta.get("avatar_url")
-            elif field == "social_account" or meta.get("source") == "gravatar":
-                platform_display_name = f"Gravatar Linked Account ({meta.get('platform', 'Social')})"
+            elif meta.get("source") == "digifootprint" and field == "social_account":
+                plat = meta.get("platform", "Social").title()
+                platform_display_name = f"DigiFootprint Detected Account ({plat})"
                 identifier_type = "social"
+                platform = meta.get("platform", "digifootprint")
+                profile_url = meta.get("url")
+            elif meta.get("source") == "digifootprint" and field == "web_mentions":
+                platform_display_name = "DigiFootprint Public Web Mentions"
+                identifier_type = "email"
+                platform = "digifootprint"
+            elif field == "social_account" or meta.get("source") == "gravatar":
+                plat = meta.get("platform", "Social").title()
+                platform_display_name = f"Gravatar Linked Account ({plat})"
+                identifier_type = "social"
+                platform = meta.get("platform", "gravatar")
                 profile_url = meta.get("url")
             elif field == "breach_count":
-                platform_display_name = "Data Breach Exposure"
+                src = meta.get("source", "")
+                prefix = "DigiFootprint " if src == "digifootprint" else ""
+                platform_display_name = f"{prefix}Data Breach Exposure"
                 identifier_type = "email"
+
             elif meta.get("platform_display_name", "").startswith("Breached Platform"):
                 platform_display_name = meta.get("platform_display_name")
                 identifier_type = "social"
