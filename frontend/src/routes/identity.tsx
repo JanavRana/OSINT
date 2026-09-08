@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
-import { Mail, Target, Calendar, Fingerprint, Activity, Inbox } from "lucide-react";
+import { Mail, Target, Calendar, Fingerprint, Activity, Inbox, Link2 } from "lucide-react";
 import { AsyncBoundary, EmptyState } from "@/components/states";
 import { MetricPill } from "@/components/field";
 import { formatConfidencePercent } from "@/components/confidence-bar";
@@ -10,6 +10,7 @@ import { useInvestigations } from "@/hooks/use-osint-data";
 import { getUser } from "@/lib/auth";
 import { getDataProvider } from "@/lib/api/data-provider";
 import { Identifier } from "@/types/domain";
+import { ReconstructedProfileCard } from "@/components/ui/website-profile-card";
 
 export const Route = createFileRoute("/identity")({
   head: () => ({ meta: [{ title: "Identity Profile — IntelWeave" }] }),
@@ -191,6 +192,30 @@ function Identity() {
                 </Card>
               </div>
             </div>
+
+            {/* Linked Services */}
+            {identifiers.some(i => i.profileUrl) && (
+              <div className="mt-4">
+                <div className="flex items-center gap-2 mb-2 pb-2 border-b border-border/60">
+                  <Link2 className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+                  <h3 className="font-display text-xs font-bold uppercase tracking-wider text-foreground">Linked Services</h3>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  {identifiers
+                    .filter(i => i.profileUrl)
+                    .map(i => (
+                      <ReconstructedProfileCard
+                        key={i.id}
+                        url={i.profileUrl!}
+                        confidence={i.confidence}
+                        platformDisplayName={i.platformDisplayName}
+                        id={`identity-profile-${i.id}`}
+                        className="w-[220px]"
+                      />
+                    ))}
+                </div>
+              </div>
+            )}
           </>
         )}
       </AsyncBoundary>

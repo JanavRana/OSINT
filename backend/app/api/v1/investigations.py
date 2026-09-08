@@ -38,6 +38,7 @@ from app.repositories.seed_identifier_repository import SeedIdentifierRepository
 from app.services.exceptions import NotFoundError
 from app.services.investigation_service import InvestigationService
 from app.timeline.service import TimelineService
+from app.utils.error_formatter import format_human_error
 
 logger = logging.getLogger(__name__)
 
@@ -225,7 +226,7 @@ async def execute_investigation(
                 status=envelope.status,
                 started_at=envelope.started_at,
                 finished_at=envelope.finished_at,
-                error_message=envelope.error_message,
+                error_message=format_human_error(envelope.error_message) if envelope.error_message else None,
             )
             for envelope in execution_result.raw_responses
         ]
@@ -590,13 +591,28 @@ def list_identifiers(
                 identifier_type = "username"
                 display_value = meta.get("display_name") or meta.get("preferred_username") or str(f.value)
                 profile_url = meta.get("profile_url") or meta.get("avatar_url")
-            elif field == "social_account" or meta.get("source") == "gravatar":
-                platform_display_name = f"Gravatar Linked Account ({meta.get('platform', 'Social')})"
+            elif meta.get("source") == "digifootprint" and field == "social_account":
+                plat = meta.get("platform", "Social").title()
+                platform_display_name = f"DigiFootprint Detected Account ({plat})"
                 identifier_type = "social"
+                platform = meta.get("platform", "digifootprint")
+                profile_url = meta.get("url")
+            elif meta.get("source") == "digifootprint" and field == "web_mentions":
+                platform_display_name = "DigiFootprint Public Web Mentions"
+                identifier_type = "email"
+                platform = "digifootprint"
+            elif field == "social_account" or meta.get("source") == "gravatar":
+                plat = meta.get("platform", "Social").title()
+                platform_display_name = f"Gravatar Linked Account ({plat})"
+                identifier_type = "social"
+                platform = meta.get("platform", "gravatar")
                 profile_url = meta.get("url")
             elif field == "breach_count":
-                platform_display_name = "Data Breach Exposure"
+                src = meta.get("source", "")
+                prefix = "DigiFootprint " if src == "digifootprint" else ""
+                platform_display_name = f"{prefix}Data Breach Exposure"
                 identifier_type = "email"
+
             elif meta.get("platform_display_name", "").startswith("Breached Platform"):
                 platform_display_name = meta.get("platform_display_name")
                 identifier_type = "social"
@@ -733,11 +749,79 @@ def list_identifiers(
                     platform_display_name=platform_display_name,
                 )
             )
+        # Handle virustotal facts: expose threat rating, reputation, tags, categories, AS owner, resolved IPs, and MX mail servers
+        if f.connector_name == "virustotal":
+            display_value = str(f.value)
+            profile_url = None
+            platform = "virustotal"
+            field = meta.get("field", "")
+            rec_type = meta.get("record_type")
+
+            if field == "vt_threat_flag":
+                platform_display_name = "VirusTotal Threat Rating"
+                identifier_type = "domain" if meta.get("domain") else "ip"
+            elif field == "vt_reputation":
+                platform_display_name = "VirusTotal Reputation Score"
+                identifier_type = "domain" if meta.get("domain") else "ip"
+            elif field == "vt_tags":
+                platform_display_name = "VirusTotal Threat Tags"
+                identifier_type = "domain" if meta.get("domain") else "ip"
+            elif field == "vt_categories":
+                platform_display_name = "VirusTotal Vendor Categories"
+                identifier_type = "domain"
+            elif field == "vt_as_owner":
+                platform_display_name = "AS Owner (VirusTotal)"
+                identifier_type = "ip"
+            elif field == "vt_country":
+                platform_display_name = "Country (VirusTotal)"
+                identifier_type = "ip"
+            elif rec_type == "A" or field == "vt_dns_record" and rec_type == "A":
+                platform_display_name = "Resolved IP Address (VirusTotal DNS)"
+                identifier_type = "ip"
+            elif rec_type == "MX" or field == "vt_dns_record" and rec_type == "MX":
+                platform_display_name = "Mail Server (VirusTotal DNS)"
+                identifier_type = "domain"
+            else:
+                # Skip legacy TXT, SOA, AAAA site verification noise
+                continue
+
+            items.append(
+                IdentifierRead(
+                    id=str(f.id),
+                    type=identifier_type,
+                    value=display_value,
+                    confidence=f.confidence,
+                    sources=1,
+                    first_seen=f.created_at.isoformat() if f.created_at else "",
+                    profile_url=profile_url,
+                    platform=platform,
+                    platform_display_name=platform_display_name,
+                )
+            )
+            continue
+
+        # Handle github facts: strictly expose Disclosed Email addresses
+        if f.connector_name == "github":
+            field = meta.get("field", "")
+            if field in ("github_email", "github_commit_email") or f.fact_type == "email":
+                items.append(
+                    IdentifierRead(
+                        id=str(f.id),
+                        type="email",
+                        value=str(f.value),
+                        confidence=f.confidence,
+                        sources=1,
+                        first_seen=f.created_at.isoformat() if f.created_at else "",
+                        profile_url=None,
+                        platform="github",
+                        platform_display_name="GitHub Email Disclosure",
+                    )
+                )
             continue
 
 
-
         identifier_type = IDENTIFIER_FACT_TYPES.get(f.fact_type)
+
         if identifier_type is None:
             # Registrar, nameserver, expiration, org, location, certificate,
             # archive_snapshot, image_hash, generic, domain_registration, etc.
@@ -865,19 +949,28 @@ def list_connectors(
 
 
 
-    items = [
-        ConnectorResultRead(
-            id=str(r.id),
-            name=r.connector_name,
-            category=connector_categories.get(
-                r.connector_name.lower(), "OSINT"
-            ),
-            status="success" if r.raw_response else "failed",
-            hits=len(r.raw_response) if isinstance(r.raw_response, dict) else 0,
-            runtime=r.created_at.strftime("%H:%M:%S") if r.created_at else "—",
+    items: list[ConnectorResultRead] = []
+    for r in results:
+        raw = r.raw_response if isinstance(r.raw_response, dict) else {}
+        err_msg = raw.get("error") if isinstance(raw, dict) else None
+        err_code = raw.get("error_code") if isinstance(raw, dict) else None
+        
+        is_success = bool(raw and not err_msg and err_code != "validation_error")
+        formatted_error = format_human_error(err_msg, err_code) if not is_success else None
+
+        items.append(
+            ConnectorResultRead(
+                id=str(r.id),
+                name=r.connector_name,
+                category=connector_categories.get(
+                    r.connector_name.lower(), "OSINT"
+                ),
+                status="success" if is_success else "failed",
+                hits=len(raw) if is_success else 0,
+                runtime=r.created_at.strftime("%H:%M:%S") if r.created_at else "—",
+                error_message=formatted_error,
+            )
         )
-        for r in results
-    ]
 
     return ConnectorResultListResponse(items=items, count=len(items))
 

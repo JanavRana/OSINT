@@ -163,7 +163,13 @@ class EmailOsintNormalizer(BaseNormalizer):
             abstract_facts = self._build_abstract_facts(abstract_rep)
             facts.extend(abstract_facts)
 
-        # ── 7. Graph relationships ─────────────────────────────────────────
+        # ── 7. DigiFootprint Social Account Presences ──────────────────────
+        digifootprint = raw_payload.get("digifootprint")
+        if digifootprint and isinstance(digifootprint, dict) and not digifootprint.get("error"):
+            df_facts = self._build_digifootprint_facts(digifootprint)
+            facts.extend(df_facts)
+
+        # ── 8. Graph relationships ─────────────────────────────────────────
         if email and domain:
             graph_facts = self._build_graph_relationships(email, domain, gravatar_profile)
             facts.extend(graph_facts)
@@ -481,3 +487,80 @@ class EmailOsintNormalizer(BaseNormalizer):
             )
 
         return facts
+
+    def _build_digifootprint_facts(self, df_data: Dict[str, Any]) -> List[NormalizedFact]:
+        """
+        Extract detected social account presences, data breaches, and web mentions
+        from DigiFootprint API response.
+        """
+        facts = []
+        
+        # 1. Registered Social Accounts / Platforms
+        results = df_data.get("results") or df_data.get("accounts") or []
+        if isinstance(results, list):
+            for item in results:
+                if not isinstance(item, dict):
+                    continue
+                platform = item.get("platform") or item.get("site") or item.get("name")
+                registered = item.get("registered") or item.get("exists") or item.get("found") or False
+                url = item.get("url") or item.get("profile_url")
+                method = item.get("method")
+                checked_at = item.get("checkedAt")
+                
+                if platform and registered:
+                    plat_str = str(platform).lower()
+                    facts.append(
+                        NormalizedFact(
+                            fact_type=FactType.SOCIAL_ACCOUNT,
+                            value=plat_str,
+                            source_connector=self.connector_name,
+                            confidence=0.85,
+                            metadata={
+                                "field": "social_account",
+                                "platform": plat_str,
+                                "url": url,
+                                "exists": True,
+                                "verification_method": method,
+                                "checked_at": checked_at,
+                                "source": "digifootprint",
+                            },
+                        )
+                    )
+
+        # 2. Data Breaches
+        breaches = df_data.get("breaches")
+        if isinstance(breaches, list) and len(breaches) > 0:
+            facts.append(
+                NormalizedFact(
+                    fact_type=FactType.GENERIC,
+                    value=f"DigiFootprint Breaches Detected: {len(breaches)}",
+                    source_connector=self.connector_name,
+                    confidence=0.90,
+                    metadata={
+                        "field": "breach_count",
+                        "source": "digifootprint",
+                        "breaches": breaches,
+                    },
+                )
+            )
+
+        # 3. Web Mentions
+        web_mentions = df_data.get("webMentions")
+        if isinstance(web_mentions, list) and len(web_mentions) > 0:
+            facts.append(
+                NormalizedFact(
+                    fact_type=FactType.GENERIC,
+                    value=f"Public Web Mentions Detected: {len(web_mentions)}",
+                    source_connector=self.connector_name,
+                    confidence=0.80,
+                    metadata={
+                        "field": "web_mentions",
+                        "source": "digifootprint",
+                        "mentions": web_mentions,
+                    },
+                )
+            )
+
+        return facts
+
+

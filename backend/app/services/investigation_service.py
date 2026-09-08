@@ -174,11 +174,17 @@ class InvestigationService:
         try:
             # --- Route by identifier type ---
             if identifier.type == IdentifierType.USERNAME:
-                # Username investigations use the identity framework dispatcher
-                raw_responses = await self._run_username_osint(
+                # Run both the identity platform dispatcher and classic connectors (e.g. GitHubConnector)
+                username_envelopes = await self._run_username_osint(
                     investigation_id=investigation_id,
                     username=identifier.value,
                 )
+                classic_envelopes = await self._connector_service.execute_connectors(
+                    investigation_id=investigation_id,
+                    identifier=identifier,
+                    db=self._db
+                )
+                raw_responses = username_envelopes + classic_envelopes
             else:
                 # Domain/email/phone/IP use the classic connector framework
                 raw_responses = await self._connector_service.execute_connectors(
@@ -186,6 +192,7 @@ class InvestigationService:
                     identifier=identifier,
                     db=self._db
                 )
+
             
             executed_count = len(raw_responses)
             successful_count = sum(1 for r in raw_responses if r.succeeded)

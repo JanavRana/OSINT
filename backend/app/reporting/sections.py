@@ -94,8 +94,8 @@ class BaseSection:
             self.styles.add(ParagraphStyle(
                 name='CardLabel',
                 fontName='Helvetica-Bold',
-                fontSize=8,
-                leading=10,
+                fontSize=8.5,
+                leading=11,
                 textColor=colors.HexColor('#64748b'),
                 alignment=TA_CENTER,
             ))
@@ -104,8 +104,8 @@ class BaseSection:
             self.styles.add(ParagraphStyle(
                 name='CardValue',
                 fontName='Helvetica-Bold',
-                fontSize=13,
-                leading=15,
+                fontSize=14,
+                leading=17,
                 textColor=colors.HexColor('#0f172a'),
                 alignment=TA_CENTER,
             ))
@@ -114,8 +114,8 @@ class BaseSection:
             self.styles.add(ParagraphStyle(
                 name='TableHead',
                 fontName='Helvetica-Bold',
-                fontSize=8.5,
-                leading=10,
+                fontSize=9.5,
+                leading=12,
                 textColor=colors.HexColor('#ffffff'),
                 alignment=TA_LEFT,
             ))
@@ -124,8 +124,8 @@ class BaseSection:
             self.styles.add(ParagraphStyle(
                 name='TableCell',
                 fontName='Helvetica',
-                fontSize=8,
-                leading=10,
+                fontSize=9,
+                leading=12.5,
                 textColor=colors.HexColor('#334155'),
                 alignment=TA_LEFT,
             ))
@@ -134,8 +134,8 @@ class BaseSection:
             self.styles.add(ParagraphStyle(
                 name='TableCellMono',
                 fontName='Courier',
-                fontSize=7.5,
-                leading=9,
+                fontSize=8.5,
+                leading=11.5,
                 textColor=colors.HexColor('#0f172a'),
                 alignment=TA_LEFT,
             ))
@@ -147,6 +147,68 @@ class BaseSection:
                 fontSize=8.5,
                 leading=12,
                 textColor=colors.HexColor('#334155'),
+                alignment=TA_LEFT,
+            ))
+
+        if 'ExecutiveSummaryBody' not in self.styles:
+            self.styles.add(ParagraphStyle(
+                name='ExecutiveSummaryBody',
+                fontName='Helvetica',
+                fontSize=9.5,
+                leading=14,
+                textColor=colors.HexColor('#1e293b'),
+                alignment=TA_LEFT,
+                spaceAfter=4,
+            ))
+
+        if 'ExecutiveSummaryBullet' not in self.styles:
+            self.styles.add(ParagraphStyle(
+                name='ExecutiveSummaryBullet',
+                fontName='Helvetica',
+                fontSize=9,
+                leading=13,
+                textColor=colors.HexColor('#334155'),
+                alignment=TA_LEFT,
+                spaceAfter=2,
+            ))
+
+        if 'MetaTableCell' not in self.styles:
+            self.styles.add(ParagraphStyle(
+                name='MetaTableCell',
+                fontName='Helvetica',
+                fontSize=10,
+                leading=14,
+                textColor=colors.HexColor('#1e293b'),
+                alignment=TA_LEFT,
+            ))
+
+        if 'MetaTableCellMono' not in self.styles:
+            self.styles.add(ParagraphStyle(
+                name='MetaTableCellMono',
+                fontName='Courier-Bold',
+                fontSize=9.5,
+                leading=13.5,
+                textColor=colors.HexColor('#0f172a'),
+                alignment=TA_LEFT,
+            ))
+
+        if 'TimelineTableCell' not in self.styles:
+            self.styles.add(ParagraphStyle(
+                name='TimelineTableCell',
+                fontName='Helvetica',
+                fontSize=7.5,
+                leading=9.5,
+                textColor=colors.HexColor('#334155'),
+                alignment=TA_LEFT,
+            ))
+
+        if 'TimelineTableCellMono' not in self.styles:
+            self.styles.add(ParagraphStyle(
+                name='TimelineTableCellMono',
+                fontName='Courier',
+                fontSize=7.5,
+                leading=9.5,
+                textColor=colors.HexColor('#0f172a'),
                 alignment=TA_LEFT,
             ))
     
@@ -189,7 +251,7 @@ class CoverPage(BaseSection):
                 Paragraph("<b>INTEL WEAVE EVIDENCE REPORT</b>", self.styles['ReportHeaderCenter'])
             ]
         ]
-        banner_table = Table(banner_content, colWidths=[6.7 * inch])
+        banner_table = Table(banner_content, colWidths=[7.5 * inch], hAlign='LEFT')
         banner_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#0f172a')),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
@@ -199,37 +261,37 @@ class CoverPage(BaseSection):
         story.append(banner_table)
         story.append(Spacer(1, 0.15 * inch))
         
-        # ── 2. Investigation Case Metadata Table (Left-oriented content) ─────
+        # ── 2. Investigation Case Metadata Table (Right after main header banner) ─────
         details_data = [
             [
-                Paragraph(f"<b>Case Name:</b> {case_name}", self.styles['TableCell']),
-                Paragraph(f"<b>Category:</b> <font color='#0284c7'><b>{category_str}</b></font>", self.styles['TableCell'])
+                Paragraph(f"<b>Case Name:</b> {case_name}", self.styles['MetaTableCell']),
+                Paragraph(f"<b>Category:</b> <font color='#0284c7'><b>{category_str}</b></font>", self.styles['MetaTableCell'])
             ],
             [
-                Paragraph(f"<b>Investigation ID:</b> <font face='Courier'>{inv_id[:18]}..</font>", self.styles['TableCellMono']),
-                Paragraph(f"<b>Status:</b> <font color='#10b981'><b>{status_str}</b></font>", self.styles['TableCell'])
+                Paragraph(f"<b>Investigation ID:</b> <font face='Courier'>{inv_id[:18]}..</font>", self.styles['MetaTableCellMono']),
+                Paragraph(f"<b>Status:</b> <font color='#10b981'><b>{status_str}</b></font>", self.styles['MetaTableCell'])
             ],
             [
-                Paragraph(f"<b>Target Seed:</b> <font face='Courier'>{target}</font>", self.styles['TableCellMono']),
-                Paragraph(f"<b>Lead Investigator:</b> {investigator_str}", self.styles['TableCell'])
+                Paragraph(f"<b>Target Seed:</b> <font face='Courier'>{target}</font>", self.styles['MetaTableCellMono']),
+                Paragraph(f"<b>Lead Investigator:</b> {investigator_str}", self.styles['MetaTableCell'])
             ],
             [
-                Paragraph(f"<b>Generated Date:</b> {created_at}", self.styles['TableCell']),
-                Paragraph("<b>Classification:</b> TLP:AMBER · CONFIDENTIAL", self.styles['TableCell'])
+                Paragraph(f"<b>Generated Date:</b> {created_at}", self.styles['MetaTableCell']),
+                Paragraph("<b>Classification:</b> TLP:AMBER · CONFIDENTIAL", self.styles['MetaTableCell'])
             ]
         ]
-        details_table = Table(details_data, colWidths=[4.3 * inch, 2.4 * inch])
+        details_table = Table(details_data, colWidths=[4.7 * inch, 2.8 * inch], hAlign='LEFT')
         details_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f8fafc')),
             ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#cbd5e1')),
             ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e2e8f0')),
-            ('PADDING', (0, 0), (-1, -1), 6),
+            ('PADDING', (0, 0), (-1, -1), 8.5),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ]))
         story.append(details_table)
         story.append(Spacer(1, 0.15 * inch))
         
-        # ── 3. Executive Metrics Grid ──────────────────────────────────────────
+        # ── 3. Executive Metrics Grid (Full 7.5in width) ──────────────────────
         metric_cards = [
             [
                 Paragraph("DISCOVERED IDENTIFIERS", self.styles['CardLabel']),
@@ -244,7 +306,7 @@ class CoverPage(BaseSection):
                 Paragraph(str(stats.get('total_facts', 0)), self.styles['CardValue'])
             ]
         ]
-        metrics_table = Table(metric_cards, colWidths=[1.675 * inch, 1.675 * inch, 1.675 * inch, 1.675 * inch])
+        metrics_table = Table(metric_cards, colWidths=[1.875 * inch, 1.875 * inch, 1.875 * inch, 1.875 * inch], hAlign='LEFT')
         metrics_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f1f5f9')),
             ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#cbd5e1')),
@@ -260,30 +322,42 @@ class CoverPage(BaseSection):
         story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#e2e8f0'), spaceAfter=6))
         
         assessment_p1 = (
-            f"This intelligence dossier documents OSINT correlation conducted for investigation "
-            f"<b>{case_name}</b> targeting <b>{category_str}</b> identifier <font face='Courier'><b>{target}</b></font>. "
-            f"The Intel Weave platform executed <b>{stats.get('total_connectors', 0)} OSINT connectors</b>, yielding "
-            f"<b>{stats.get('total_facts', 0)} normalized facts</b> with an aggregate verification confidence of <b>{avg_conf_pct}</b>."
+            f"This intelligence dossier documents comprehensive OSINT correlation conducted for investigation "
+            f"<b>{case_name}</b> (Case ID: <font face='Courier'><b>{inv_id[:18]}..</b></font>), targeting the seed identifier "
+            f"<b>{target}</b> categorized under <b>{category_str}</b>. "
+            f"The Intel Weave platform executed <b>{stats.get('total_connectors', 0)} automated OSINT connectors</b>, yielding "
+            f"<b>{stats.get('total_facts', 0)} normalized facts</b> with an aggregate verification confidence score of <b>{avg_conf_pct}</b>."
         )
         assessment_p2 = (
-            f"Extracted intelligence encompasses technical metadata, active platform records, and historical activity timestamps. "
-            f"All findings have been normalized and recorded into the persistent investigation ledger by <b>{investigator_str}</b>."
+            f"Extracted intelligence encompasses technical network metadata, active platform user records, domain registration attributes, "
+            f"and historical activity timestamps. All findings have been cryptographically hashed, normalized, and recorded into the "
+            f"persistent investigation ledger by lead investigator <b>{investigator_str}</b>."
         )
-        
+        bullet_1 = f"<b>• Vector Coverage:</b> Multi-source data points captured across identity registries, network nodes, and platform profiles."
+        bullet_2 = f"<b>• Data Integrity & Verification:</b> All discovered facts possess cryptographic provenance and average confidence score of {avg_conf_pct}."
+        bullet_3 = f"<b>• Operational Status:</b> Current case state is <font color='#10b981'><b>{status_str}</b></font> with persistent evidence logging active."
+
         assessment_data = [
-            [Paragraph(assessment_p1, self.styles['BodyTextCustom'])],
-            [Paragraph(assessment_p2, self.styles['BodyTextCustom'])],
+            [Paragraph(assessment_p1, self.styles['ExecutiveSummaryBody'])],
+            [Paragraph(assessment_p2, self.styles['ExecutiveSummaryBody'])],
+            [Spacer(1, 2)],
+            [Paragraph(bullet_1, self.styles['ExecutiveSummaryBullet'])],
+            [Paragraph(bullet_2, self.styles['ExecutiveSummaryBullet'])],
+            [Paragraph(bullet_3, self.styles['ExecutiveSummaryBullet'])],
         ]
-        assessment_table = Table(assessment_data, colWidths=[6.7 * inch])
+        assessment_table = Table(assessment_data, colWidths=[7.5 * inch], hAlign='LEFT')
         assessment_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f8fafc')),
-            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#e2e8f0')),
-            ('PADDING', (0, 0), (-1, -1), 7),
+            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#cbd5e1')),
+            ('LINEBEFORE', (0, 0), (0, -1), 3.5, colors.HexColor('#0284c7')),  # Cyan accent left border bar
+            ('PADDING', (0, 0), (-1, -1), 8),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
         ]))
         story.append(assessment_table)
         story.append(Spacer(1, 0.15 * inch))
         
-        # ── 5. Connector Intelligence Summary Table ───────────────────────────
+        # ── 5. Connector Intelligence Summary Table (Full 7.5in width) ───────
         story.append(Paragraph("OSINT Connector Coverage Summary", self.styles['SectionHeading']))
         story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#e2e8f0'), spaceAfter=6))
         
@@ -317,12 +391,13 @@ class CoverPage(BaseSection):
                 Paragraph("N/A", self.styles['TableCellMono']),
             ])
 
-        cov_table = Table(cov_data, colWidths=[2.2 * inch, 1.5 * inch, 1.3 * inch, 1.7 * inch])
+        cov_table = Table(cov_data, colWidths=[2.5 * inch, 1.6 * inch, 1.4 * inch, 2.0 * inch], hAlign='LEFT')
         cov_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0f172a')),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
             ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8fafc')]),
-            ('PADDING', (0, 0), (-1, -1), 4.5),
+            ('PADDING', (0, 0), (-1, -1), 7),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ]))
         story.append(cov_table)
         story.append(Spacer(1, 0.15 * inch))
@@ -334,11 +409,11 @@ class CoverPage(BaseSection):
                 Paragraph(f"<b>Verification Hash:</b> <font face='Courier'>SHA256-{hash_digest}</font>", self.styles['TableCellMono'])
             ]
         ]
-        sign_table = Table(sign_data, colWidths=[4.2 * inch, 2.5 * inch])
+        sign_table = Table(sign_data, colWidths=[4.7 * inch, 2.8 * inch], hAlign='LEFT')
         sign_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f1f5f9')),
             ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#cbd5e1')),
-            ('PADDING', (0, 0), (-1, -1), 6),
+            ('PADDING', (0, 0), (-1, -1), 7),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ]))
         story.append(sign_table)
@@ -395,13 +470,13 @@ class IdentifiersSection(BaseSection):
                 Paragraph(ref_cell, self.styles['TableCell']),
             ])
             
-        id_table = Table(table_data, colWidths=[1.5 * inch, 2.7 * inch, 0.8 * inch, 0.8 * inch, 0.9 * inch])
+        id_table = Table(table_data, colWidths=[1.6 * inch, 3.2 * inch, 0.9 * inch, 0.9 * inch, 0.9 * inch], hAlign='LEFT')
         id_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0f172a')),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
             ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8fafc')]),
-            ('PADDING', (0, 0), (-1, -1), 4),
+            ('PADDING', (0, 0), (-1, -1), 7),
         ]))
         
         story.append(id_table)
@@ -453,13 +528,13 @@ class ConnectorSection(BaseSection):
                 Paragraph(err_str, self.styles['TableCell']),
             ])
             
-        c_table = Table(table_data, colWidths=[1.3 * inch, 1.0 * inch, 1.2 * inch, 1.0 * inch, 2.2 * inch])
+        c_table = Table(table_data, colWidths=[1.6 * inch, 1.2 * inch, 1.3 * inch, 1.1 * inch, 2.3 * inch], hAlign='LEFT')
         c_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0f172a')),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
             ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8fafc')]),
-            ('PADDING', (0, 0), (-1, -1), 4.5),
+            ('PADDING', (0, 0), (-1, -1), 6.5),
         ]))
         
         story.append(c_table)
@@ -501,19 +576,19 @@ class TimelineSection(BaseSection):
             desc_str = safe_cell_text(t.get('description') or '—', 150)
 
             table_data.append([
-                Paragraph(date_str, self.styles['TableCellMono']),
-                Paragraph(f"<b>{title_str}</b>", self.styles['TableCell']),
-                Paragraph(conn_str, self.styles['TableCell']),
-                Paragraph(desc_str, self.styles['TableCell']),
+                Paragraph(date_str, self.styles['TimelineTableCellMono']),
+                Paragraph(f"<b>{title_str}</b>", self.styles['TimelineTableCell']),
+                Paragraph(conn_str, self.styles['TimelineTableCell']),
+                Paragraph(desc_str, self.styles['TimelineTableCell']),
             ])
             
-        t_table = Table(table_data, colWidths=[1.4 * inch, 2.0 * inch, 1.0 * inch, 2.3 * inch])
+        t_table = Table(table_data, colWidths=[1.5 * inch, 2.2 * inch, 1.1 * inch, 2.7 * inch], hAlign='LEFT')
         t_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0f172a')),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
             ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8fafc')]),
-            ('PADDING', (0, 0), (-1, -1), 4),
+            ('PADDING', (0, 0), (-1, -1), 3.5),
         ]))
         
         story.append(t_table)

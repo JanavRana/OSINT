@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { isAuthenticated } from "@/lib/auth";
 import { AppShell } from "@/components/app-shell";
@@ -11,8 +11,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Mail, Globe, User, Wallet, Share2, Phone, Server,
   Network, Clock, FileText, ArrowLeft, Play, RefreshCw, AlertTriangle,
-  CheckCircle2, XCircle, Loader2, RotateCcw, ExternalLink,
+  CheckCircle2, XCircle, Loader2, RotateCcw, LayoutGrid, List, ExternalLink,
 } from "lucide-react";
+import { PLATFORM_BRANDS, getBrand, parseUrl, WebsiteIdentifierBadge, ReconstructedProfileCard } from "@/components/ui/website-profile-card";
 import { AsyncBoundary, EmptyState } from "@/components/states";
 import { ConfidenceBar } from "@/components/confidence-bar";
 import { ConnectorTimeline } from "@/components/investigations/connector-timeline";
@@ -38,8 +39,8 @@ const typeIcon: Record<IdentifierType, typeof Mail> = {
   email: Mail,
   domain: Globe,
   username: User,
+  social: User,
   wallet: Wallet,
-  social: Share2,
   phone: Phone,
   ip: Server,
   mac: Server,
@@ -52,9 +53,29 @@ const jumpLinks = [
   { icon: FileText, label: "Reports", to: "/reports" as const },
 ];
 
+// ─── Identifier dossier card ──────────────────────────────────────────────────
+
+function IdentifierDossierCard({ item }: { item: Identifier }) {
+  return (
+    <ReconstructedProfileCard
+      url={item.profileUrl || (item.type === "domain" ? item.value : undefined)}
+      value={item.value}
+      type={item.type}
+      confidence={item.confidence}
+      platformDisplayName={item.platformDisplayName}
+      profileUrl={item.profileUrl}
+      id={`dossier-card-${item.id}`}
+    />
+  );
+}
+
 // ─── Identifier table ─────────────────────────────────────────────────────────
 
+type IdentifierView = "table" | "dossier";
+
 function IdentifierTable({ items }: { items: Identifier[] }) {
+  const [view, setView] = useState<IdentifierView>("dossier");
+
   if (items.length === 0) {
     return <EmptyState title="No identifiers enriched yet." description="Run connectors to gather identifiers." className="py-8" />;
   }
@@ -62,87 +83,128 @@ function IdentifierTable({ items }: { items: Identifier[] }) {
   const hasProfileLinks = items.some((i) => i.profileUrl);
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-xs font-mono">
-        <thead>
-          <tr className="text-left text-[10px] uppercase font-mono tracking-widest text-muted-foreground border-b border-border bg-surface-2/60">
-            <th scope="col" className="px-4 py-2.5 font-semibold">Entity Type</th>
-            <th scope="col" className="px-4 py-2.5 font-semibold">Value</th>
-            <th scope="col" className="px-4 py-2.5 font-semibold">Confidence Metric</th>
-            <th scope="col" className="px-4 py-2.5 font-semibold">Sources</th>
-            {hasProfileLinks && (
-              <th scope="col" className="px-4 py-2.5 font-semibold">External Profile</th>
+    <div>
+      {/* View toggle */}
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/60 bg-surface-2/40">
+        <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+          {items.length} identifiers
+        </span>
+        <div
+          className="flex items-center gap-0.5 rounded-sm border border-border bg-surface-2 p-0.5"
+          role="group"
+          aria-label="Switch identifier view"
+        >
+          <button
+            id="view-toggle-table"
+            onClick={() => setView("table")}
+            aria-pressed={view === "table"}
+            className={cn(
+              "inline-flex items-center gap-1 px-2 py-1 rounded-sm text-[10px] font-mono transition-colors",
+              view === "table" ? "bg-surface-3 text-foreground" : "text-muted-foreground hover:text-foreground"
             )}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border/40">
-          {items.map((i) => {
-            const Icon = typeIcon[i.type] || Server;
-            const displayType = i.platformDisplayName || i.type;
+          >
+            <List className="h-3 w-3" aria-hidden="true" /> Table
+          </button>
+          <button
+            id="view-toggle-dossier"
+            onClick={() => setView("dossier")}
+            aria-pressed={view === "dossier"}
+            className={cn(
+              "inline-flex items-center gap-1 px-2 py-1 rounded-sm text-[10px] font-mono transition-colors",
+              view === "dossier" ? "bg-surface-3 text-foreground" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <LayoutGrid className="h-3 w-3" aria-hidden="true" /> Dossier
+          </button>
+        </div>
+      </div>
 
-            let valueCell = (
-              <span className="font-mono text-xs text-foreground break-all">{i.value}</span>
-            );
-            const isDomainUrl =
-              i.type === "domain" &&
-              i.value.includes(".") &&
-              !i.value.startsWith("Yes") &&
-              !i.value.startsWith("No");
+      {/* Dossier grid — 3 columns per row on md+ */}
+      {view === "dossier" && (
+        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+          {items.map((i) => (
+            <IdentifierDossierCard key={i.id} item={i} />
+          ))}
+        </div>
+      )}
 
-            if (isDomainUrl) {
-              const href = i.value.startsWith("http") ? i.value : `https://${i.value}`;
-              valueCell = (
-                <a
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  id={`domain-link-${i.id}`}
-                  className="font-mono text-xs break-all text-primary hover:underline inline-flex items-center gap-1"
-                >
-                  {i.value}
-                  <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />
-                </a>
-              );
-            }
-
-            return (
-              <tr key={i.id} className="hover:bg-surface-3/50 transition-colors">
-                <td className="px-4 py-2.5 font-sans">
-                  <div className="flex items-center gap-2">
-                    <div className="h-6 w-6 rounded-sm bg-surface-3 border border-border text-primary grid place-items-center shrink-0" aria-hidden="true">
-                      <Icon className="h-3 w-3" />
-                    </div>
-                    <span className="text-xs uppercase font-mono tracking-wider text-muted-foreground">{displayType}</span>
-                  </div>
-                </td>
-                <td className="px-4 py-2.5">{valueCell}</td>
-                <td className="px-4 py-2.5 w-48">
-                  <ConfidenceBar value={i.confidence} ariaLabel={`Confidence for ${i.value}`} />
-                </td>
-                <td className="px-4 py-2.5 text-xs text-muted-foreground">{i.sources}</td>
+      {/* Table view */}
+      {view === "table" && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs font-mono">
+            <thead>
+              <tr className="text-left text-[10px] uppercase font-mono tracking-widest text-muted-foreground border-b border-border bg-surface-2/60">
+                <th scope="col" className="px-4 py-2.5 font-semibold">Entity Type</th>
+                <th scope="col" className="px-4 py-2.5 font-semibold">Value</th>
+                <th scope="col" className="px-4 py-2.5 font-semibold">Confidence</th>
                 {hasProfileLinks && (
-                  <td className="px-4 py-2.5 font-sans">
-                    {i.profileUrl ? (
-                      <a
-                        href={i.profileUrl.startsWith("http") ? i.profileUrl : `https://${i.profileUrl}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        id={`view-profile-${i.id}`}
-                        className="inline-flex items-center gap-1 text-[11px] font-mono font-medium text-primary hover:underline"
-                      >
-                        <ExternalLink className="h-3 w-3" aria-hidden="true" />
-                        [PROFILE]
-                      </a>
-                    ) : (
-                      <span className="text-xs text-muted-foreground/40">—</span>
-                    )}
-                  </td>
+                  <th scope="col" className="px-4 py-2.5 font-semibold">Profile</th>
                 )}
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
+            </thead>
+            <tbody className="divide-y divide-border/40">
+              {items.map((i) => {
+                const Icon = typeIcon[i.type] || Server;
+                const displayType = i.platformDisplayName || i.type;
+
+                const isDomainUrl =
+                  i.type === "domain" &&
+                  i.value.includes(".") &&
+                  !i.value.startsWith("Yes") &&
+                  !i.value.startsWith("No");
+
+                const valueCell = isDomainUrl ? (
+                  <WebsiteIdentifierBadge url={i.value} id={`domain-link-${i.id}`} />
+                ) : (
+                  <span className="font-mono text-xs text-foreground break-all">{i.value}</span>
+                );
+
+                // Simple link for table profile column
+                let profileCell: React.ReactNode = null;
+                if (i.profileUrl) {
+                  const { href, domain, handle } = parseUrl(i.profileUrl);
+                  const shortLabel = handle ? `@${handle}` : domain;
+                  profileCell = (
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      id={`view-profile-${i.id}`}
+                      aria-label={`Open profile ${shortLabel}`}
+                      className="inline-flex items-center gap-1 text-[11px] font-mono font-medium text-primary hover:underline"
+                    >
+                      <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />
+                      {shortLabel}
+                    </a>
+                  );
+                }
+
+                return (
+                  <tr key={i.id} className="hover:bg-surface-3/50 transition-colors">
+                    <td className="px-4 py-2.5 font-sans">
+                      <div className="flex items-center gap-2">
+                        <div className="h-6 w-6 rounded-sm bg-surface-3 border border-border text-primary grid place-items-center shrink-0" aria-hidden="true">
+                          <Icon className="h-3 w-3" />
+                        </div>
+                        <span className="text-xs uppercase font-mono tracking-wider text-muted-foreground">{displayType}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-2.5">{valueCell}</td>
+                    <td className="px-4 py-2.5 w-48">
+                      <ConfidenceBar value={i.confidence} ariaLabel={`Confidence for ${i.value}`} />
+                    </td>
+                    {hasProfileLinks && (
+                      <td className="px-4 py-2.5 font-sans">
+                        {profileCell ?? <span className="text-xs text-muted-foreground/40">—</span>}
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
@@ -195,6 +257,14 @@ function ConnectorCard({
           {cfg.label}
         </span>
       </div>
+
+      {/* Human-readable error message banner */}
+      {c.status === "failed" && c.errorMessage && (
+        <div className="p-2 rounded-sm border border-destructive/30 bg-destructive/10 flex items-start gap-1.5 text-[10px] font-mono text-destructive">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
+          <span className="break-words leading-tight">{c.errorMessage}</span>
+        </div>
+      )}
 
       {/* Running progress bar */}
       {c.status === "running" && (
