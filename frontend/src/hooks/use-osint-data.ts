@@ -147,8 +147,14 @@ function useMutation<TInput, TOutput>(
         setIsPending(false);
         return result;
       } catch (err) {
+        const message =
+          (err as ApiError)?.message ||
+          (err instanceof Error ? err.message : null) ||
+          "An unexpected error occurred.";
         const apiErr: ApiError = {
-          message: err instanceof Error ? err.message : "Unknown error",
+          message,
+          status: (err as ApiError)?.status,
+          code: (err as ApiError)?.code,
         };
         setError(apiErr);
         setIsPending(false);
