@@ -365,6 +365,38 @@ class TestEmailOsintConnector:
             # Email still validated
             assert result["email"] == "user@example.com"
 
+    def test_digifootprint_lookup(self):
+        """DigiFootprint account presences should be retrieved cleanly."""
+        with patch('dns.resolver.resolve') as mock_resolve, \
+             patch('httpx.AsyncClient') as mock_client_class:
+            
+            from dns.resolver import NXDOMAIN
+            mock_resolve.side_effect = NXDOMAIN()
+            
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.headers = {"content-type": "application/json"}
+            mock_response.json.return_value = {
+                "results": [
+                    {"platform": "github", "registered": True, "method": "public_api"},
+                    {"platform": "spotify", "registered": True, "method": "public_api"}
+                ]
+            }
+
+            mock_client = AsyncMock()
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock()
+            mock_client.post = AsyncMock(return_value=mock_response)
+            mock_client_class.return_value = mock_client
+
+            identifier = self.Identifier(value="user@example.com", type=self.IdentifierType.EMAIL)
+            result = run(self.connector.fetch(identifier))
+
+            assert result["digifootprint"] is not None
+            assert len(result["digifootprint"]["results"]) == 2
+
+
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 3. NORMALIZER TESTS
@@ -581,6 +613,32 @@ class TestEmailOsintNormalizer:
         assert len(gravatar_edge) == 1
         assert gravatar_edge[0].metadata["from"] == "user@example.com"
         assert "gravatar:abc123" in gravatar_edge[0].metadata["to"]
+
+    def test_digifootprint_normalizer(self):
+        """DigiFootprint social account presences should produce SOCIAL_ACCOUNT facts."""
+        payload = {
+            "input": "user@example.com",
+            "email": "user@example.com",
+            "domain": "example.com",
+            "validation_error": None,
+            "mx_present": False,
+            "digifootprint": {
+                "results": [
+                    {"platform": "github", "registered": True, "method": "public_api"},
+                    {"platform": "spotify", "registered": True, "method": "public_api"}
+                ]
+            }
+        }
+
+        facts = self.normalizer.normalize(payload)
+        df_facts = [f for f in facts if f.metadata.get("source") == "digifootprint"]
+
+        assert len(df_facts) == 2
+        assert df_facts[0].fact_type == self.FactType.SOCIAL_ACCOUNT
+        assert df_facts[0].value == "github"
+        assert df_facts[0].confidence == 0.85
+
+
 
 
 # ═══════════════════════════════════════════════════════════════════════════

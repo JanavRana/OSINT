@@ -59,7 +59,7 @@ export function GlobalSearch() {
     setIsLoading(true);
     try {
       const provider = getDataProvider();
-      
+
       // Fetch investigations and identifiers
       const [investigations, allIdentifiers] = await Promise.all([
         provider.listInvestigations(),
@@ -98,7 +98,7 @@ export function GlobalSearch() {
 
       // Search identifiers
       const identifierMap = new Map<string, { identifier: Identifier & { investigationId?: string }, investigation: Investigation }>();
-      
+
       for (const inv of investigations) {
         const identifiers = await provider.listIdentifiers(inv.id);
         for (const identifier of identifiers) {
@@ -306,4 +306,3 @@ export function GlobalSearch() {
     </div>
   );
 }
-

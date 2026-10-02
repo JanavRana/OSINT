@@ -128,13 +128,13 @@ export const identityProfileFixture: IdentityProfile = {
 export const graphFixture: GraphData = {
   nodes: [
     { id: "n1", label: "j.doe@protonmail.com", type: "email", x: 50, y: 45, primary: true, size: 34 },
-    { id: "n2", label: "nullbyte_x", type: "user", x: 25, y: 25 },
+    { id: "n2", label: "nullbyte_x", type: "user", x: 25, y: 25, platform: "twitter", platformDisplayName: "Twitter" },
     { id: "n3", label: "secure-login-verify.io", type: "domain", x: 75, y: 30 },
     { id: "n4", label: "0x9a8b…f21c", type: "wallet", x: 78, y: 65 },
     { id: "n5", label: "185.220.101.47", type: "ip", x: 25, y: 68 },
     { id: "n6", label: "shadow.doe@tuta.io", type: "email", x: 15, y: 48 },
-    { id: "n7", label: "t.me/ring42", type: "user", x: 88, y: 48 },
-    { id: "n8", label: "j.doe_1990", type: "user", x: 35, y: 82 },
+    { id: "n7", label: "t.me/ring42", type: "user", x: 88, y: 48, platform: "telegram", platformDisplayName: "Telegram" },
+    { id: "n8", label: "j.doe_1990", type: "user", x: 35, y: 82, platform: "reddit", platformDisplayName: "Reddit" },
     { id: "n9", label: "acme.com", type: "domain", x: 62, y: 15 },
   ],
   edges: [

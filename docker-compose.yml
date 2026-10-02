@@ -41,6 +41,8 @@ services:
 
     ports:
       - "8000:8000"
+    volumes:
+      - ./backend:/app
     environment:
       POSTGRES_USER: osint_user
       POSTGRES_PASSWORD: change_me

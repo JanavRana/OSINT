@@ -153,6 +153,7 @@ class ConnectorResultRead(BaseModel):
     status: str
     hits: int
     runtime: str
+    error_message: str | None = None
 
 
 class ConnectorResultListResponse(BaseModel):

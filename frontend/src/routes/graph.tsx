@@ -15,6 +15,7 @@ import { AsyncBoundary, EmptyState } from "@/components/states";
 import { Field } from "@/components/field";
 import { useGraph, useInvestigations } from "@/hooks/use-osint-data";
 import { cn } from "@/lib/utils";
+import { getBrand, parseUrl, PLATFORM_BRANDS } from "@/components/ui/website-profile-card";
 import type { GraphData, GraphEdge, GraphNode, GraphNodeType } from "@/types/domain";
 
 export const Route = createFileRoute("/graph")({
@@ -37,6 +38,78 @@ const colorMap: Record<GraphNodeType, string> = {
   wallet: "text-success bg-success/10 border-success/40",
   ip: "text-destructive bg-destructive/10 border-destructive/40",
 };
+
+function GraphNodeIcon({
+  node,
+  defaultIcon: DefaultIcon,
+  className = "h-3.5 w-3.5",
+}: {
+  node: GraphNode;
+  defaultIcon: typeof Mail;
+  className?: string;
+}) {
+  const [errored, setErrored] = useState(false);
+
+  // STRICT RULE: Only username / user nodes show platform logos in graph view
+  if (node.type !== "user") {
+    return <DefaultIcon className={className} aria-hidden="true" />;
+  }
+
+  let domain: string | null = null;
+  if (node.platform) {
+    const p = node.platform.toLowerCase();
+    if (p === "telegram" || p === "t.me") domain = "telegram.org";
+    else if (p === "x" || p === "twitter") domain = "twitter.com";
+    else if (p === "steam") domain = "steampowered.com";
+    else domain = p.includes(".") ? p : `${p}.com`;
+  } else if (node.platformDisplayName) {
+    const pd = node.platformDisplayName.toLowerCase();
+    if (pd.includes("telegram")) domain = "telegram.org";
+    else if (pd.includes("twitter") || pd.includes("x")) domain = "twitter.com";
+    else if (pd.includes("github")) domain = "github.com";
+    else if (pd.includes("reddit")) domain = "reddit.com";
+    else if (pd.includes("spotify")) domain = "spotify.com";
+    else if (pd.includes("steam")) domain = "steampowered.com";
+    else if (pd.includes("discord")) domain = "discord.com";
+    else if (pd.includes("instagram")) domain = "instagram.com";
+    else if (pd.includes("linkedin")) domain = "linkedin.com";
+  }
+
+  // Fallback domain extraction from label if platform is not explicitly set
+  if (!domain && node.label) {
+    const lbl = node.label.toLowerCase();
+    if (lbl.startsWith("t.me/") || lbl.includes("telegram")) {
+      domain = "telegram.org";
+    } else if (lbl.includes("github")) {
+      domain = "github.com";
+    } else if (lbl.includes("twitter") || lbl.includes("x.com")) {
+      domain = "twitter.com";
+    } else if (lbl.includes("reddit")) {
+      domain = "reddit.com";
+    } else if (lbl.includes("spotify")) {
+      domain = "spotify.com";
+    } else if (lbl.includes("steam")) {
+      domain = "steampowered.com";
+    }
+  }
+
+  // Verify domain exists in brand registry to avoid Google's default white globe icon
+  const isKnownBrand = domain ? Boolean(getBrand(domain) || PLATFORM_BRANDS[domain]) : false;
+
+  if (domain && isKnownBrand && !errored) {
+    return (
+      <img
+        src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
+        alt=""
+        aria-hidden="true"
+        className={cn("object-contain rounded-sm shrink-0", className)}
+        onError={() => setErrored(true)}
+      />
+    );
+  }
+
+  return <DefaultIcon className={className} aria-hidden="true" />;
+}
 
 interface Selection {
   node: GraphNode | null;
@@ -264,7 +337,7 @@ function GraphCanvas({
                 style={{ height: size, width: size }}
                 aria-hidden="true"
               >
-                <Icon className="h-3.5 w-3.5" />
+                <GraphNodeIcon node={n} defaultIcon={Icon} />
               </div>
               <div className="mt-1 text-[10px] font-mono text-muted-foreground whitespace-nowrap text-center opacity-90 group-hover:opacity-100 max-w-[130px] truncate bg-surface/80 px-1 rounded border border-border/40">
                 {displayLabel}
@@ -309,7 +382,7 @@ function NodeDetails({ node, edges, nodes }: { node: GraphNode; edges: GraphEdge
     <div className="mt-3 space-y-3 font-mono text-xs">
       <div className="flex items-center gap-2.5 p-2 rounded-sm bg-surface-2 border border-border">
         <div className={cn("h-9 w-9 rounded-sm border grid place-items-center shrink-0", colorMap[node.type])} aria-hidden="true">
-          <Icon className="h-4 w-4" />
+          <GraphNodeIcon node={node} defaultIcon={Icon} className="h-4 w-4" />
         </div>
         <div className="min-w-0">
           <div className="text-[9px] uppercase tracking-widest text-muted-foreground">{node.type}</div>
@@ -568,7 +641,7 @@ function Graph() {
                             onClick={() => setSelection({ node: n, edge: null })}
                           >
                             <span className={cn("h-4 w-4 rounded-full grid place-items-center shrink-0 border", colorMap[n.type])}>
-                              <Icon className="h-2.5 w-2.5" />
+                              <GraphNodeIcon node={n} defaultIcon={Icon} className="h-2.5 w-2.5" />
                             </span>
                             <span className="truncate text-foreground">{n.label}</span>
                             <span className="ml-auto text-[10px] text-muted-foreground uppercase">{n.type}</span>

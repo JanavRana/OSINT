@@ -62,6 +62,7 @@ export interface Connector {
   status: ConnectorRunStatus;
   hits: number;
   runtime: string;
+  errorMessage?: string;
 }
 
 export interface TimelineEvent {
