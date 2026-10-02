@@ -116,6 +116,7 @@ def _make_username_envelope(
 async def test_username_exists_on_mocked_platform(db_session):
     """Username found → SUCCEEDED envelope → PROFILE_DATA fact persisted."""
     service = InvestigationService(db_session)
+    service._connector_service.execute_connectors = AsyncMock(return_value=[])
     investigation, _ = service.create_investigation(name="Test Username Investigation")
 
     identifier = Identifier(value="torvalds", type=IdentifierType.USERNAME)
@@ -190,6 +191,7 @@ async def test_username_not_found_no_false_result(db_session):
 async def test_one_platform_fails_others_still_execute(db_session):
     """If one platform returns FAILED, the rest should still produce facts."""
     service = InvestigationService(db_session)
+    service._connector_service.execute_connectors = AsyncMock(return_value=[])
     investigation, _ = service.create_investigation(name="Partial Failure Test")
 
     identifier = Identifier(value="someuser", type=IdentifierType.USERNAME)

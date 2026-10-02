@@ -13,7 +13,7 @@ import {
   Network, Clock, FileText, ArrowLeft, Play, RefreshCw, AlertTriangle,
   CheckCircle2, XCircle, Loader2, RotateCcw, LayoutGrid, List, ExternalLink,
 } from "lucide-react";
-import { PLATFORM_BRANDS, getBrand, parseUrl, WebsiteIdentifierBadge, ReconstructedProfileCard } from "@/components/ui/website-profile-card";
+import { PLATFORM_BRANDS, getBrand, parseUrl, WebsiteIdentifierBadge, ReconstructedProfileCard, Favicon, getBrandDomain } from "@/components/ui/website-profile-card";
 import { AsyncBoundary, EmptyState } from "@/components/states";
 import { ConfidenceBar } from "@/components/confidence-bar";
 import { ConnectorTimeline } from "@/components/investigations/connector-timeline";
@@ -64,6 +64,7 @@ function IdentifierDossierCard({ item }: { item: Identifier }) {
       confidence={item.confidence}
       platformDisplayName={item.platformDisplayName}
       profileUrl={item.profileUrl}
+      platform={item.platform}
       id={`dossier-card-${item.id}`}
     />
   );
@@ -179,12 +180,18 @@ function IdentifierTable({ items }: { items: Identifier[] }) {
                   );
                 }
 
+                const brandDomain = getBrandDomain(i.profileUrl, i.value, i.platform, i.platformDisplayName);
+
                 return (
                   <tr key={i.id} className="hover:bg-surface-3/50 transition-colors">
                     <td className="px-4 py-2.5 font-sans">
                       <div className="flex items-center gap-2">
-                        <div className="h-6 w-6 rounded-sm bg-surface-3 border border-border text-primary grid place-items-center shrink-0" aria-hidden="true">
-                          <Icon className="h-3 w-3" />
+                        <div className="h-6 w-6 rounded-sm bg-surface-3 border border-border text-primary grid place-items-center shrink-0 overflow-hidden" aria-hidden="true">
+                          {brandDomain ? (
+                            <Favicon domain={brandDomain} size={14} />
+                          ) : (
+                            <Icon className="h-3 w-3" />
+                          )}
                         </div>
                         <span className="text-xs uppercase font-mono tracking-wider text-muted-foreground">{displayType}</span>
                       </div>

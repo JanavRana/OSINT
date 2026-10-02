@@ -207,8 +207,12 @@ function Identity() {
                       <ReconstructedProfileCard
                         key={i.id}
                         url={i.profileUrl!}
+                        value={i.value}
+                        type={i.type}
                         confidence={i.confidence}
                         platformDisplayName={i.platformDisplayName}
+                        profileUrl={i.profileUrl}
+                        platform={i.platform}
                         id={`identity-profile-${i.id}`}
                         className="w-[220px]"
                       />

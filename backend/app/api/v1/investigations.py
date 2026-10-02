@@ -591,27 +591,22 @@ def list_identifiers(
                 identifier_type = "username"
                 display_value = meta.get("display_name") or meta.get("preferred_username") or str(f.value)
                 profile_url = meta.get("profile_url") or meta.get("avatar_url")
-            elif meta.get("source") == "digifootprint" and field == "social_account":
+            elif field == "social_account" or meta.get("source") in ("digifootprint", "gravatar"):
                 plat = meta.get("platform", "Social").title()
-                platform_display_name = f"DigiFootprint Detected Account ({plat})"
+                platform_display_name = f"Registered Social ({plat})"
                 identifier_type = "social"
-                platform = meta.get("platform", "digifootprint")
+                platform = meta.get("platform", meta.get("source", "social"))
                 profile_url = meta.get("url")
             elif meta.get("source") == "digifootprint" and field == "web_mentions":
                 platform_display_name = "DigiFootprint Public Web Mentions"
                 identifier_type = "email"
                 platform = "digifootprint"
-            elif field == "social_account" or meta.get("source") == "gravatar":
-                plat = meta.get("platform", "Social").title()
-                platform_display_name = f"Gravatar Linked Account ({plat})"
-                identifier_type = "social"
-                platform = meta.get("platform", "gravatar")
-                profile_url = meta.get("url")
             elif field == "breach_count":
                 src = meta.get("source", "")
                 prefix = "DigiFootprint " if src == "digifootprint" else ""
                 platform_display_name = f"{prefix}Data Breach Exposure"
                 identifier_type = "email"
+
 
             elif meta.get("platform_display_name", "").startswith("Breached Platform"):
                 platform_display_name = meta.get("platform_display_name")
@@ -749,41 +744,54 @@ def list_identifiers(
                     platform_display_name=platform_display_name,
                 )
             )
-        # Handle virustotal facts: expose threat rating, reputation, tags, categories, AS owner, resolved IPs, and MX mail servers
+        # Handle virustotal facts: expose threat rating, reputation, tags, categories, AS owner, resolved IPs
         if f.connector_name == "virustotal":
-            display_value = str(f.value)
+            raw_val = str(f.value)
             profile_url = None
             platform = "virustotal"
             field = meta.get("field", "")
             rec_type = meta.get("record_type")
 
+            # Strip legacy prefixes if present
+            display_value = raw_val
+            for prefix in (
+                "VIRUSTOTAL THREAT FLAG: ",
+                "VIRUSTOTAL CLEAN: ",
+                "VIRUSTOTAL REPUTATION SCORE: ",
+                "VIRUSTOTAL CATEGORIES: ",
+                "VIRUSTOTAL TAGS: ",
+            ):
+                if display_value.startswith(prefix):
+                    display_value = display_value[len(prefix):]
+
             if field == "vt_threat_flag":
                 platform_display_name = "VirusTotal Threat Rating"
-                identifier_type = "domain" if meta.get("domain") else "ip"
+                identifier_type = "ip"
             elif field == "vt_reputation":
-                platform_display_name = "VirusTotal Reputation Score"
-                identifier_type = "domain" if meta.get("domain") else "ip"
+                platform_display_name = "VirusTotal Community Score"
+                identifier_type = "ip"
             elif field == "vt_tags":
                 platform_display_name = "VirusTotal Threat Tags"
-                identifier_type = "domain" if meta.get("domain") else "ip"
+                identifier_type = "ip"
             elif field == "vt_categories":
-                platform_display_name = "VirusTotal Vendor Categories"
-                identifier_type = "domain"
+                platform_display_name = "VirusTotal Categories"
+                identifier_type = "ip"
             elif field == "vt_as_owner":
-                platform_display_name = "AS Owner (VirusTotal)"
+                platform_display_name = "AS Owner (ISP)"
                 identifier_type = "ip"
             elif field == "vt_country":
-                platform_display_name = "Country (VirusTotal)"
+                platform_display_name = "Hosting Country"
                 identifier_type = "ip"
-            elif rec_type == "A" or field == "vt_dns_record" and rec_type == "A":
-                platform_display_name = "Resolved IP Address (VirusTotal DNS)"
+            elif rec_type == "A" or (field == "vt_dns_record" and rec_type == "A"):
+                platform_display_name = "Resolved IP Address"
                 identifier_type = "ip"
-            elif rec_type == "MX" or field == "vt_dns_record" and rec_type == "MX":
-                platform_display_name = "Mail Server (VirusTotal DNS)"
+            elif rec_type == "MX" or (field == "vt_dns_record" and rec_type == "MX"):
+                platform_display_name = "Mail Server (MX)"
                 identifier_type = "domain"
             else:
                 # Skip legacy TXT, SOA, AAAA site verification noise
                 continue
+
 
             items.append(
                 IdentifierRead(
@@ -895,6 +903,13 @@ def list_identifiers(
         if key not in seen:
             seen.add(key)
             deduped_items.append(item)
+
+    import re
+    for item in deduped_items:
+        if item.platform_display_name and "gravatar linked account" in item.platform_display_name.lower():
+            match = re.search(r'\(([^)]+)\)', item.platform_display_name)
+            plat_str = match.group(1).title() if match else "Social"
+            item.platform_display_name = f"Registered Social ({plat_str})"
 
     return IdentifierListResponse(items=deduped_items, count=len(deduped_items))
 

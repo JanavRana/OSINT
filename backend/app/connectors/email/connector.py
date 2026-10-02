@@ -1,6 +1,7 @@
 """
 connectors/email/connector.py
 
+
 Email OSINT connector using public/technical data sources.
 
 This connector:

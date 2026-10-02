@@ -59,7 +59,7 @@ class VirusTotalNormalizer(BaseNormalizer):
                     NormalizedFact(
                         source_connector=self.connector_name,
                         fact_type=FactType.GENERIC,
-                        value=f"VIRUSTOTAL THREAT FLAG: {malicious} Malicious / {suspicious} Suspicious Engines",
+                        value=f"{malicious} Malicious / {suspicious} Suspicious Flags",
                         confidence=0.95,
                         metadata={
                             "field": "vt_threat_flag",
@@ -78,7 +78,7 @@ class VirusTotalNormalizer(BaseNormalizer):
                     NormalizedFact(
                         source_connector=self.connector_name,
                         fact_type=FactType.GENERIC,
-                        value=f"VIRUSTOTAL CLEAN: 0 Malicious Flags ({harmless} engines clean)",
+                        value=f"Clean (0 Flags across {harmless} Security Engines)",
                         confidence=0.90,
                         metadata={
                             "field": "vt_threat_flag",
@@ -97,7 +97,7 @@ class VirusTotalNormalizer(BaseNormalizer):
                 NormalizedFact(
                     source_connector=self.connector_name,
                     fact_type=FactType.GENERIC,
-                    value=f"VIRUSTOTAL REPUTATION SCORE: {reputation}",
+                    value=f"{int(reputation):+d} Score" if reputation != 0 else "0 (Neutral)",
                     confidence=0.85,
                     metadata={
                         "field": "vt_reputation",
@@ -116,7 +116,7 @@ class VirusTotalNormalizer(BaseNormalizer):
                     NormalizedFact(
                         source_connector=self.connector_name,
                         fact_type=FactType.GENERIC,
-                        value=f"VIRUSTOTAL TAGS: {', '.join(tag_list)}",
+                        value=", ".join(tag_list),
                         confidence=0.85,
                         metadata={
                             "field": "vt_tags",
@@ -129,13 +129,13 @@ class VirusTotalNormalizer(BaseNormalizer):
         # 4. Security Categories
         categories = raw_data.get("categories")
         if isinstance(categories, dict) and categories:
-            cat_vals = list({str(v).strip() for v in categories.values() if v})
+            cat_vals = sorted(list({str(v).strip().title() for v in categories.values() if v and len(str(v).strip()) < 35}))
             if cat_vals:
                 facts.append(
                     NormalizedFact(
                         source_connector=self.connector_name,
                         fact_type=FactType.GENERIC,
-                        value=f"VIRUSTOTAL CATEGORIES: {', '.join(cat_vals[:5])}",
+                        value=", ".join(cat_vals[:3]),
                         confidence=0.80,
                         metadata={
                             "field": "vt_categories",
@@ -144,6 +144,7 @@ class VirusTotalNormalizer(BaseNormalizer):
                         },
                     )
                 )
+
 
         # 5. AS Owner & ASN (for IP)
         as_owner = raw_data.get("as_owner")

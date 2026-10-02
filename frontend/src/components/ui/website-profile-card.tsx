@@ -59,7 +59,36 @@ export const PLATFORM_BRANDS: Record<string, PlatformBrand> = {
   "steam":             { name: "Steam",           accent: "#66c0f4", bg: "linear-gradient(135deg, #0a1520 0%, #0e1f30 100%)" },
 };
 
-export function getBrand(domain: string): PlatformBrand | null {
+export const PLATFORM_SLUG_MAP: Record<string, string> = {
+  youtube: "youtube.com",
+  github: "github.com",
+  twitter: "twitter.com",
+  x: "x.com",
+  linkedin: "linkedin.com",
+  spotify: "spotify.com",
+  instagram: "instagram.com",
+  facebook: "facebook.com",
+  reddit: "reddit.com",
+  discord: "discord.com",
+  tiktok: "tiktok.com",
+  telegram: "telegram.org",
+  twitch: "twitch.tv",
+  pinterest: "pinterest.com",
+  medium: "medium.com",
+  coursera: "coursera.org",
+  hackerrank: "hackerrank.com",
+  stackoverflow: "stackoverflow.com",
+  gitlab: "gitlab.com",
+  gravatar: "gravatar.com",
+  patreon: "patreon.com",
+  paypal: "paypal.com",
+  steam: "steam",
+};
+
+export function getBrand(domainOrSlug: string): PlatformBrand | null {
+  if (!domainOrSlug) return null;
+  const clean = domainOrSlug.toLowerCase().trim();
+  const domain = PLATFORM_SLUG_MAP[clean] || clean;
   if (PLATFORM_BRANDS[domain]) return PLATFORM_BRANDS[domain];
   const parts = domain.split(".");
   if (parts.length > 2) {
@@ -68,6 +97,7 @@ export function getBrand(domain: string): PlatformBrand | null {
   }
   return null;
 }
+
 
 export function isIpAddress(val: string): boolean {
   if (!val) return false;
@@ -185,9 +215,56 @@ function PlatformLogoAvatar({
   );
 }
 
-// ── Favicon ───────────────────────────────────────────────────────────────────
+// ── Favicon & Brand Domain Helpers ──────────────────────────────────────────
 
-function Favicon({ domain, size = 14 }: { domain: string; size?: number }) {
+export function getBrandDomain(
+  profileUrl?: string,
+  value?: string,
+  platform?: string,
+  platformDisplayName?: string
+): string | undefined {
+  if (profileUrl && profileUrl.includes(".") && !isIpAddress(profileUrl)) {
+    const parsed = parseUrl(profileUrl);
+    if (parsed.domain && !isIpAddress(parsed.domain)) return parsed.domain;
+  }
+
+  if (value && !isIpAddress(value)) {
+    if (value.includes("@")) {
+      const parts = value.split("@");
+      if (parts.length > 1 && parts[1].includes(".") && !isIpAddress(parts[1])) return parts[1];
+    } else if (
+      value.includes(".") &&
+      !value.startsWith("Yes") &&
+      !value.startsWith("No")
+    ) {
+      const parsed = parseUrl(value);
+      if (parsed.domain && !isIpAddress(parsed.domain)) return parsed.domain;
+    }
+  }
+
+  const candidateSlugs = [platform, value].filter(Boolean) as string[];
+
+  if (platformDisplayName) {
+    const match = platformDisplayName.match(/\(([^)]+)\)/);
+    if (match && match[1]) {
+      candidateSlugs.push(match[1]);
+    } else {
+      candidateSlugs.push(platformDisplayName);
+    }
+  }
+
+  for (const slug of candidateSlugs) {
+    const cleanSlug = slug.toLowerCase().trim();
+    const mappedDomain = PLATFORM_SLUG_MAP[cleanSlug];
+    if (mappedDomain) return mappedDomain;
+    if (PLATFORM_BRANDS[cleanSlug]) return cleanSlug;
+    if (PLATFORM_BRANDS[`${cleanSlug}.com`]) return `${cleanSlug}.com`;
+  }
+
+  return undefined;
+}
+
+export function Favicon({ domain, size = 14 }: { domain: string; size?: number }) {
   const [errored, setErrored] = useState(false);
   const isKnownBrand = domain ? Boolean(getBrand(domain) || PLATFORM_BRANDS[domain]) : false;
   if (!isKnownBrand || errored) {
@@ -217,6 +294,7 @@ export interface ReconstructedProfileCardProps {
   /** Platform display name override (e.g. from identifier.platformDisplayName) */
   platformDisplayName?: string;
   profileUrl?: string;
+  platform?: string;
   className?: string;
   id?: string;
 }
@@ -228,41 +306,22 @@ export function ReconstructedProfileCard({
   confidence,
   platformDisplayName,
   profileUrl,
+  platform,
   className,
   id,
 }: ReconstructedProfileCardProps) {
   const targetUrl = profileUrl || (url && url.includes(".") && !isIpAddress(url) ? url : undefined);
   
   let href: string | undefined = undefined;
-  let domain: string | undefined = undefined;
   let handle: string | null = null;
 
   if (targetUrl) {
     const parsed = parseUrl(targetUrl);
     href = parsed.href;
-    domain = parsed.domain;
     handle = parsed.handle;
   }
 
-  if (!domain && value && !isIpAddress(value)) {
-    if (value.includes("@")) {
-      const parts = value.split("@");
-      if (parts.length > 1 && parts[1].includes(".")) domain = parts[1];
-    } else if (
-      value.includes(".") &&
-      !value.startsWith("Yes") &&
-      !value.startsWith("No") &&
-      !isIpAddress(value)
-    ) {
-      const parsed = parseUrl(value);
-      domain = parsed.domain;
-      if (!href) href = parsed.href;
-    }
-  }
-
-  if (domain && isIpAddress(domain)) {
-    domain = undefined;
-  }
+  const domain = getBrandDomain(targetUrl, value, platform, platformDisplayName);
 
   const brand = domain ? getBrand(domain) : null;
   const accentColor = brand?.accent ?? getTypeAccent(type, platformDisplayName);
