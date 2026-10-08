@@ -30,33 +30,33 @@ export function parseUrl(raw: string): {
 export interface PlatformBrand {
   name: string;
   accent: string;
-  bg: string; // banner background gradient/color
+  bg: string;
 }
 
 export const PLATFORM_BRANDS: Record<string, PlatformBrand> = {
-  "github.com":        { name: "GitHub",         accent: "#6e40c9", bg: "linear-gradient(135deg, #161b22 0%, #1c1f26 100%)" },
-  "twitter.com":       { name: "Twitter / X",    accent: "#1d9bf0", bg: "linear-gradient(135deg, #0a0f14 0%, #0d1825 100%)" },
-  "x.com":             { name: "Twitter / X",    accent: "#1d9bf0", bg: "linear-gradient(135deg, #0a0f14 0%, #0d1825 100%)" },
-  "linkedin.com":      { name: "LinkedIn",        accent: "#0a66c2", bg: "linear-gradient(135deg, #071825 0%, #0a1f31 100%)" },
-  "spotify.com":       { name: "Spotify",         accent: "#1db954", bg: "linear-gradient(135deg, #0d1a0f 0%, #111f14 100%)" },
-  "instagram.com":     { name: "Instagram",       accent: "#e1306c", bg: "linear-gradient(135deg, #1a0a10 0%, #1f0e18 100%)" },
-  "facebook.com":      { name: "Facebook",        accent: "#1877f2", bg: "linear-gradient(135deg, #07101e 0%, #0a1428 100%)" },
-  "reddit.com":        { name: "Reddit",          accent: "#ff4500", bg: "linear-gradient(135deg, #1a0d00 0%, #1f1007 100%)" },
-  "discord.com":       { name: "Discord",         accent: "#5865f2", bg: "linear-gradient(135deg, #0d0f1a 0%, #12152b 100%)" },
-  "youtube.com":       { name: "YouTube",         accent: "#ff0000", bg: "linear-gradient(135deg, #1a0000 0%, #1f0505 100%)" },
-  "tiktok.com":        { name: "TikTok",          accent: "#69c9d0", bg: "linear-gradient(135deg, #0a1214 0%, #0d1a1c 100%)" },
-  "telegram.org":      { name: "Telegram",        accent: "#26a5e4", bg: "linear-gradient(135deg, #061520 0%, #081c2b 100%)" },
-  "t.me":              { name: "Telegram",        accent: "#26a5e4", bg: "linear-gradient(135deg, #061520 0%, #081c2b 100%)" },
-  "twitch.tv":         { name: "Twitch",          accent: "#9146ff", bg: "linear-gradient(135deg, #0f0a1a 0%, #150e26 100%)" },
-  "pinterest.com":     { name: "Pinterest",       accent: "#e60023", bg: "linear-gradient(135deg, #1a0004 0%, #1f0008 100%)" },
-  "medium.com":        { name: "Medium",          accent: "#00ab6c", bg: "linear-gradient(135deg, #001a10 0%, #001f14 100%)" },
-  "hackerrank.com":    { name: "HackerRank",      accent: "#2ec4b6", bg: "linear-gradient(135deg, #051b18 0%, #082924 100%)" },
-  "stackoverflow.com": { name: "Stack Overflow",  accent: "#f48024", bg: "linear-gradient(135deg, #1a0e00 0%, #1f1200 100%)" },
-  "gitlab.com":        { name: "GitLab",          accent: "#fc6d26", bg: "linear-gradient(135deg, #1a0e04 0%, #1f1208 100%)" },
-  "gravatar.com":      { name: "Gravatar",        accent: "#1e8cbf", bg: "linear-gradient(135deg, #06121a 0%, #081820 100%)" },
-  "patreon.com":       { name: "Patreon",         accent: "#ff424d", bg: "linear-gradient(135deg, #1a0607 0%, #1f0a0b 100%)" },
-  "paypal.com":        { name: "PayPal",          accent: "#003087", bg: "linear-gradient(135deg, #000a1a 0%, #000d21 100%)" },
-  "steam":             { name: "Steam",           accent: "#66c0f4", bg: "linear-gradient(135deg, #0a1520 0%, #0e1f30 100%)" },
+  "github.com":        { name: "GitHub",         accent: "#8b5cf6", bg: "linear-gradient(135deg, rgba(139,92,246,0.15) 0%, rgba(139,92,246,0.02) 100%)" },
+  "twitter.com":       { name: "Twitter / X",    accent: "#1d9bf0", bg: "linear-gradient(135deg, rgba(29,155,240,0.15) 0%, rgba(29,155,240,0.02) 100%)" },
+  "x.com":             { name: "Twitter / X",    accent: "#1d9bf0", bg: "linear-gradient(135deg, rgba(29,155,240,0.15) 0%, rgba(29,155,240,0.02) 100%)" },
+  "linkedin.com":      { name: "LinkedIn",        accent: "#0a66c2", bg: "linear-gradient(135deg, rgba(10,102,194,0.15) 0%, rgba(10,102,194,0.02) 100%)" },
+  "spotify.com":       { name: "Spotify",         accent: "#1db954", bg: "linear-gradient(135deg, rgba(29,185,84,0.15) 0%, rgba(29,185,84,0.02) 100%)" },
+  "instagram.com":     { name: "Instagram",       accent: "#e1306c", bg: "linear-gradient(135deg, rgba(225,48,108,0.15) 0%, rgba(225,48,108,0.02) 100%)" },
+  "facebook.com":      { name: "Facebook",        accent: "#1877f2", bg: "linear-gradient(135deg, rgba(24,119,242,0.15) 0%, rgba(24,119,242,0.02) 100%)" },
+  "reddit.com":        { name: "Reddit",          accent: "#ff4500", bg: "linear-gradient(135deg, rgba(255,69,0,0.15) 0%, rgba(255,69,0,0.02) 100%)" },
+  "discord.com":       { name: "Discord",         accent: "#5865f2", bg: "linear-gradient(135deg, rgba(88,101,242,0.15) 0%, rgba(88,101,242,0.02) 100%)" },
+  "youtube.com":       { name: "YouTube",         accent: "#ef4444", bg: "linear-gradient(135deg, rgba(239,68,68,0.15) 0%, rgba(239,68,68,0.02) 100%)" },
+  "tiktok.com":        { name: "TikTok",          accent: "#06b6d4", bg: "linear-gradient(135deg, rgba(6,182,212,0.15) 0%, rgba(6,182,212,0.02) 100%)" },
+  "telegram.org":      { name: "Telegram",        accent: "#26a5e4", bg: "linear-gradient(135deg, rgba(38,165,228,0.15) 0%, rgba(38,165,228,0.02) 100%)" },
+  "t.me":              { name: "Telegram",        accent: "#26a5e4", bg: "linear-gradient(135deg, rgba(38,165,228,0.15) 0%, rgba(38,165,228,0.02) 100%)" },
+  "twitch.tv":         { name: "Twitch",          accent: "#9146ff", bg: "linear-gradient(135deg, rgba(145,70,255,0.15) 0%, rgba(145,70,255,0.02) 100%)" },
+  "pinterest.com":     { name: "Pinterest",       accent: "#e60023", bg: "linear-gradient(135deg, rgba(230,0,35,0.15) 0%, rgba(230,0,35,0.02) 100%)" },
+  "medium.com":        { name: "Medium",          accent: "#10b981", bg: "linear-gradient(135deg, rgba(16,185,129,0.15) 0%, rgba(16,185,129,0.02) 100%)" },
+  "hackerrank.com":    { name: "HackerRank",      accent: "#2ec4b6", bg: "linear-gradient(135deg, rgba(46,196,182,0.15) 0%, rgba(46,196,182,0.02) 100%)" },
+  "stackoverflow.com": { name: "Stack Overflow",  accent: "#f48024", bg: "linear-gradient(135deg, rgba(244,128,36,0.15) 0%, rgba(244,128,36,0.02) 100%)" },
+  "gitlab.com":        { name: "GitLab",          accent: "#fc6d26", bg: "linear-gradient(135deg, rgba(252,109,38,0.15) 0%, rgba(252,109,38,0.02) 100%)" },
+  "gravatar.com":      { name: "Gravatar",        accent: "#1e8cbf", bg: "linear-gradient(135deg, rgba(30,140,191,0.15) 0%, rgba(30,140,191,0.02) 100%)" },
+  "patreon.com":       { name: "Patreon",         accent: "#ff424d", bg: "linear-gradient(135deg, rgba(255,66,77,0.15) 0%, rgba(255,66,77,0.02) 100%)" },
+  "paypal.com":        { name: "PayPal",          accent: "#003087", bg: "linear-gradient(135deg, rgba(0,48,135,0.15) 0%, rgba(0,48,135,0.02) 100%)" },
+  "steam":             { name: "Steam",           accent: "#66c0f4", bg: "linear-gradient(135deg, rgba(102,192,244,0.15) 0%, rgba(102,192,244,0.02) 100%)" },
 };
 
 export const PLATFORM_SLUG_MAP: Record<string, string> = {
@@ -98,7 +98,6 @@ export function getBrand(domainOrSlug: string): PlatformBrand | null {
   return null;
 }
 
-
 export function isIpAddress(val: string): boolean {
   if (!val) return false;
   const clean = val.trim();
@@ -128,25 +127,8 @@ export function getTypeAccent(type?: string, platformDisplayName?: string): stri
   }
 }
 
-export function getTypeBannerBg(type?: string, platformDisplayName?: string): string {
-  const pName = platformDisplayName?.toLowerCase() || "";
-  if (pName.includes("mail server") || pName.includes("mx")) {
-    return "linear-gradient(135deg, #0b192e 0%, #0d2240 100%)";
-  }
-  if (pName.includes("resolved ip") || pName.includes("ip address") || type === "ip" || type === "mac") {
-    return "linear-gradient(135deg, #290808 0%, #380a0a 100%)";
-  }
-  switch (type) {
-    case "email": return "linear-gradient(135deg, #0b192e 0%, #0d2240 100%)";
-    case "domain": return "linear-gradient(135deg, #081d24 0%, #0a2933 100%)";
-    case "username":
-    case "social": return "linear-gradient(135deg, #241908 0%, #33230a 100%)";
-    case "wallet": return "linear-gradient(135deg, #082419 0%, #0a3323 100%)";
-    case "phone": return "linear-gradient(135deg, #180b2e 0%, #220d40 100%)";
-    case "ip":
-    case "mac": return "linear-gradient(135deg, #290808 0%, #380a0a 100%)";
-    default: return "linear-gradient(135deg, #10141e 0%, #171d2b 100%)";
-  }
+export function getTypeBannerBg(accentColor: string): string {
+  return `linear-gradient(135deg, ${accentColor}18 0%, ${accentColor}05 100%)`;
 }
 
 function getTypeIcon(type?: string, platformDisplayName?: string) {
@@ -177,7 +159,7 @@ function PlatformLogoAvatar({
   type,
   platformDisplayName,
   accentColor,
-  size = 44,
+  size = 42,
 }: {
   domain?: string | null;
   type?: string;
@@ -191,13 +173,12 @@ function PlatformLogoAvatar({
 
   return (
     <div
-      className="rounded-full border-2 grid place-items-center shrink-0 shadow-lg overflow-hidden p-1.5 relative z-10"
+      className="rounded-xl border-2 grid place-items-center shrink-0 overflow-hidden p-1.5 relative z-10 bg-surface shadow-sm"
       style={{
         width: size,
         height: size,
-        borderColor: `${accentColor}aa`,
-        boxShadow: `0 0 12px ${accentColor}40`,
-        background: `linear-gradient(135deg, ${accentColor}25 0%, #0d1117 100%)`,
+        borderColor: `${accentColor}88`,
+        boxShadow: `0 2px 10px -2px ${accentColor}30`,
       }}
       aria-hidden="true"
     >
@@ -285,13 +266,10 @@ export function Favicon({ domain, size = 14 }: { domain: string; size?: number }
 // ── ReconstructedProfileCard ──────────────────────────────────────────────────
 
 export interface ReconstructedProfileCardProps {
-  /** Raw profile URL or value */
   url?: string;
   value?: string;
   type?: string;
-  /** Confidence value (0-1 or 0-100, same scale as ConfidenceBar) */
   confidence?: number;
-  /** Platform display name override (e.g. from identifier.platformDisplayName) */
   platformDisplayName?: string;
   profileUrl?: string;
   platform?: string;
@@ -325,133 +303,129 @@ export function ReconstructedProfileCard({
 
   const brand = domain ? getBrand(domain) : null;
   const accentColor = brand?.accent ?? getTypeAccent(type, platformDisplayName);
-  const bannerBg = brand?.bg ?? getTypeBannerBg(type, platformDisplayName);
+  const bannerBg = brand?.bg ?? getTypeBannerBg(accentColor);
   const displayName = platformDisplayName ?? brand?.name ?? (type ? type.toUpperCase() : (domain || "IDENTIFIER"));
   const displayValue = handle ? `@${handle}` : (value || domain || url || "");
-  const FallbackIcon = getTypeIcon(type, platformDisplayName);
 
   return (
     <div
       id={id}
       className={cn(
-        "rounded-md border bg-surface-2/80 backdrop-blur-sm overflow-hidden flex flex-col justify-between min-h-[145px]",
-        "transition-all duration-200 hover:border-primary/50 hover:shadow-lg",
+        "group relative rounded-xl border bg-surface overflow-hidden flex flex-col justify-between",
+        "transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5",
         className
       )}
       style={{
-        borderLeftColor: accentColor,
-        borderLeftWidth: "3px",
-        borderColor: `${accentColor}40`,
-        background: `linear-gradient(135deg, ${accentColor}12 0%, rgba(20, 24, 33, 0.85) 100%)`,
-        boxShadow: `0 4px 20px -5px ${accentColor}25, inset 0 0 30px -5px ${accentColor}18`,
+        borderColor: `${accentColor}35`,
+        boxShadow: `0 4px 20px -4px ${accentColor}18, var(--shadow-elev)`,
       }}
     >
-      {/* Platform brand banner */}
+      {/* Top glowing accent stripe */}
       <div
-        className="h-12 w-full relative flex items-center justify-end px-3 shrink-0"
-        style={{ background: bannerBg }}
+        className="h-1 w-full shrink-0"
+        style={{ background: `linear-gradient(90deg, ${accentColor}, ${accentColor}40)` }}
         aria-hidden="true"
+      />
+
+      {/* Header Banner */}
+      <div
+        className="px-3.5 pt-3 pb-2.5 flex items-center justify-between gap-2 shrink-0 border-b border-border/40"
+        style={{ background: bannerBg }}
       >
-        {/* Diagonal stripe overlay */}
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage: `repeating-linear-gradient(45deg, ${accentColor}08 0px, ${accentColor}08 1px, transparent 1px, transparent 8px)`,
-          }}
-        />
-
-        {/* Platform name — right aligned pill to keep space clear for avatar logo on left */}
-        <span
-          className="relative z-0 text-[10px] font-mono font-bold uppercase tracking-widest px-2 py-0.5 rounded-sm border truncate max-w-[170px]"
-          style={{
-            color: accentColor,
-            borderColor: `${accentColor}40`,
-            background: "rgba(10, 14, 23, 0.75)",
-            backdropFilter: "blur(4px)",
-          }}
-        >
-          {displayName}
-        </span>
-
-        {/* Accent glow strip at bottom */}
-        <div
-          className="absolute bottom-0 left-0 right-0 h-px"
-          style={{ background: `linear-gradient(90deg, ${accentColor}90, transparent)` }}
-        />
-      </div>
-
-      {/* Card body */}
-      <div className="px-3 pt-0 pb-3 flex flex-col justify-between flex-1">
-        <div>
-          {/* Platform logo avatar — overlaps banner cleanly without cutoff */}
-          <div className="flex items-end gap-2.5 -mt-6 mb-2">
-            <PlatformLogoAvatar
-              domain={domain}
-              type={type}
-              platformDisplayName={platformDisplayName}
-              accentColor={accentColor}
-              size={44}
-            />
+        <div className="flex items-center gap-2.5 min-w-0">
+          <PlatformLogoAvatar
+            domain={domain}
+            type={type}
+            platformDisplayName={platformDisplayName}
+            accentColor={accentColor}
+            size={36}
+          />
+          <div className="min-w-0">
+            <span
+              className="text-[10px] font-mono font-bold uppercase tracking-widest block truncate"
+              style={{ color: accentColor }}
+            >
+              {displayName}
+            </span>
             {domain && (
-              <div className="min-w-0 pb-0.5">
-                <span
-                  className="text-[10px] font-mono truncate block"
-                  style={{ color: `${accentColor}dd` }}
-                >
-                  {domain}
-                </span>
-              </div>
+              <span className="text-[10px] font-mono text-muted-foreground truncate block opacity-80">
+                {domain}
+              </span>
             )}
           </div>
+        </div>
 
-          {/* Main Handle / Identifier Value */}
-          <div className="mb-2">
-            <span className="text-sm font-bold font-mono text-foreground truncate block" title={displayValue}>
-              {displayValue}
-            </span>
+        <span
+          className="text-[9px] font-mono font-bold uppercase tracking-widest px-2 py-0.5 rounded-sm border shrink-0"
+          style={{
+            color: accentColor,
+            borderColor: `${accentColor}35`,
+            background: `${accentColor}12`,
+          }}
+        >
+          {type ?? "ENTITY"}
+        </span>
+      </div>
+
+      {/* Card Content Body */}
+      <div className="p-3.5 flex flex-col justify-between flex-1 gap-3">
+        {/* Identifier Value Container — Clean, Crisp Surface (No Ugly Dark Grey Tint in Light Mode) */}
+        <div className="p-3 rounded-lg border border-border/60 bg-surface-2/60 space-y-1 shadow-inner">
+          <div className="text-[9px] font-mono font-semibold uppercase tracking-widest text-muted-foreground/70">
+            Target Value
+          </div>
+          <div
+            className="font-mono text-xs font-bold text-foreground break-all select-all leading-relaxed"
+            title={displayValue}
+          >
+            {displayValue}
           </div>
         </div>
 
-        <div>
-          {/* Confidence bar */}
-          {confidence !== undefined && (
-            <div className="mb-2.5">
-              <ConfidenceBar
-                value={confidence}
-                ariaLabel={`Confidence for ${displayValue}`}
-              />
+        {/* Intelligence Confidence Section */}
+        {confidence !== undefined && (
+          <div className="space-y-1">
+            <div className="text-[9px] font-mono font-semibold uppercase tracking-widest text-muted-foreground/70 flex items-center justify-between">
+              <span>Confidence Rating</span>
             </div>
-          )}
+            <ConfidenceBar
+              value={confidence}
+              ariaLabel={`Confidence rating for ${displayValue}`}
+            />
+          </div>
+        )}
 
-          {/* Open native profile button */}
-          {href && (
-            <a
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={`Open ${displayName} profile for ${displayValue} in new tab`}
-              className={cn(
-                "group w-full inline-flex items-center justify-center gap-1.5 rounded-sm border px-2.5 py-1.5",
-                "text-[10px] font-mono font-semibold uppercase tracking-wider transition-all duration-200",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              )}
-              style={{
-                color: accentColor,
-                borderColor: `${accentColor}50`,
-                background: `${accentColor}12`,
-              }}
-            >
-              <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />
-              Open Native Profile
-            </a>
-          )}
-        </div>
+        {/* External Link Action Button */}
+        {href ? (
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`Open ${displayName} profile for ${displayValue} in new tab`}
+            className={cn(
+              "group/link w-full inline-flex items-center justify-center gap-1.5 rounded-md border px-3 py-2",
+              "text-xs font-mono font-bold uppercase tracking-wider transition-all duration-200",
+              "hover:shadow-md hover:scale-[1.01] active:scale-[0.99]",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            )}
+            style={{
+              color: accentColor,
+              borderColor: `${accentColor}40`,
+              background: `${accentColor}12`,
+            }}
+          >
+            <ExternalLink className="h-3.5 w-3.5 shrink-0 group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5 transition-transform" aria-hidden="true" />
+            <span>Open Native Profile</span>
+          </a>
+        ) : (
+          <div className="w-full text-center py-1.5 text-[10px] font-mono uppercase tracking-widest text-muted-foreground/50 border border-dashed border-border/40 rounded-md">
+            No Native URL
+          </div>
+        )}
       </div>
     </div>
   );
 }
-
-// ── WebsiteProfileCard (alias for compatibility) ──────────────────────────────
 
 export interface WebsiteProfileCardProps {
   url?: string;
@@ -467,8 +441,6 @@ export interface WebsiteProfileCardProps {
 export function WebsiteProfileCard(props: WebsiteProfileCardProps) {
   return <ReconstructedProfileCard {...props} />;
 }
-
-// ── WebsiteIdentifierBadge (inline pill for table cells) ──────────────────────
 
 export interface WebsiteIdentifierBadgeProps {
   url: string;
@@ -503,4 +475,3 @@ export function WebsiteIdentifierBadge({ url, className, id }: WebsiteIdentifier
     </a>
   );
 }
-
