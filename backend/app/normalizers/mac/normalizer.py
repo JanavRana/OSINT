@@ -122,54 +122,57 @@ class MacNormalizer(BaseNormalizer):
             country = raw_payload.get("country")
             region = raw_payload.get("region")
 
-            location_parts = [p for p in [city, region, country] if p]
-            city_str = ", ".join(location_parts) if location_parts else ""
-            gps_str = f"Lat: {lat}, Lon: {lon}"
-            loc_str = f"{gps_str} ({city_str})" if city_str else gps_str
+            if lat is not None and lon is not None:
+                location_parts = [p for p in [city, region, country] if p]
+                city_str = ", ".join(location_parts) if location_parts else ""
+                gps_str = f"Lat: {lat}, Lon: {lon}"
+                loc_str = f"{gps_str} ({city_str})" if city_str else gps_str
 
-
-            facts.append(
-                NormalizedFact(
-                    fact_type=FactType.LOCATION,
-                    value=loc_str,
-                    source_connector=self.connector_name,
-                    confidence=self._CONF_WIGLE_GEO,
-                    metadata={
-                        "field": "wifi_location",
-                        "latitude": lat,
-                        "longitude": lon,
-                        "city": city,
-                        "region": region,
-                        "country": country,
-                        "data_label": "Wigle Wi-Fi BSSID Geolocation",
-                        "note": "Wi-Fi access point street location matched via Wigle.net.",
-                    },
-                )
-            )
-
-            # Wi-Fi Network Name (SSID)
-            ssid = raw_payload.get("ssid")
-            if ssid:
                 facts.append(
                     NormalizedFact(
-                        fact_type=FactType.GENERIC,
-                        value=ssid,
+                        fact_type=FactType.LOCATION,
+                        value=loc_str,
                         source_connector=self.connector_name,
-                        confidence=self._CONF_SSID,
+                        confidence=self._CONF_WIGLE_GEO,
                         metadata={
-                            "field": "wifi_ssid",
-                            "note": "Wi-Fi network name (SSID) associated with BSSID.",
+                            "field": "wifi_location",
+                            "latitude": lat,
+                            "longitude": lon,
+                            "city": city,
+                            "region": region,
+                            "country": country,
+                            "data_label": "Wigle Wi-Fi BSSID Geolocation",
+                            "note": "Wi-Fi access point street location matched via Wigle.net.",
                         },
                     )
                 )
 
+            # Wi-Fi Network Name (SSID)
+            ssid = raw_payload.get("ssid")
+            norm_mac = raw_payload.get("normalized_mac") or raw_payload.get("mac", "")
+            if ssid and str(ssid).strip():
+                ssid_clean = str(ssid).strip()
+                if ssid_clean.upper() != norm_mac.upper():
+                    facts.append(
+                        NormalizedFact(
+                            fact_type=FactType.GENERIC,
+                            value=ssid_clean,
+                            source_connector=self.connector_name,
+                            confidence=self._CONF_SSID,
+                            metadata={
+                                "field": "wifi_ssid",
+                                "note": "Wi-Fi network name (SSID) associated with BSSID.",
+                            },
+                        )
+                    )
+
             # Encryption / Security Protocol
             encryption = raw_payload.get("encryption")
-            if encryption:
+            if encryption and str(encryption).strip().lower() not in ("unknown", "none", ""):
                 facts.append(
                     NormalizedFact(
                         fact_type=FactType.GENERIC,
-                        value=encryption,
+                        value=str(encryption).strip(),
                         source_connector=self.connector_name,
                         confidence=self._CONF_WIFI_META,
                         metadata={

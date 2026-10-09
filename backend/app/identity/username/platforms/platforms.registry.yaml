@@ -28,9 +28,13 @@ platforms:
   - reddit.yaml
   - x.yaml
   - instagram.yaml
+  - threads.yaml
+  - snapchat.yaml
   - tiktok.yaml
   - youtube.yaml
   - twitch.yaml
+  - kick.yaml
+  - rumble.yaml
   - pinterest.yaml
   - medium.yaml
   - devto.yaml
@@ -42,6 +46,7 @@ platforms:
   - linktree.yaml
   - letterboxd.yaml
   - telegram.yaml
+  - flipkart.yaml
   
   # Professional platforms
   - linkedin.yaml

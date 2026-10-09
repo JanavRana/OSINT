@@ -327,17 +327,43 @@ class MacOsintConnector(BaseConnector):
                     results = data.get("results", [])
                     if results and isinstance(results, list):
                         top = results[0]
+                        # WiGLE API v2 returns coordinates under trilat/trilong or triglat/triglon or lat/lon
+                        lat = top.get("trilat") if top.get("trilat") is not None else (top.get("triglat") if top.get("triglat") is not None else top.get("lat"))
+                        lon = top.get("trilong") if top.get("trilong") is not None else (top.get("triglon") if top.get("triglon") is not None else top.get("lon"))
+
+                        if lat is None or lon is None or (float(lat) == 0.0 and float(lon) == 0.0):
+                            return {"matched": False}
+
+                        try:
+                            lat_float = float(lat)
+                            lon_float = float(lon)
+                        except (ValueError, TypeError):
+                            return {"matched": False}
+
+                        ssid = top.get("ssid") or top.get("name")
+                        if ssid and (str(ssid).strip().upper() == mac.strip().upper() or not str(ssid).strip()):
+                            ssid = None
+
+                        encryption = top.get("encryption")
+                        if encryption and str(encryption).strip().lower() in ("unknown", "none", ""):
+                            encryption = None
+
                         return {
                             "matched": True,
-                            "ssid": top.get("ssid"),
-                            "latitude": top.get("triglat") or top.get("lat"),
-                            "longitude": top.get("triglon") or top.get("lon"),
+                            "ssid": ssid,
+                            "latitude": lat_float,
+                            "longitude": lon_float,
                             "country": top.get("country"),
                             "region": top.get("region"),
                             "city": top.get("city"),
                             "channel": top.get("channel"),
-                            "encryption": top.get("encryption"),
+                            "encryption": encryption,
                         }
+                elif resp.status_code == 429:
+                    logger.warning("Wigle.net API rate limit exceeded (HTTP 429) for %s", mac)
+                    return {"matched": False, "rate_limited": True}
+                else:
+                    logger.warning("Wigle.net query status %s for %s", resp.status_code, mac)
         except Exception as exc:
             logger.warning("Wigle.net query failed for %s: %s", mac, exc)
 

@@ -872,37 +872,46 @@ def list_identifiers(
             )
         )
 
-    # Deduplicate items by core concept category and value to prevent duplicate UI rows across overlapping connectors
+    # Deduplicate items by core concept category and pick the single best/highest-confidence item
+    # for overlapping properties (ASN, ISP, Country, Region/City, Timezone) across APIs.
+    single_concept_best: dict[str, IdentifierRead] = {}
     deduped_items: list[IdentifierRead] = []
-    seen: set[tuple[str, str]] = set()
+    seen_general: set[tuple[str, str]] = set()
 
     for item in items:
         disp_name = (item.platform_display_name or "").lower().split("(")[0].strip()
 
-        # Map equivalent category concepts across different connectors
-        if "timezone" in disp_name:
-            concept = "timezone"
+        # Concepts where we only want the SINGLE BEST (highest-confidence / richest) item across all APIs:
+        concept = None
+        if "asn" in disp_name or "autonomous system" in disp_name:
+            concept = "asn"
+        elif "isp" in disp_name or "as owner" in disp_name or "network owner" in disp_name:
+            concept = "isp"
         elif "country" in disp_name:
             concept = "country"
-        elif "ip address" in disp_name or disp_name == "abstract ip intelligence":
-            concept = "ip_address"
-        elif "mac address" in disp_name:
-            concept = "mac_address"
-        elif "carrier" in disp_name:
-            concept = "carrier"
-        elif "phone number" in disp_name:
-            concept = "phone_number"
-        elif "asn" in disp_name:
-            concept = "asn"
         elif "region" in disp_name or "city" in disp_name:
             concept = "region_city"
-        else:
-            concept = disp_name
+        elif "timezone" in disp_name:
+            concept = "timezone"
 
-        key = (concept, item.value.strip().lower())
-        if key not in seen:
-            seen.add(key)
-            deduped_items.append(item)
+        if concept:
+            if concept not in single_concept_best:
+                single_concept_best[concept] = item
+            else:
+                existing = single_concept_best[concept]
+                # Compare confidence first; if tied, select the longer/richer string (e.g. "The Netherlands" > "NL", "AS215125 Church..." > "AS215125")
+                if (item.confidence > existing.confidence) or (
+                    item.confidence == existing.confidence and len(item.value) > len(existing.value)
+                ):
+                    single_concept_best[concept] = item
+        else:
+            key = (disp_name, item.value.strip().lower())
+            if key not in seen_general:
+                seen_general.add(key)
+                deduped_items.append(item)
+
+    # Append the selected best facts for single concepts
+    deduped_items.extend(single_concept_best.values())
 
     import re
     for item in deduped_items:
