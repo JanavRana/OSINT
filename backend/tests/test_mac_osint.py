@@ -193,6 +193,41 @@ class TestMacNormalizer:
         assert len(ssid_facts) == 1
         assert ssid_facts[0].value == "CoffeeShop_5G"
 
+    def test_wigle_null_lat_lon_sanitized(self):
+        # Payload with wigle_matched True but lat/lon None, SSID equal to MAC, and encryption unknown
+        raw_payload = {
+            "mac": "58:61:63:FD:6A:F4",
+            "normalized_mac": "58:61:63:FD:6A:F4",
+            "oui_prefix": "58:61:63",
+            "vendor": "Quantum Networks (SG) Pte. Ltd.",
+            "wigle_matched": True,
+            "ssid": "58:61:63:fd:6a:f4",
+            "latitude": None,
+            "longitude": None,
+            "city": None,
+            "country": None,
+            "encryption": "unknown",
+        }
+        facts = self.normalizer.normalize(raw_payload)
+
+        # 1. Must NOT produce any Lat: None, Lon: None LOCATION facts
+        loc_facts = [f for f in facts if f.fact_type == self.FactType.LOCATION]
+        assert len(loc_facts) == 0
+
+        # 2. Must NOT produce wifi_ssid equal to BSSID
+        ssid_facts = [f for f in facts if f.metadata.get("field") == "wifi_ssid"]
+        assert len(ssid_facts) == 0
+
+        # 3. Must NOT produce wifi_security fact with "unknown"
+        security_facts = [f for f in facts if f.metadata.get("field") == "wifi_security"]
+        assert len(security_facts) == 0
+
+        # 4. Must still produce valid MAC and Vendor facts
+        vendor_facts = [f for f in facts if f.fact_type == self.FactType.ORGANIZATION]
+        assert len(vendor_facts) == 1
+        assert vendor_facts[0].value == "Quantum Networks (SG) Pte. Ltd."
+
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 4. REGISTRATION TESTS

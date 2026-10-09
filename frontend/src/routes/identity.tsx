@@ -214,7 +214,7 @@ function Identity() {
                         profileUrl={i.profileUrl}
                         platform={i.platform}
                         id={`identity-profile-${i.id}`}
-                        className="w-[220px]"
+                        className="w-full sm:w-[260px]"
                       />
                     ))}
                 </div>

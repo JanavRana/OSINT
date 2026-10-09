@@ -6,7 +6,6 @@ import { AppShell } from "@/components/app-shell";
 import { StatusBadge, SeverityBadge } from "@/components/badges";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Mail, Globe, User, Wallet, Share2, Phone, Server,
@@ -120,9 +119,9 @@ function IdentifierTable({ items }: { items: Identifier[] }) {
         </div>
       </div>
 
-      {/* Dossier grid — 3 columns per row on md+ */}
+      {/* Dossier grid — responsive multi-column layout */}
       {view === "dossier" && (
-        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
           {items.map((i) => (
             <IdentifierDossierCard key={i.id} item={i} />
           ))}
@@ -230,66 +229,104 @@ function ConnectorCard({
   const c = connector;
 
   const statusConfig = {
-    success: { icon: CheckCircle2, color: "text-success", bg: "bg-success/10 border-success/30", label: "SUCCESS" },
-    failed: { icon: XCircle, color: "text-destructive", bg: "bg-destructive/10 border-destructive/30", label: "FAILED" },
-    running: { icon: Loader2, color: "text-primary", bg: "bg-primary/10 border-primary/30", label: "RUNNING" },
-    queued: { icon: Clock, color: "text-muted-foreground", bg: "bg-surface-2 border-border", label: "QUEUED" },
+    success: {
+      icon: CheckCircle2,
+      color: "text-success",
+      bg: "bg-success/10 border-success/30",
+      label: "SUCCESS",
+      glow: "oklch(0.70 0.18 148 / 0.20)",
+      borderColor: "oklch(0.70 0.18 148 / 0.25)",
+    },
+    failed: {
+      icon: XCircle,
+      color: "text-destructive",
+      bg: "bg-destructive/10 border-destructive/30",
+      label: "FAILED",
+      glow: "oklch(0.60 0.22 25 / 0.20)",
+      borderColor: "oklch(0.60 0.22 25 / 0.35)",
+    },
+    running: {
+      icon: Loader2,
+      color: "text-primary",
+      bg: "bg-primary/10 border-primary/30",
+      label: "RUNNING",
+      glow: "oklch(0.68 0.18 230 / 0.20)",
+      borderColor: "oklch(0.68 0.18 230 / 0.35)",
+    },
+    queued: {
+      icon: Clock,
+      color: "text-muted-foreground",
+      bg: "bg-surface-2 border-border",
+      label: "QUEUED",
+      glow: null,
+      borderColor: null,
+    },
   };
 
   const cfg = statusConfig[c.status as keyof typeof statusConfig] ?? statusConfig.queued;
   const Icon = cfg.icon;
 
   return (
-    <Card
-      className={cn(
-        "p-3.5 border-border bg-surface rounded-md flex flex-col gap-2.5",
-        c.status === "failed" && "border-destructive/40"
-      )}
+    <div
+      className="p-3.5 rounded-md border bg-surface flex flex-col gap-2.5 transition-all duration-300 hover:-translate-y-px"
+      style={{
+        borderColor: cfg.borderColor ?? undefined,
+        boxShadow: cfg.glow ? `0 4px 20px ${cfg.glow}, var(--shadow-elev)` : "var(--shadow-elev)",
+      }}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="text-[9px] uppercase font-mono tracking-widest text-muted-foreground">{c.category}</div>
+          <div className="text-[9px] uppercase font-mono tracking-widest text-muted-foreground/70">{c.category}</div>
           <div className="font-semibold text-xs text-foreground truncate mt-0.5">{c.name}</div>
         </div>
-        <div className={cn("h-6 w-6 rounded-sm border grid place-items-center shrink-0", cfg.bg)} aria-hidden="true">
+        <div
+          className={cn("h-6 w-6 rounded-md border grid place-items-center shrink-0", cfg.bg)}
+          aria-hidden="true"
+        >
           <Icon className={cn("h-3 w-3", cfg.color, c.status === "running" && "animate-spin")} />
         </div>
       </div>
 
       {/* Stats row */}
-      <div className="flex items-center justify-between text-xs font-mono text-muted-foreground">
-        <span>Hits: <strong className="text-foreground">{c.hits}</strong></span>
-        <span>Runtime: <strong className="text-foreground">{c.runtime}</strong></span>
+      <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground">
+        <span>Hits: <strong className="text-foreground font-bold">{c.hits}</strong></span>
+        <span>Runtime: <strong className="text-foreground font-bold">{c.runtime}</strong></span>
         <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-sm border", cfg.bg, cfg.color)}>
           {cfg.label}
         </span>
       </div>
 
-      {/* Human-readable error message banner */}
+      {/* Error banner */}
       {c.status === "failed" && c.errorMessage && (
-        <div className="p-2 rounded-sm border border-destructive/30 bg-destructive/10 flex items-start gap-1.5 text-[10px] font-mono text-destructive">
+        <div className="p-2 rounded-md border border-destructive/30 bg-destructive/8 flex items-start gap-1.5 text-[10px] font-mono text-destructive">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
           <span className="break-words leading-tight">{c.errorMessage}</span>
         </div>
       )}
 
-      {/* Running progress bar */}
+      {/* Running indeterminate bar */}
       {c.status === "running" && (
         <div
-          className="h-1 bg-surface-3 rounded-sm overflow-hidden"
+          className="h-0.5 rounded-full overflow-hidden"
+          style={{ background: "oklch(1 0 0 / 0.06)" }}
           role="progressbar"
           aria-label={`${c.name} running`}
         >
-          <div className="h-full w-1/2 bg-primary animate-pulse" />
+          <div
+            className="h-full w-1/2 animate-pulse rounded-full"
+            style={{
+              background: "linear-gradient(90deg, oklch(0.68 0.18 230 / 0), oklch(0.68 0.18 230), oklch(0.68 0.18 230 / 0))",
+            }}
+          />
         </div>
       )}
 
       {/* Actions */}
-      <div className="pt-1">
+      <div className="pt-0.5">
         <Button
           size="sm"
           variant="ghost"
-          className="h-6 gap-1 text-[11px] font-mono w-full justify-center"
+          className="h-6 gap-1 text-[11px] font-mono w-full justify-center hover:bg-surface-3"
           onClick={onRetry}
           disabled={isRetrying}
           aria-label={`Retry ${c.name}`}
@@ -302,7 +339,7 @@ function ConnectorCard({
           {isRetrying ? "Running…" : "Re-run Connector"}
         </Button>
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -503,68 +540,131 @@ function Detail() {
 
             {/* Overview */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
-              <Card className="p-4 border-border bg-surface rounded-md lg:col-span-3">
-                <div className="flex flex-wrap items-center gap-2 pb-3 border-b border-border/60">
+              {/* Main overview card */}
+              <div
+                className="p-4 rounded-md border border-border bg-surface lg:col-span-3 shadow-[var(--shadow-elev)]"
+              >
+                <div className="flex flex-wrap items-center gap-2 pb-3 border-b border-border/40">
                   <StatusBadge status={inv.status} />
                   <SeverityBadge severity={inv.severity} />
                   {inv.tags.map((t) => (
                     <span
                       key={t}
-                      className="text-[10px] font-mono px-2 py-0.5 rounded-sm bg-surface-2 text-muted-foreground border border-border"
+                      className="text-[10px] font-mono px-2 py-0.5 rounded-sm bg-primary/8 text-primary/80 border border-primary/20"
                     >
                       #{t}
                     </span>
                   ))}
-                  <div className="ml-auto text-xs font-mono text-muted-foreground">
-                    Analyst: <span className="text-foreground">{inv.owner}</span> · Updated {fmtDate(inv.updatedAt)}
+                  <div className="ml-auto text-[11px] font-mono text-muted-foreground">
+                    Analyst: <span className="text-foreground font-medium">{inv.owner}</span>
+                    <span className="mx-1.5 opacity-40">·</span>
+                    Updated {fmtDate(inv.updatedAt)}
                   </div>
                 </div>
-                <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3 font-mono">
+
+                {/* Metric chips */}
+                <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2 font-mono">
                   {[
-                    { label: "PROGRESS", value: `${derivedProgress}%` },
-                    { label: "IDENTIFIERS", value: identifiersRes.data?.length ?? inv.identifiers },
-                    { label: "CONNECTORS", value: connectorsRes.data?.length ?? inv.connectors },
-                    { label: "CREATED", value: fmtDate(inv.createdAt) },
+                    {
+                      label: "PROGRESS",
+                      value: `${derivedProgress}%`,
+                      accent: "oklch(0.68 0.18 230)",
+                      bg: "oklch(0.68 0.18 230 / 0.08)",
+                    },
+                    {
+                      label: "IDENTIFIERS",
+                      value: identifiersRes.data?.length ?? inv.identifiers,
+                      accent: "oklch(0.65 0.20 285)",
+                      bg: "oklch(0.65 0.20 285 / 0.08)",
+                    },
+                    {
+                      label: "CONNECTORS",
+                      value: connectorsRes.data?.length ?? inv.connectors,
+                      accent: "oklch(0.70 0.18 148)",
+                      bg: "oklch(0.70 0.18 148 / 0.08)",
+                    },
+                    {
+                      label: "CREATED",
+                      value: fmtDate(inv.createdAt),
+                      accent: "oklch(0.55 0.012 255)",
+                      bg: "oklch(1 0 0 / 0.03)",
+                    },
                   ].map((m) => (
-                    <div key={m.label} className="p-2 rounded-sm bg-surface-2 border border-border">
-                      <div className="text-[9px] uppercase tracking-widest text-muted-foreground">{m.label}</div>
-                      <div className="text-sm font-bold text-foreground mt-0.5">{m.value}</div>
+                    <div
+                      key={m.label}
+                      className="p-2.5 rounded-md border border-border/60 transition-all duration-200 hover:-translate-y-px"
+                      style={{ background: m.bg, borderColor: `${m.accent}30` }}
+                    >
+                      <div
+                        className="text-[9px] uppercase tracking-widest font-semibold"
+                        style={{ color: `${m.accent}` }}
+                      >
+                        {m.label}
+                      </div>
+                      <div className="text-sm font-bold text-foreground mt-1 tabular-nums">{m.value}</div>
                     </div>
                   ))}
                 </div>
-                <Progress value={derivedProgress} className="h-1 bg-surface-3 mt-3" />
-              </Card>
 
-              <Card className="p-4 border-border bg-surface rounded-md">
-                <h3 className="font-display text-xs font-bold uppercase tracking-wider text-foreground pb-2 border-b border-border/60">
-                  Workspace Views
+                {/* Progress bar */}
+                <div className="mt-3.5">
+                  <div
+                    className="h-1.5 rounded-full overflow-hidden"
+                    style={{ background: "oklch(1 0 0 / 0.05)" }}
+                  >
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{
+                        width: `${derivedProgress}%`,
+                        background: derivedProgress === 100
+                          ? "linear-gradient(90deg, oklch(0.70 0.18 148), oklch(0.68 0.18 230))"
+                          : "linear-gradient(90deg, oklch(0.68 0.18 230), oklch(0.65 0.20 285))",
+                        boxShadow: derivedProgress > 5
+                          ? "0 0 8px oklch(0.68 0.18 230 / 0.5)"
+                          : "none",
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Jump links card */}
+              <div className="p-4 rounded-md border border-border bg-surface shadow-[var(--shadow-elev)]">
+                <h3 className="text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground/70 pb-2 border-b border-border/40">
+                  Quick Nav
                 </h3>
-                <div className="mt-2 space-y-1">
+                <div className="mt-2 space-y-0.5">
                   {jumpLinks.map((l) => (
                     <Link
                       key={l.label}
                       to={l.to}
-                      className="flex items-center gap-2 p-1.5 rounded-sm hover:bg-surface-2 text-xs font-mono text-muted-foreground hover:text-foreground transition"
+                      className="group flex items-center gap-2.5 p-2 rounded-md hover:bg-surface-2 text-xs font-mono text-muted-foreground hover:text-foreground transition-all duration-200"
                     >
-                      <l.icon className="h-3.5 w-3.5 text-primary shrink-0" aria-hidden="true" />
+                      <l.icon
+                        className="h-3.5 w-3.5 text-primary/70 shrink-0 group-hover:text-primary transition-colors"
+                        aria-hidden="true"
+                      />
                       {l.label}
                     </Link>
                   ))}
                 </div>
-              </Card>
+              </div>
             </div>
 
             {/* Tabs */}
             <Tabs defaultValue="identifiers" className="mt-4">
-              <TabsList className="bg-surface-2 border border-border h-9 p-1 rounded-sm font-mono text-xs">
-                <TabsTrigger value="identifiers" className="h-7 text-xs rounded-sm">
+              <TabsList
+                className="border border-border/60 h-9 p-0.5 rounded-md font-mono text-xs gap-0.5"
+                style={{ background: "oklch(1 0 0 / 0.03)" }}
+              >
+                <TabsTrigger value="identifiers" className="h-8 text-xs rounded-sm px-3 data-[state=active]:bg-surface data-[state=active]:text-foreground data-[state=active]:shadow-[var(--shadow-elev)]">
                   Identifiers ({identifiersRes.data?.length ?? 0})
                 </TabsTrigger>
-                <TabsTrigger value="connectors" className="h-7 text-xs rounded-sm">
+                <TabsTrigger value="connectors" className="h-8 text-xs rounded-sm px-3 data-[state=active]:bg-surface data-[state=active]:text-foreground data-[state=active]:shadow-[var(--shadow-elev)]">
                   Connectors ({connectorsRes.data?.length ?? 0})
                 </TabsTrigger>
-                <TabsTrigger value="execution" className="h-7 text-xs rounded-sm">Execution Log</TabsTrigger>
-                <TabsTrigger value="activity" className="h-7 text-xs rounded-sm">Activity</TabsTrigger>
+                <TabsTrigger value="execution" className="h-8 text-xs rounded-sm px-3 data-[state=active]:bg-surface data-[state=active]:text-foreground data-[state=active]:shadow-[var(--shadow-elev)]">Execution Log</TabsTrigger>
+                <TabsTrigger value="activity" className="h-8 text-xs rounded-sm px-3 data-[state=active]:bg-surface data-[state=active]:text-foreground data-[state=active]:shadow-[var(--shadow-elev)]">Activity</TabsTrigger>
               </TabsList>
 
               {/* Identifiers tab */}

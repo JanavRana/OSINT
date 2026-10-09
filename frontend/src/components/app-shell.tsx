@@ -34,27 +34,31 @@ function ConnectorStatusSidebar() {
   const display = total === 0 ? "No runs yet" : `${online}/${total} connectors ok`;
   const pct = total === 0 ? 0 : Math.round((online / total) * 100);
 
+  const healthColor = total === 0 ? "text-muted-foreground" : pct === 100 ? "text-success" : pct > 50 ? "text-warning" : "text-destructive";
+  const barColor = pct === 100 ? "oklch(0.70 0.18 148)" : pct > 50 ? "oklch(0.76 0.16 78)" : "oklch(0.60 0.22 25)";
+
   return (
-    <div className="rounded-md border border-border/80 bg-surface/80 p-2.5 text-xs font-mono">
-      <div className="flex items-center gap-2 text-[11px]">
-        <Shield className="h-3.5 w-3.5 text-primary shrink-0" />
-        <span className="text-muted-foreground uppercase tracking-wider text-[10px]">Run Health</span>
-        <span className={cn("ml-auto font-medium", total === 0 ? "text-muted-foreground" : pct === 100 ? "text-success" : pct > 50 ? "text-warning" : "text-destructive")}>
-          {total === 0 ? "SYS_READY" : `${pct}%`}
+    <div className="rounded-md border border-border/60 bg-surface-2/60 p-2.5 text-xs font-mono backdrop-blur-sm">
+      <div className="flex items-center gap-2">
+        <Shield className="h-3 w-3 text-primary shrink-0" />
+        <span className="text-muted-foreground/80 uppercase tracking-widest text-[9px]">Sys Health</span>
+        <span className={cn("ml-auto text-[10px] font-bold tabular-nums", healthColor)}>
+          {total === 0 ? "READY" : `${pct}%`}
         </span>
       </div>
-      <div className="mt-2 h-1 rounded-sm bg-muted overflow-hidden">
+      <div className="mt-2 h-px rounded-full overflow-hidden" style={{ background: "oklch(1 0 0 / 0.06)" }}>
         <div
-          className={cn(
-            "h-full transition-all",
-            pct === 100 ? "bg-success" : pct > 50 ? "bg-warning" : "bg-destructive"
-          )}
-          style={{ width: `${pct || 0}%` }}
+          className="h-full rounded-full transition-all duration-700"
+          style={{
+            width: `${pct || 0}%`,
+            background: total === 0 ? "oklch(0.68 0.18 230)" : barColor,
+            boxShadow: pct > 0 ? `0 0 6px ${barColor}` : "none",
+          }}
         />
       </div>
-      <div className="mt-1.5 text-[10px] text-muted-foreground/80 flex justify-between">
+      <div className="mt-1.5 text-[9px] text-muted-foreground/60 flex justify-between">
         <span>{display}</span>
-        <span>ONLINE</span>
+        <span className="text-success/70">● ONLINE</span>
       </div>
     </div>
   );
@@ -89,22 +93,28 @@ export function AppShell({ children, title, subtitle, actions }: {
       <Toaster richColors position="top-right" />
 
       {/* Sidebar */}
-      <aside className="hidden md:flex w-56 shrink-0 flex-col border-r border-border bg-sidebar">
+      <aside className="hidden md:flex w-56 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
         {/* Brand header */}
-        <div className="flex items-center gap-2.5 px-4 h-13 border-b border-border bg-surface/50">
-          <div className="h-7 w-7 rounded-sm grid place-items-center bg-primary text-primary-foreground font-mono font-bold text-xs">
+        <div className="flex items-center gap-2.5 px-4 h-13 border-b border-sidebar-border">
+          <div
+            className="h-7 w-7 rounded-md grid place-items-center shrink-0 text-primary-foreground font-mono font-bold text-xs"
+            style={{
+              background: "linear-gradient(135deg, oklch(0.68 0.18 230) 0%, oklch(0.60 0.22 255) 100%)",
+              boxShadow: "0 0 12px oklch(0.68 0.18 230 / 0.4)",
+            }}
+          >
             <Terminal className="h-4 w-4" />
           </div>
           <div className="flex flex-col leading-none">
-            <span className="font-mono text-xs font-bold tracking-tight uppercase text-foreground">INTELWEAVE</span>
-            <span className="text-[9px] font-mono tracking-widest text-muted-foreground uppercase mt-0.5">OSINT Console</span>
+            <span className="font-mono text-xs font-bold tracking-tight uppercase text-sidebar-foreground">INTELWEAVE</span>
+            <span className="text-[9px] font-mono tracking-widest text-muted-foreground/70 uppercase mt-0.5">OSINT Console</span>
           </div>
         </div>
 
         {/* Navigation */}
         <nav className="flex-1 p-2 space-y-0.5">
-          <div className="px-2.5 py-1 text-[9px] font-mono uppercase tracking-widest text-muted-foreground/70">
-            Workspace Nav
+          <div className="px-2.5 py-2 text-[9px] font-mono uppercase tracking-widest text-muted-foreground/50">
+            Workspace
           </div>
           {nav.map((n) => {
             const active = pathname === n.to || (n.to !== "/dashboard" && pathname.startsWith(n.to));
@@ -114,14 +124,29 @@ export function AppShell({ children, title, subtitle, actions }: {
                 key={n.to}
                 to={n.to}
                 className={cn(
-                  "flex items-center gap-2.5 rounded-sm px-2.5 py-1.5 text-xs transition-colors font-medium",
+                  "group flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-xs transition-all duration-200 font-medium",
                   active
-                    ? "bg-primary/15 text-primary border-l-2 border-primary font-semibold"
-                    : "text-muted-foreground hover:text-foreground hover:bg-surface-2"
+                    ? "bg-primary/12 text-primary font-semibold"
+                    : "text-muted-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent"
                 )}
+                style={active ? {
+                  boxShadow: "inset 3px 0 0 oklch(0.68 0.18 230)",
+                } : undefined}
               >
-                <Icon className={cn("h-3.5 w-3.5 shrink-0", active ? "text-primary" : "text-muted-foreground")} />
+                <Icon
+                  className={cn(
+                    "h-3.5 w-3.5 shrink-0 transition-all duration-200",
+                    active ? "text-primary" : "text-muted-foreground/60 group-hover:text-sidebar-foreground",
+                  )}
+                />
                 <span className="truncate">{n.label}</span>
+                {active && (
+                  <span
+                    className="ml-auto h-1.5 w-1.5 rounded-full shrink-0 animate-pulse-dot"
+                    style={{ background: "oklch(0.68 0.18 230)" }}
+                    aria-hidden="true"
+                  />
+                )}
               </Link>
             );
           })}
@@ -136,7 +161,10 @@ export function AppShell({ children, title, subtitle, actions }: {
       {/* Main Container */}
       <div className="flex-1 min-w-0 flex flex-col">
         {/* Topbar */}
-        <header className="h-13 border-b border-border bg-surface px-4 flex items-center gap-3 sticky top-0 z-30">
+        <header
+          className="h-13 border-b border-border px-4 flex items-center gap-3 sticky top-0 z-30 backdrop-blur-md"
+          style={{ background: "color-mix(in oklch, var(--color-surface) 88%, transparent)" }}
+        >
           <GlobalSearch />
           <div className="ml-auto flex items-center gap-2">
             <NotificationsPanel
